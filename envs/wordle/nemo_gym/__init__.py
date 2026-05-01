@@ -1,0 +1,1 @@
+"""Wordle — NeMo Gym implementation."""

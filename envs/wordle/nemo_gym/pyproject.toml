@@ -1,0 +1,23 @@
+[project]
+name = "wordle-nemo-gym"
+version = "0.1.0"
+description = "Wordle environment using NVIDIA NeMo Gym"
+requires-python = ">=3.12"
+dependencies = [
+    "nemo_gym @ git+https://github.com/NVIDIA-NeMo/Gym",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "datasets>=2.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]

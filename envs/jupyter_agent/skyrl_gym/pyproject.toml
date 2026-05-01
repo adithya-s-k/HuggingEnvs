@@ -1,0 +1,22 @@
+[project]
+name = "jupyter-agent-skyrl-gym"
+version = "0.1.0"
+description = "Jupyter Agent environment using SkyRL Gym"
+requires-python = ">=3.10"
+dependencies = [
+    "skyrl-gym>=0.2.0",
+    "e2b-code-interpreter>=1.0.0",
+    "datasets>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]

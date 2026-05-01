@@ -1,0 +1,1 @@
+"""Wordle — OpenEnv (MCP) implementation."""

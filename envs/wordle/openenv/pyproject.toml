@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wordle-openenv"
+version = "0.1.0"
+description = "OpenEnv Wordle environment"
+requires-python = ">=3.11"
+dependencies = [
+    "openenv-core[core]>=0.2.3",
+    "fastmcp>=3.0.0",
+    "fastapi>=0.115.0",
+    "pydantic>=2.0.0",
+    "uvicorn>=0.24.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "datasets>=2.0.0",
+]
+
+[project.scripts]
+server = "wordle_openenv.server.app:main"
+
+[tool.setuptools]
+include-package-data = true
+packages = ["wordle_openenv", "wordle_openenv.server"]
+package-dir = { "wordle_openenv" = ".", "wordle_openenv.server" = "server" }

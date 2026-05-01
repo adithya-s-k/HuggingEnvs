@@ -1,0 +1,6 @@
+wordle_resources_server:
+  resources_servers:
+    wordle:
+      entrypoint: server.py
+      domain: agent
+      description: "Wordle game environment - 2 tools for guessing and history"

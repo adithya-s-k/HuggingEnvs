@@ -1,0 +1,6 @@
+jupyter_agent_resources_server:
+  resources_servers:
+    jupyter_agent:
+      entrypoint: server.py
+      domain: agent
+      description: "Jupyter notebook environment with E2B sandbox - 4 tools for code execution"

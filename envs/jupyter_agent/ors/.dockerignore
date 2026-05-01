@@ -1,0 +1,23 @@
+# Virtual environments
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Dev/test files
+tests/
+.pytest_cache/
+.env
+.env.example
+
+# Build artifacts
+uv.lock
+*.egg-info
+
+# Git
+.git/
+.gitignore
+
+# Docs
+*.md
+PLANS/
