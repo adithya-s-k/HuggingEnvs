@@ -108,7 +108,8 @@ cp .env.example .env       # at the repo root
 
 Every `rollout.py` reads these via `python-dotenv` from the **repo-root `.env`** — you don't need a `.env` per folder.
 
-### 1. OpenEnv (HTTP server, MCP protocol)
+<details>
+<summary><b>1. OpenEnv</b> &nbsp;·&nbsp; HTTP / MCP &nbsp;·&nbsp; <code>MCPToolClient</code> &nbsp;·&nbsp; deployed + local both verified</summary>
 
 ```bash
 cd envs/jupyter_agent/openenv
@@ -120,7 +121,10 @@ OPENENV_URL=http://localhost:8000 uv run python rollout.py
 ```
 The rollout uses `openenv-core`'s generic `MCPToolClient` — no env-specific package install required. Tools are auto-discovered via `list_tools()` and converted to OpenAI tool schemas. Deployed: [`AdithyaSK/jupyter-agent-openenv`](https://huggingface.co/spaces/AdithyaSK/jupyter-agent-openenv). Verified end-to-end with both Qwen and `gpt-4o-mini`.
 
-### 2. ORS (HTTP server, REST + SSE)
+</details>
+
+<details>
+<summary><b>2. ORS</b> &nbsp;·&nbsp; HTTP / REST + SSE &nbsp;·&nbsp; <code>ors-sdk</code> &nbsp;·&nbsp; per-call reward &nbsp;·&nbsp; deployed + local both verified</summary>
 
 ```bash
 cd envs/jupyter_agent/ors
@@ -132,7 +136,10 @@ ORS_URL=http://localhost:8080 uv run python rollout.py
 ```
 Uses the `ors-sdk` client: `ORS(base_url=...).environment("jupyteragentors").session(task=tasks[0])`. Reward arrives **per tool call** as `ToolOutput.reward`. Deployed: [`AdithyaSK/jupyter-agent-ors`](https://huggingface.co/spaces/AdithyaSK/jupyter-agent-ors). Verified end-to-end (`reward=1.18 finished=True`).
 
-### 3. NeMo Gym (HTTP server, REST + cookies)
+</details>
+
+<details>
+<summary><b>3. NeMo Gym</b> &nbsp;·&nbsp; HTTP / REST + cookies &nbsp;·&nbsp; raw <code>requests</code> &nbsp;·&nbsp; deployed only (Ray blocks local)</summary>
 
 ```bash
 cd envs/jupyter_agent/nemo_gym
@@ -143,7 +150,10 @@ Raw HTTP via `requests` + cookies, no SDK needed. `POST /seed_session` sets the 
 
 > ⚠️ NeMo Gym **requires Ray** at server startup, which fails on shared HF / SLURM cluster nodes (`gcs_server` can't bind). Local `python server.py` does not work on those machines, so the deployed Space is the path. See `envs/jupyter_agent/nemo_gym/README.md` for the full story.
 
-### 4. Verifiers (in-process, plain Python functions)
+</details>
+
+<details>
+<summary><b>4. Verifiers</b> &nbsp;·&nbsp; in-process / plain Python &nbsp;·&nbsp; auto-built OpenAI tool schemas via <code>inspect</code></summary>
 
 ```bash
 cd envs/jupyter_agent/verifiers
@@ -152,7 +162,10 @@ uv run python rollout.py
 ```
 No server. The 4 tool functions are imported directly from `env.py`; OpenAI tool schemas are auto-generated from each function's signature + docstring via `inspect`. The E2B sandbox is created in-process, so `E2B_API_KEY` is required.
 
-### 5. SkyRL Gym (in-process, Gym-style)
+</details>
+
+<details>
+<summary><b>5. SkyRL Gym</b> &nbsp;·&nbsp; in-process / <code>BaseTextEnv</code> &nbsp;·&nbsp; text-action with tag parsing</summary>
 
 ```bash
 cd envs/jupyter_agent/skyrl_gym
@@ -161,7 +174,10 @@ uv run python rollout.py
 ```
 `JupyterSkyRLEnv(BaseTextEnv)` with `init()` / `step()`. **No OpenAI tool-calling** — the rollout passes the raw assistant text as the action; the env parses `<code>...</code>` / `<shell>...</shell>` / `<edit>...</edit>` tags out of it. `step()` returns `BaseTextEnvStepOutput(observations, reward, done, ...)`.
 
-### 6. GEM (in-process, Gymnasium 5-tuple)
+</details>
+
+<details>
+<summary><b>6. GEM</b> &nbsp;·&nbsp; in-process / <code>gem.Env</code> &nbsp;·&nbsp; Gymnasium 5-tuple</summary>
 
 ```bash
 cd envs/jupyter_agent/gem
@@ -169,6 +185,8 @@ uv sync
 uv run python rollout.py
 ```
 `JupyterGemEnv(gem.Env)` with `reset()` / `step()`. Same text-action + tag-parsing pattern as SkyRL, but `step()` returns the classic Gymnasium 5-tuple `(obs, reward, terminated, truncated, info)`. Has `spawn()` for parallel rollouts.
+
+</details>
 
 ### Common rollout knobs
 
@@ -193,37 +211,77 @@ uv run python rollout.py
 
 ## How to Set Up the Wordle Environment
 
-Wordle has **no external backend**. It's pure Python. This makes it the cleanest way to see what each framework actually requires.
+Wordle has **no external backend** — it's pure Python (the shared `WordleGame` lives in `envs/wordle/game.py`). The same `guess(word)` tool, the same dictionary, the same scoring, written six different ways. Each framework folder ships a working `rollout.py` and `README.md` following the exact same pattern as the Jupyter agent rollouts.
+
+<details>
+<summary><b>1. OpenEnv</b> &nbsp;·&nbsp; HTTP / MCP &nbsp;·&nbsp; 3 tools: <code>guess</code>, <code>get_history</code>, <code>reset_game</code></summary>
 
 ```bash
-# OpenEnv (HTTP, MCP)
-cd envs/wordle/openenv && uv sync && python -m server.app
-
-# ORS (HTTP, REST+SSE)
-cd envs/wordle/ors && uv sync && python server.py
-
-# NeMo Gym (HTTP, REST)
-cd envs/wordle/nemo_gym && uv sync && python server.py
-
-# Verifiers (in-process)
-cd envs/wordle/verifiers && uv sync && python rollout.py
-
-# SkyRL Gym (in-process)
-cd envs/wordle/skyrl_gym && uv sync && python rollout.py
-
-# GEM (in-process)
-cd envs/wordle/gem && uv sync && python rollout.py
+cd envs/wordle/openenv && uv sync && uv run python rollout.py
 ```
+Generic `MCPToolClient` against [`AdithyaSK/wordle-openenv`](https://huggingface.co/spaces/AdithyaSK/wordle-openenv).
 
-The same `guess(word)` tool, the same dictionary, the same scoring, but written six different ways. Compare any two `server.py` (or env class) files side-by-side and you'll learn more about the frameworks in 10 minutes than from any docs page.
+</details>
 
-A standalone `game.py` and `test_all_adapters.py` at the top of `envs/wordle/` lets you sanity-check all six implementations in one shot.
+<details>
+<summary><b>2. ORS</b> &nbsp;·&nbsp; HTTP / REST + SSE &nbsp;·&nbsp; 50 bundled tasks in the <code>train</code> split</summary>
 
-The HTTP variants are also deployed on HF Spaces (cold-start may take a minute):
+```bash
+cd envs/wordle/ors && uv sync && uv run python rollout.py
+```
+`ors-sdk` client → `client.environment("wordleors")` against [`AdithyaSK/wordle-ors`](https://huggingface.co/spaces/AdithyaSK/wordle-ors). Each task has the answer in `task_spec`.
+
+</details>
+
+<details>
+<summary><b>3. NeMo Gym</b> &nbsp;·&nbsp; HTTP / REST + cookies &nbsp;·&nbsp; raw <code>requests</code></summary>
+
+```bash
+cd envs/wordle/nemo_gym && uv sync && uv run python rollout.py
+```
+Raw `requests` against [`AdithyaSK/wordle-nemo-gym`](https://huggingface.co/spaces/AdithyaSK/wordle-nemo-gym). Same Ray-blocks-local caveat as the Jupyter sibling — deployed Space is the path.
+
+</details>
+
+<details>
+<summary><b>4. Verifiers</b> &nbsp;·&nbsp; in-process / <code>WordleToolkit</code></summary>
+
+```bash
+cd envs/wordle/verifiers && uv sync && uv run python rollout.py
+```
+Imports `WordleToolkit`, auto-builds OpenAI tool schemas via `inspect`, drives the loop manually.
+
+</details>
+
+<details>
+<summary><b>5. SkyRL Gym</b> &nbsp;·&nbsp; in-process / <code>BaseTextEnv</code> &nbsp;·&nbsp; <code>&lt;guess&gt;word&lt;/guess&gt;</code> tag parsing</summary>
+
+```bash
+cd envs/wordle/skyrl_gym && uv sync && uv run python rollout.py
+```
+`WordleSkyRLEnv(BaseTextEnv)` with text-action: model emits `<guess>word</guess>`, env parses.
+
+</details>
+
+<details>
+<summary><b>6. GEM</b> &nbsp;·&nbsp; in-process / <code>gem.Env</code> &nbsp;·&nbsp; Gymnasium 5-tuple</summary>
+
+```bash
+cd envs/wordle/gem && uv sync && uv run python rollout.py
+```
+`WordleGemEnv(gem.Env)` returns `(obs, reward, terminated, truncated, info)`.
+
+</details>
+
+> Compare any two `server.py` (or env class) files side-by-side and you'll learn more about the frameworks in 10 minutes than from any docs page.
+
+The HTTP variants are deployed on HF Spaces (cold-start may take a minute):
 
 - OpenEnv: [`AdithyaSK/wordle-openenv`](https://huggingface.co/spaces/AdithyaSK/wordle-openenv)
 - ORS: [`AdithyaSK/wordle-ors`](https://huggingface.co/spaces/AdithyaSK/wordle-ors)
 - NeMo Gym: [`AdithyaSK/wordle-nemo-gym`](https://huggingface.co/spaces/AdithyaSK/wordle-nemo-gym)
+
+A standalone `game.py` and `test_all_adapters.py` at `envs/wordle/` sanity-check the WordleGame logic shared across all six frameworks.
 
 ---
 

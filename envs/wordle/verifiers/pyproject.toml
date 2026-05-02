@@ -5,6 +5,8 @@ description = "Wordle environment using PrimeIntellect Verifiers"
 requires-python = ">=3.11"
 dependencies = [
     "datasets>=2.0.0",
+    "openai>=2.33.0",
+    "python-dotenv>=1.2.2",
 ]
 
 [project.optional-dependencies]

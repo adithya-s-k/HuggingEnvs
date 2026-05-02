@@ -6,6 +6,8 @@ requires-python = ">=3.10"
 dependencies = [
     "skyrl-gym>=0.2.0",
     "datasets>=2.0.0",
+    "openai>=2.33.0",
+    "python-dotenv>=1.2.2",
 ]
 
 [project.optional-dependencies]
