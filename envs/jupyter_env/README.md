@@ -206,20 +206,3 @@ docker run -p 11000:11000 -e E2B_API_KEY=... jupyter-agent-nemo-gym
 ```
 
 ORS can also be deployed on [openreward.ai](https://openreward.ai) — push to GitHub and connect via their dashboard.
-
-## Inference Testing
-
-```bash
-cd inference/
-python test_multiturn.py --api-url https://<vllm-server>/v1
-python test_hard_multiturn.py --api-url https://<vllm-server>/v1
-```
-
-## Verified Training Runs
-
-| Framework | Job ID | GPUs | Steps | Result |
-|-----------|--------|------|-------|--------|
-| OpenEnv | 22070728 | 4x A100 | 2 | solved, 60.7s, 8% env I/O |
-| OpenEnv + BaseEnv | 22070730 | 4x A100 | 2 | solved, backwards compat OK |
-| ORS | 22070737 | 4x A100 | 2 | solved=4/4, avg reward 1.16 |
-| NeMo Gym | 22070825 | 4x A100 | 2 | solved=4/4, avg reward 1.0, multi-turn |

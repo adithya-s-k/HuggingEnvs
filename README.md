@@ -84,9 +84,9 @@ Wordle is also the *cross-domain proof*: same training and rollout patterns work
 | **OpenEnv**    | HTTP (MCP)       | `@mcp.tool`            | External         | ✅ Docker / HF Space | Long-running sandboxes; MCP ecosystem |
 | **ORS**        | HTTP (REST+SSE)  | `@tool` + Pydantic     | Per-tool-call    | ✅ Docker / HF Space / OpenReward | Server-decided rewards; OpenReward marketplace |
 | **NeMo Gym**   | HTTP (REST)      | `app.post()`           | Post-episode `/verify` | ✅ Docker / HF Space | NVIDIA stack; Ray-based scaling |
-| **Verifiers**  | in-process       | plain Python `def`     | `Rubric` system  | ❌          | Fast prototyping; bundled datasets |
-| **SkyRL Gym**  | in-process       | inside `step()`        | `step()` returns | ❌          | Gym-style RL; SkyRL training stack |
-| **GEM**        | in-process       | inside `step()`        | `step()` returns | ❌          | Gymnasium API; pure-Python games |
+| **Verifiers**  | in-process       | plain Python `def`     | `Rubric` system  | ⚙️          | Fast prototyping; bundled datasets |
+| **SkyRL Gym**  | in-process       | inside `step()`        | `step()` returns | ⚙️          | Gym-style RL; SkyRL training stack |
+| **GEM**        | in-process       | inside `step()`        | `step()` returns | ⚙️          | Gymnasium API; pure-Python games |
 
 HTTP frameworks (OpenEnv, ORS, NeMo Gym) wrap a remote server. In-process frameworks (Verifiers, SkyRL, GEM) run the env class in the same Python process as the trainer or rollout script.
 
@@ -202,7 +202,7 @@ uv run python rollout.py
 |---|---|---|
 | openenv | ✅ | ✅ `uv run python -m server.app` (:8000) |
 | ors | ✅ | ✅ `uv run python server.py` (:8080) |
-| nemo_gym | ✅ | ❌ Ray init fails on shared cluster nodes |
+| nemo_gym | ✅ | ⚙️ Ray init fails on shared cluster nodes |
 | verifiers / skyrl_gym / gem | n/a (in-process) | n/a (in-process) |
 
 > Each framework subfolder has its own `README.md` with the canonical consumption pattern, configuration knobs, and full sample rollout output.
@@ -281,7 +281,7 @@ The HTTP variants are deployed on HF Spaces (cold-start may take a minute):
 - ORS: [`AdithyaSK/wordle-ors`](https://huggingface.co/spaces/AdithyaSK/wordle-ors)
 - NeMo Gym: [`AdithyaSK/wordle-nemo-gym`](https://huggingface.co/spaces/AdithyaSK/wordle-nemo-gym)
 
-A standalone `game.py` and `test_all_adapters.py` at `envs/wordle_env/` sanity-check the WordleGame logic shared across all six frameworks.
+The shared `WordleGame` logic lives at `envs/wordle_env/game.py` and is reused by all six framework folders.
 
 ---
 
