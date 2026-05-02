@@ -43,16 +43,13 @@ RL_Envs_101/
 ├── README.md                       # this file
 ├── assets/                         # blog thumbnail, diagrams
 └── envs/
-    ├── adapters/                   # unified BaseEnvironment to TRL adapter layer
     ├── jupyter_agent/              # E2B-sandboxed Jupyter agent (multi-turn, 4 tools)
     │   ├── openenv/                # HTTP, MCP protocol
     │   ├── ors/                    # HTTP, REST + SSE
     │   ├── nemo_gym/               # HTTP, REST + cookies
     │   ├── verifiers/              # in-process (Python)
     │   ├── skyrl_gym/              # in-process (Gym-style)
-    │   ├── gem/                    # in-process (Gymnasium)
-    │   ├── inference/              # standalone vLLM rollout server
-    │   └── dataprep/               # dataset prep scripts
+    │   └── gem/                    # in-process (Gymnasium)
     └── wordle/                     # Wordle solver (multi-turn, 1 tool)
         ├── openenv/
         ├── ors/
@@ -76,7 +73,7 @@ RL_Envs_101/
 - **Tools (1):** `guess(word)`.
 - **Why it's interesting:** pure-Python logic, no external services, persistent state across turns. The cleanest way to see how each framework models multi-turn episodes without the noise of a sandbox backend.
 
-The Wordle environment is the *adapter proof*: it shows the same TRL adapter layer works on a totally different domain with zero changes.
+Wordle is also the *cross-domain proof*: same training and rollout patterns work on a totally different problem with no changes.
 
 ---
 
@@ -91,91 +88,106 @@ The Wordle environment is the *adapter proof*: it shows the same TRL adapter lay
 | **SkyRL Gym**  | in-process       | inside `step()`        | `step()` returns | ❌          | Gym-style RL; SkyRL training stack |
 | **GEM**        | in-process       | inside `step()`        | `step()` returns | ❌          | Gymnasium API; pure-Python games |
 
-### The unified adapter pattern
-
-All six frameworks plug into TRL's `GRPOTrainer` via the same `BaseEnvironment` contract under [`envs/adapters/`](./envs/adapters/):
-
-```python
-class BaseEnvironment:
-    def __init__(self, **config): ...      # from environment_config
-    def reset(self, **kwargs): ...         # kwargs = dataset row
-    def close(self): ...                   # cleanup at end of episode
-    reward: float                          # set during/after tool calls
-    finished: bool                         # episode-done signal
-    # any public method = a tool (auto-discovered via inspect)
-```
-
-TRL discovers tools by introspecting public methods on the env instance. Name, docstring, and type hints become the JSON schema the model sees. HTTP frameworks (OpenEnv, ORS, NeMo Gym) wrap a remote server. In-process frameworks (Verifiers, SkyRL, GEM) run the env class in the same Python process as the trainer.
+HTTP frameworks (OpenEnv, ORS, NeMo Gym) wrap a remote server. In-process frameworks (Verifiers, SkyRL, GEM) run the env class in the same Python process as the trainer or rollout script.
 
 ---
 
 ## How to Set Up the Jupyter Agent Environment
 
-The Jupyter agent uses **E2B** (a cloud Python sandbox) as its execution backend. You'll need an `E2B_API_KEY` regardless of framework.
+Every framework folder under `envs/jupyter_agent/<framework>/` ships a working `rollout.py`. Each rollout connects to the env (deployed HF Space or local server, depending on framework), wires up the env's tools, and drives a multi-turn loop with **Qwen3-Coder-480B** through Hugging Face Inference Providers using the standard `openai` Python client. Auto-detect: if `ROLLOUT_MODEL` contains a `:provider` suffix it's routed via the HF Router, otherwise it goes to OpenAI native.
+
+### Credentials (one-time setup)
 
 ```bash
-export E2B_API_KEY=e2b_xxx          # https://e2b.dev
-export HF_TOKEN=hf_xxx              # only needed for model downloads on rollouts
+cp .env.example .env       # at the repo root
+# fill in:
+#   HF_TOKEN=hf_...        for HF Inference Providers (Qwen)
+#   OPENAI_API_KEY=sk-...  optional, only if ROLLOUT_MODEL is an OpenAI model
+#   E2B_API_KEY=e2b_...    required for in-process envs and for running HTTP servers locally
 ```
+
+Every `rollout.py` reads these via `python-dotenv` from the **repo-root `.env`** — you don't need a `.env` per folder.
 
 ### 1. OpenEnv (HTTP server, MCP protocol)
 
 ```bash
 cd envs/jupyter_agent/openenv
-uv sync                              # installs openenv-core, fastmcp, e2b
-cp .env.example .env                 # paste your E2B_API_KEY
-python -m server.app                 # serves on :8000
+uv sync
+uv run python rollout.py                 # talks to deployed HF Space by default
+# or run the env locally first:
+uv run python -m server.app              # serves on :8000
+OPENENV_URL=http://localhost:8000 uv run python rollout.py
 ```
-The model talks to the server via MCP (JSON-RPC over HTTP). Tools are registered with `@mcp.tool` inside an `MCPEnvironment`. Already deployed: [`AdithyaSK/jupyter-agent-openenv`](https://huggingface.co/spaces/AdithyaSK/jupyter-agent-openenv).
+The rollout uses `openenv-core`'s generic `MCPToolClient` — no env-specific package install required. Tools are auto-discovered via `list_tools()` and converted to OpenAI tool schemas. Deployed: [`AdithyaSK/jupyter-agent-openenv`](https://huggingface.co/spaces/AdithyaSK/jupyter-agent-openenv). Verified end-to-end with both Qwen and `gpt-4o-mini`.
 
 ### 2. ORS (HTTP server, REST + SSE)
 
 ```bash
 cd envs/jupyter_agent/ors
-uv sync                              # installs ors-sdk, e2b
-cp .env.example .env
-python server.py                     # serves on :8080
+uv sync
+uv run python rollout.py                 # talks to deployed HF Space
+# or local:
+uv run python server.py                  # serves on :8080
+ORS_URL=http://localhost:8080 uv run python rollout.py
 ```
-Tools are methods on an `ors.Environment` subclass. Each `@tool` returns a `ToolOutput(blocks=..., reward=..., finished=...)`, so **reward is server-side, per tool call**. Already deployed: [`AdithyaSK/jupyter-agent-ors`](https://huggingface.co/spaces/AdithyaSK/jupyter-agent-ors).
+Uses the `ors-sdk` client: `ORS(base_url=...).environment("jupyteragentors").session(task=tasks[0])`. Reward arrives **per tool call** as `ToolOutput.reward`. Deployed: [`AdithyaSK/jupyter-agent-ors`](https://huggingface.co/spaces/AdithyaSK/jupyter-agent-ors). Verified end-to-end (`reward=1.18 finished=True`).
 
 ### 3. NeMo Gym (HTTP server, REST + cookies)
 
 ```bash
 cd envs/jupyter_agent/nemo_gym
-uv sync                              # installs nemo_gym (git), e2b. needs Python 3.12
-cp .env.example .env
-python server.py                     # serves on :11000
+uv sync                                  # needs Python 3.12
+uv run python rollout.py                 # talks to deployed HF Space
 ```
-Tools are FastAPI `POST` endpoints on a `SimpleResourcesServer`. Sessions are managed via cookies. **Reward is computed post-episode** by a separate `/verify` endpoint. Already deployed: [`AdithyaSK/jupyter-agent-nemo-gym`](https://huggingface.co/spaces/AdithyaSK/jupyter-agent-nemo-gym).
+Raw HTTP via `requests` + cookies, no SDK needed. `POST /seed_session` sets the session cookie, then `POST /<tool_name>` for each call. Deployed: [`AdithyaSK/jupyter-agent-nemo-gym`](https://huggingface.co/spaces/AdithyaSK/jupyter-agent-nemo-gym).
 
-### 4. Verifiers (in-process, plain Python)
+> ⚠️ NeMo Gym **requires Ray** at server startup, which fails on shared HF / SLURM cluster nodes (`gcs_server` can't bind). Local `python server.py` does not work on those machines, so the deployed Space is the path. See `envs/jupyter_agent/nemo_gym/README.md` for the full story.
+
+### 4. Verifiers (in-process, plain Python functions)
 
 ```bash
 cd envs/jupyter_agent/verifiers
-uv sync                              # installs verifiers, e2b-code-interpreter
-python rollout.py                    # runs an example rollout
+uv sync
+uv run python rollout.py
 ```
-No server. Tools are plain Python functions. Reward comes from a `Rubric`. The toolkit class is instantiated once per rollout and discovered via `inspect`.
+No server. The 4 tool functions are imported directly from `env.py`; OpenAI tool schemas are auto-generated from each function's signature + docstring via `inspect`. The E2B sandbox is created in-process, so `E2B_API_KEY` is required.
 
 ### 5. SkyRL Gym (in-process, Gym-style)
 
 ```bash
 cd envs/jupyter_agent/skyrl_gym
-uv sync                              # installs skyrl-gym, e2b-code-interpreter
-python rollout.py
+uv sync
+uv run python rollout.py
 ```
-A `BaseTextEnv` subclass with `init()` and `step()`. Tools are dispatched inside `step()` by parsing the model's text output. Reward and `done` flag are returned from `step()`.
+`JupyterSkyRLEnv(BaseTextEnv)` with `init()` / `step()`. **No OpenAI tool-calling** — the rollout passes the raw assistant text as the action; the env parses `<code>...</code>` / `<shell>...</shell>` / `<edit>...</edit>` tags out of it. `step()` returns `BaseTextEnvStepOutput(observations, reward, done, ...)`.
 
 ### 6. GEM (in-process, Gymnasium 5-tuple)
 
 ```bash
 cd envs/jupyter_agent/gem
-uv sync                              # installs gem-llm, e2b-code-interpreter
-python rollout.py
+uv sync
+uv run python rollout.py
 ```
-A `gem.Env` subclass with the classic `reset()` / `step()` Gymnasium API returning `(obs, reward, terminated, truncated, info)`. Has `spawn()` for parallel rollouts.
+`JupyterGemEnv(gem.Env)` with `reset()` / `step()`. Same text-action + tag-parsing pattern as SkyRL, but `step()` returns the classic Gymnasium 5-tuple `(obs, reward, terminated, truncated, info)`. Has `spawn()` for parallel rollouts.
 
-> Each subfolder has its own `README.md` with full deployment instructions (Docker, HF Spaces, etc.).
+### Common rollout knobs
+
+| Variable | Default | Where it goes |
+|---|---|---|
+| `ROLLOUT_MODEL` | `Qwen/Qwen3-Coder-480B-A35B-Instruct:together` | If it contains `:` → HF Router. Else → OpenAI native. |
+| `MAX_TURNS` | `6`–`8` | Hard cap on tool-call / step turns per rollout. |
+| `OPENENV_URL` / `ORS_URL` / `NEMO_GYM_URL` | deployed HF Space | Set to `http://localhost:<port>` to hit a local server. |
+
+### Local-server status (verified)
+
+| Framework | Deployed Space | Local server |
+|---|---|---|
+| openenv | ✅ | ✅ `uv run python -m server.app` (:8000) |
+| ors | ✅ | ✅ `uv run python server.py` (:8080) |
+| nemo_gym | ✅ | ❌ Ray init fails on shared cluster nodes |
+| verifiers / skyrl_gym / gem | n/a (in-process) | n/a (in-process) |
+
+> Each framework subfolder has its own `README.md` with the canonical consumption pattern, configuration knobs, and full sample rollout output.
 
 ---
 
@@ -206,6 +218,12 @@ cd envs/wordle/gem && uv sync && python rollout.py
 The same `guess(word)` tool, the same dictionary, the same scoring, but written six different ways. Compare any two `server.py` (or env class) files side-by-side and you'll learn more about the frameworks in 10 minutes than from any docs page.
 
 A standalone `game.py` and `test_all_adapters.py` at the top of `envs/wordle/` lets you sanity-check all six implementations in one shot.
+
+The HTTP variants are also deployed on HF Spaces (cold-start may take a minute):
+
+- OpenEnv: [`AdithyaSK/wordle-openenv`](https://huggingface.co/spaces/AdithyaSK/wordle-openenv)
+- ORS: [`AdithyaSK/wordle-ors`](https://huggingface.co/spaces/AdithyaSK/wordle-ors)
+- NeMo Gym: [`AdithyaSK/wordle-nemo-gym`](https://huggingface.co/spaces/AdithyaSK/wordle-nemo-gym)
 
 ---
 

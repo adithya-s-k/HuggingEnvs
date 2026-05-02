@@ -1,0 +1,9 @@
+[project]
+name = "rl-envs-101-tests"
+version = "0.1.0"
+description = "Sanity checks for the openai client setup shared across all rollouts in this repo."
+requires-python = ">=3.11"
+dependencies = [
+    "openai>=2.0.0",
+    "python-dotenv>=1.0.0",
+]

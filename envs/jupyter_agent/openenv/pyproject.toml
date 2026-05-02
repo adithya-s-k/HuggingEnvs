@@ -22,6 +22,7 @@ dependencies = [
     "nbformat>=5.10.0",
     "nbconvert>=7.0.0",
     "python-dotenv>=1.0.0",
+    "openai>=2.30.0",
 ]
 
 [project.optional-dependencies]
