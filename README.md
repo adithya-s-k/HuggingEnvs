@@ -1,10 +1,19 @@
 # RL Environments 101: A Guide to Building RL Environments
 
+---
+
+[![Blog post](./assets/blog_thumbnail.png)](https://huggingface.co/spaces/AdithyaSK/rl-environments-guide)
+
+> 📝 **This repo is the companion code to the blog post:** **[RL Environments Guide →](https://huggingface.co/spaces/AdithyaSK/rl-environments-guide)**
+> Read the blog for the full write-up. This repo contains the runnable implementations referenced throughout.
+
+---
+
 A practical, hands-on guide to building RL environments for LLMs.
 
 The idea is simple. Take the **same environment** and reimplement it across **multiple RL environment frameworks** (currently OpenEnv, ORS, NeMo Gym, Verifiers, SkyRL Gym, and GEM) so you can see, side by side, how each one models tools, state, rewards, and episodes. The goal isn't training. It's helping you understand the ecosystem: what each framework actually gives you, where the boundaries are, and what code you have to write yourself.
 
-We start with two reference environments, a **Jupyter agent** (multi-turn, real code execution in an E2B sandbox) and a **Wordle solver** (multi-turn, pure Python), and will keep adding more over time. Each new environment is another "Rosetta stone" entry: same logic, different framework dialects.
+We start with two reference environments, a **Jupyter agent** (multi-turn, real code execution in an E2B sandbox) and a **Wordle solver** (multi-turn, pure Python), and will keep adding more over time. Each new environment is another "Rosetta stone" entry: same logic, different framework dialects. Adding a few other environments soon
 
 If you've ever wondered:
 - What is an "RL environment" really made of?
@@ -14,14 +23,7 @@ If you've ever wondered:
 
 …this repo is the answer. Each framework folder is a **runnable, minimal example** showing how to set up the environment and do a sample LLM rollout against it. We also walk through **how to think about designing an environment** in the first place: the components, the key decisions, and the common pitfalls, independent of any framework.
 
----
 
-[![Blog post](./assets/blog_thumbnail.png)](https://huggingface.co/spaces/AdithyaSK/rl-environments-guide)
-
-> 📝 **This repo is the companion code to the blog post:** **[RL Environments Guide →](https://huggingface.co/spaces/AdithyaSK/rl-environments-guide)**
-> Read the blog for the full write-up. This repo contains the runnable implementations referenced throughout.
-
----
 
 ## Table of Contents
 
