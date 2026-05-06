@@ -1,0 +1,6 @@
+desktop_resources_server:
+  resources_servers:
+    desktop:
+      entrypoint: server.py
+      domain: agent
+      description: "Desktop computer-use environment with E2B Desktop sandbox - 19 tools mirroring Anthropic computer_20251124 schema"

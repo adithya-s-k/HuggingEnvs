@@ -1,0 +1,20 @@
+[project]
+name = "desktop-gem"
+version = "0.1.0"
+description = "Desktop computer-use environment using GEM (Gymnasium-style)"
+requires-python = ">=3.10"
+dependencies = [
+    "gem-llm>=0.1.0",
+    "e2b-desktop>=2.3.0",
+    "e2b>=2.6.0",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "openai>=2.30.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]

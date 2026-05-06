@@ -61,8 +61,14 @@ RL_Envs_101/
     │   ├── skyrl_gym/
     │   └── gem/
     └── desktop_env/                # Computer-use desktop (multi-turn, 19 tools, vision)
+        ├── desktop.py              # shared DesktopController (E2B + 19 actions)
+        ├── tasks.py                # shared task list
         ├── openenv/                # MCP + Gradio UI, image-block screenshots
-        └── ors/                    # ORS protocol, Anthropic-compatible action schema
+        ├── ors/                    # ORS protocol, terminate-as-reward
+        ├── nemo_gym/               # HTTP, REST + cookies, /verify
+        ├── verifiers/              # in-process, plain Python (DesktopToolkit)
+        ├── skyrl_gym/              # in-process, BaseTextEnv with action tags
+        └── gem/                    # in-process, Gymnasium 5-tuple with action tags
 ```
 
 ---
@@ -298,9 +304,11 @@ The shared `WordleGame` logic lives at `envs/wordle_env/game.py` and is reused b
 
 ## How to Set Up the Desktop Environment
 
-The Desktop env is the third reference: a full Linux desktop in a cloud sandbox, controlled by the model with vision + computer-use tools. Two framework variants so far (more to come), both with **the same 19-tool action schema** modelled on Anthropic's `computer_20251124` so a model's native computer-use output drives the env directly.
+The Desktop env is the third reference: a full Linux desktop in a cloud sandbox, controlled by the model with vision + computer-use tools. **Six framework variants**, all sharing the same 19-tool action schema modelled on Anthropic's `computer_20251124` (the broadest superset across Claude / OpenAI Operator / Qwen3-VL ComputerUse) so a model's native computer-use output drives the env with minimal token-level adaptation.
 
-Each variant ships **two rollouts**: one for OpenAI's `computer-use-preview` (Responses API) and one for **Qwen3-VL** via the HF Router. All four combos verified end-to-end against the deployed Spaces.
+The shared `DesktopController` in `envs/desktop_env/desktop.py` wraps E2B Desktop with all 19 actions (`screenshot`, `left/right/middle/double/triple_click`, `mouse_move`, `left_click_drag`, `left_mouse_down/up`, `scroll`, `type`, `key`, `hold_key`, `wait`, `terminate`, `run_command`, `cursor_position`, `get_screen_size`). Coordinates are `[x, y]` arrays in pixel space.
+
+The HTTP variants ship **two rollouts**: OpenAI `computer-use-preview` (Responses API) and Qwen3-VL via HF Router. The in-process variants ship one Qwen3-VL rollout (multimodal per turn).
 
 <details>
 <summary><b>1. OpenEnv</b> &nbsp;·&nbsp; HTTP / MCP &nbsp;·&nbsp; Gradio UI &nbsp;·&nbsp; <code>ImageContent</code> screenshots &nbsp;·&nbsp; deployed + local</summary>
@@ -308,7 +316,7 @@ Each variant ships **two rollouts**: one for OpenAI's `computer-use-preview` (Re
 ```bash
 cd envs/desktop_env/openenv
 uv sync
-uv run uvicorn server.app:app --port 8000 &     # serves MCP + Gradio UI
+uv run uvicorn server.app:app --port 8000 &
 uv run python rollout_openai.py                  # OpenAI computer-use-preview
 uv run python rollout_qwen.py                    # Qwen3-VL via HF Router
 ```
@@ -320,13 +328,53 @@ Generic `MCPToolClient` against [`AdithyaSK/desktop-openenv`](https://huggingfac
 <summary><b>2. ORS</b> &nbsp;·&nbsp; HTTP / REST + SSE &nbsp;·&nbsp; <code>openreward</code> &nbsp;·&nbsp; per-call reward + <code>terminate</code> signal</summary>
 
 ```bash
-cd envs/desktop_env/ors
-uv sync
+cd envs/desktop_env/ors && uv sync
 uv run python server.py --port 8080 &
 uv run python rollout_openai.py
 uv run python rollout_qwen.py
 ```
-[`openreward`](https://pypi.org/project/openreward/) client → `EnvironmentsAPI(base_url=..., api_key="").get("desktopors")` against [`AdithyaSK/desktop-ors`](https://huggingface.co/spaces/AdithyaSK/desktop-ors). 3 starter tasks (Firefox, terminal, LibreOffice Calc). `terminate(status="success")` returns `reward=1.0, finished=True`; `"failure"` returns `0.0`.
+[`openreward`](https://pypi.org/project/openreward/) client → `EnvironmentsAPI(base_url=..., api_key="").get("desktopors")` against [`AdithyaSK/desktop-ors`](https://huggingface.co/spaces/AdithyaSK/desktop-ors). `terminate(status="success")` → `reward=1.0, finished=True`.
+
+</details>
+
+<details>
+<summary><b>3. NeMo Gym</b> &nbsp;·&nbsp; HTTP / REST + cookies &nbsp;·&nbsp; raw <code>requests</code> &nbsp;·&nbsp; <code>/verify</code> grader</summary>
+
+```bash
+cd envs/desktop_env/nemo_gym && uv sync && uv run python server.py
+uv run python rollout.py
+```
+19 tools as `app.post("/<tool>")` endpoints + `/seed_session` + `/verify`. Same Ray-blocks-local caveat as the Jupyter sibling — deployed Space is the path on shared cluster nodes.
+
+</details>
+
+<details>
+<summary><b>4. Verifiers</b> &nbsp;·&nbsp; in-process / plain Python &nbsp;·&nbsp; <code>DesktopToolkit</code></summary>
+
+```bash
+cd envs/desktop_env/verifiers && uv sync && uv run python rollout.py
+```
+`DesktopToolkit` owns one E2B sandbox per episode; public methods are introspected as tools by both the TRL adapter and `vf.ToolEnv`. `screenshot()` returns the image as base64 PNG embedded in markdown.
+
+</details>
+
+<details>
+<summary><b>5. SkyRL Gym</b> &nbsp;·&nbsp; in-process / <code>BaseTextEnv</code> &nbsp;·&nbsp; tag-parsed actions</summary>
+
+```bash
+cd envs/desktop_env/skyrl_gym && uv sync && uv run python rollout.py
+```
+`DesktopSkyRLEnv(BaseTextEnv)` parses action tags from free text: `<click x="100" y="200"/>`, `<type>hello</type>`, `<key>ctrl+s</key>`, `<terminate status="success"/>`, etc. The rollout sends the latest screenshot as an image in the user message each turn so a multimodal model can ground its coordinates.
+
+</details>
+
+<details>
+<summary><b>6. GEM</b> &nbsp;·&nbsp; in-process / <code>gem.Env</code> &nbsp;·&nbsp; Gymnasium 5-tuple, same tag grammar</summary>
+
+```bash
+cd envs/desktop_env/gem && uv sync && uv run python rollout.py
+```
+`DesktopGemEnv(gem.Env)` returns `(obs, reward, terminated, truncated, info)`. Same tag grammar as SkyRL — only the framework wrapping differs.
 
 </details>
 
@@ -335,9 +383,9 @@ The HTTP variants are deployed on HF Spaces (cold-start may take a minute):
 - OpenEnv: [`AdithyaSK/desktop-openenv`](https://huggingface.co/spaces/AdithyaSK/desktop-openenv)
 - ORS: [`AdithyaSK/desktop-ors`](https://huggingface.co/spaces/AdithyaSK/desktop-ors)
 
-Both Spaces expect `E2B_API_KEY` set as a Space secret to spin up sandboxes.
+Both Spaces expect `E2B_API_KEY` set as a Space secret. The in-process variants need `E2B_API_KEY` in your repo-root `.env`.
 
-> Note on coordinate spaces: Qwen3-VL emits coordinates outside the configured display (e.g. y=965 in a 768-px screen), suggesting an internal normalized scale. A small rescaling adapter in the rollout will be needed before training.
+> Note on coordinate spaces: Qwen3-VL emits coordinates outside the configured display (e.g. y≈965 in a 768-px screen), suggesting an internal normalized scale. A small rescaling adapter in the rollout will be needed before training.
 
 ---
 
