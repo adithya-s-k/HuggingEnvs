@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "desktop-openenv"
+version = "0.1.0"
+description = "OpenEnv Desktop Computer-Use environment powered by E2B Desktop sandbox"
+authors = [
+    { name = "adithya-s-k", email = "adithyaskolavi@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "openenv-core[core]>=0.2.3",
+    "e2b-desktop>=2.3.0",
+    "fastmcp>=3.0.0",
+    "fastapi>=0.115.0",
+    "pydantic>=2.0.0",
+    "uvicorn>=0.24.0",
+    "requests>=2.31.0",
+    "gradio>=4.0.0",
+    "pillow>=10.0.0",
+    "python-dotenv>=1.0.0",
+    "openai>=2.30.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "httpx>=0.27.0",
+]
+
+[project.scripts]
+server = "desktop_env.server.app:main"
+
+[tool.setuptools]
+include-package-data = true
+packages = ["desktop_env", "desktop_env.server"]
+package-dir = { "desktop_env" = ".", "desktop_env.server" = "server" }
+
+[tool.setuptools.package-data]
+"*" = ["*.txt", "*.yaml"]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.27.0",
+    "pytest>=8.0.0",
+]

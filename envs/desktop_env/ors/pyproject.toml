@@ -1,0 +1,25 @@
+[project]
+name = "desktop-ors"
+version = "0.1.0"
+description = "Desktop computer-use environment using Open Reward Standard (ORS)"
+requires-python = ">=3.10"
+dependencies = [
+    "openai>=2.30.0",
+    "openreward>=0.1.33",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "e2b-desktop>=2.3.0",
+    "e2b>=2.6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]

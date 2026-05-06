@@ -13,7 +13,7 @@ A practical, hands-on guide to building RL environments for LLMs.
 
 The idea is simple. Take the **same environment** and reimplement it across **multiple RL environment frameworks** (currently OpenEnv, ORS, NeMo Gym, Verifiers, SkyRL Gym, and GEM) so you can see, side by side, how each one models tools, state, rewards, and episodes. The goal isn't training. It's helping you understand the ecosystem: what each framework actually gives you, where the boundaries are, and what code you have to write yourself.
 
-We start with two reference environments, a **Jupyter agent** (multi-turn, real code execution in an E2B sandbox) and a **Wordle solver** (multi-turn, pure Python), and will keep adding more over time. Each new environment is another "Rosetta stone" entry: same logic, different framework dialects. Adding a few other environments soon
+We start with three reference environments — a **Jupyter agent** (multi-turn, real code execution in an E2B sandbox), a **Wordle solver** (multi-turn, pure Python), and a **Desktop computer-use** env (multi-turn, vision-driven, full Linux desktop in an E2B sandbox) — and will keep adding more over time. Each new environment is another "Rosetta stone" entry: same logic, different framework dialects.
 
 If you've ever wondered:
 - What is an "RL environment" really made of?
@@ -32,6 +32,7 @@ If you've ever wondered:
 - [Framework Cheat Sheet](#framework-cheat-sheet)
 - [How to Set Up the Jupyter Agent Environment](#how-to-set-up-the-jupyter-agent-environment)
 - [How to Set Up the Wordle Environment](#how-to-set-up-the-wordle-environment)
+- [How to Set Up the Desktop Environment](#how-to-set-up-the-desktop-environment)
 - [How to Build an RL Environment](#how-to-build-an-rl-environment) (framework-agnostic)
 - [Further Reading](#further-reading)
 - [Contributing](#contributing)
@@ -52,13 +53,16 @@ RL_Envs_101/
     │   ├── verifiers/              # in-process (Python)
     │   ├── skyrl_gym/              # in-process (Gym-style)
     │   └── gem/                    # in-process (Gymnasium)
-    └── wordle_env/                 # Wordle solver (multi-turn, 1 tool)
-        ├── openenv/
-        ├── ors/
-        ├── nemo_gym/
-        ├── verifiers/
-        ├── skyrl_gym/
-        └── gem/
+    ├── wordle_env/                 # Wordle solver (multi-turn, 1 tool)
+    │   ├── openenv/
+    │   ├── ors/
+    │   ├── nemo_gym/
+    │   ├── verifiers/
+    │   ├── skyrl_gym/
+    │   └── gem/
+    └── desktop_env/                # Computer-use desktop (multi-turn, 19 tools, vision)
+        ├── openenv/                # MCP + Gradio UI, image-block screenshots
+        └── ors/                    # ORS protocol, Anthropic-compatible action schema
 ```
 
 ---
@@ -76,6 +80,11 @@ RL_Envs_101/
 - **Why it's interesting:** pure-Python logic, no external services, persistent state across turns. The cleanest way to see how each framework models multi-turn episodes without the noise of a sandbox backend.
 
 Wordle is also the *cross-domain proof*: same training and rollout patterns work on a totally different problem with no changes.
+
+### Desktop Computer-Use (multi-turn, vision-driven)
+- **What the model does:** sees a screenshot of a full Linux desktop and drives the mouse/keyboard with tool calls until the task is done.
+- **Tools (19):** mirror Anthropic's `computer_20251124` schema — `screenshot`, `left/right/middle/double/triple_click`, `mouse_move`, `left_click_drag`, `left_mouse_down/up`, `scroll`, `type`, `key`, `hold_key`, `wait`, `terminate`, `run_command`, `cursor_position`, `get_screen_size`. Coordinates are `[x, y]` pixel arrays so OpenAI Operator and Qwen3-VL output drives the env with minimal token-level adaptation.
+- **Why it's interesting:** real cloud VM (E2B Desktop), screenshots returned as **MCP image blocks** (the model sees pixels, not base64 text), terminal reward via `terminate(status)`. Goes well beyond text-only envs.
 
 ---
 
@@ -284,6 +293,51 @@ The HTTP variants are deployed on HF Spaces (cold-start may take a minute):
 - NeMo Gym: [`AdithyaSK/wordle-nemo-gym`](https://huggingface.co/spaces/AdithyaSK/wordle-nemo-gym)
 
 The shared `WordleGame` logic lives at `envs/wordle_env/game.py` and is reused by all six framework folders.
+
+---
+
+## How to Set Up the Desktop Environment
+
+The Desktop env is the third reference: a full Linux desktop in a cloud sandbox, controlled by the model with vision + computer-use tools. Two framework variants so far (more to come), both with **the same 19-tool action schema** modelled on Anthropic's `computer_20251124` so a model's native computer-use output drives the env directly.
+
+Each variant ships **two rollouts**: one for OpenAI's `computer-use-preview` (Responses API) and one for **Qwen3-VL** via the HF Router. All four combos verified end-to-end against the deployed Spaces.
+
+<details>
+<summary><b>1. OpenEnv</b> &nbsp;·&nbsp; HTTP / MCP &nbsp;·&nbsp; Gradio UI &nbsp;·&nbsp; <code>ImageContent</code> screenshots &nbsp;·&nbsp; deployed + local</summary>
+
+```bash
+cd envs/desktop_env/openenv
+uv sync
+uv run uvicorn server.app:app --port 8000 &     # serves MCP + Gradio UI
+uv run python rollout_openai.py                  # OpenAI computer-use-preview
+uv run python rollout_qwen.py                    # Qwen3-VL via HF Router
+```
+Generic `MCPToolClient` against [`AdithyaSK/desktop-openenv`](https://huggingface.co/spaces/AdithyaSK/desktop-openenv). Custom Gradio UI mounted at `/web` reuses the original `e2b_desktop` reference UI. Screenshots come back as MCP image blocks so the model actually sees pixels.
+
+</details>
+
+<details>
+<summary><b>2. ORS</b> &nbsp;·&nbsp; HTTP / REST + SSE &nbsp;·&nbsp; <code>openreward</code> &nbsp;·&nbsp; per-call reward + <code>terminate</code> signal</summary>
+
+```bash
+cd envs/desktop_env/ors
+uv sync
+uv run python server.py --port 8080 &
+uv run python rollout_openai.py
+uv run python rollout_qwen.py
+```
+[`openreward`](https://pypi.org/project/openreward/) client → `EnvironmentsAPI(base_url=..., api_key="").get("desktopors")` against [`AdithyaSK/desktop-ors`](https://huggingface.co/spaces/AdithyaSK/desktop-ors). 3 starter tasks (Firefox, terminal, LibreOffice Calc). `terminate(status="success")` returns `reward=1.0, finished=True`; `"failure"` returns `0.0`.
+
+</details>
+
+The HTTP variants are deployed on HF Spaces (cold-start may take a minute):
+
+- OpenEnv: [`AdithyaSK/desktop-openenv`](https://huggingface.co/spaces/AdithyaSK/desktop-openenv)
+- ORS: [`AdithyaSK/desktop-ors`](https://huggingface.co/spaces/AdithyaSK/desktop-ors)
+
+Both Spaces expect `E2B_API_KEY` set as a Space secret to spin up sandboxes.
+
+> Note on coordinate spaces: Qwen3-VL emits coordinates outside the configured display (e.g. y=965 in a 768-px screen), suggesting an internal normalized scale. A small rescaling adapter in the rollout will be needed before training.
 
 ---
 
