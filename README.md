@@ -29,7 +29,7 @@ This repo also ships **5 agent skills** at `.claude/skills/` that turn a plain-E
 
 ```bash
 # install into your current project (auto-detects which agent you use)
-npx skills add adithya-s-k/RL_Envs_101 --path .claude/skills
+npx skills add adithya-s-k/RL_Envs_101
 ```
 
 Skills included:
@@ -551,7 +551,7 @@ The biggest mistakes in RL env design are caught by reading 5 trajectories. They
 
 ```bash
 # auto-detects your agent (Claude Code, Cursor, Codex, etc.) and installs into the right place
-npx skills add adithya-s-k/RL_Envs_101 --path .claude/skills
+npx skills add adithya-s-k/RL_Envs_101
 ```
 
 If you've cloned this repo, the skills are already loaded — every spec-compliant agent auto-discovers `.claude/skills/` when launched in the repo (verify with `ls .claude/skills/`).
