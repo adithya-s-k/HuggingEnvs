@@ -23,7 +23,20 @@ If you've ever wondered:
 
 …this repo is the answer. Each framework folder is a **runnable, minimal example** showing how to set up the environment and do a sample LLM rollout against it. We also walk through **how to think about designing an environment** in the first place: the components, the key decisions, and the common pitfalls, independent of any framework.
 
+## Agent Skills
 
+This repo also ships **5 agent skills** at `.claude/skills/` that turn a plain-English env description into runnable code across the 4 target frameworks. They follow the open [SKILL.md spec](https://github.com/anthropics/skills) and work with any agent that supports it — **Claude Code, Cursor, Codex, OpenCode, Gemini CLI**, and dozens more.
+
+```bash
+# install into your current project (auto-detects which agent you use)
+npx skills add adithya-s-k/RL_Envs_101 --path .claude/skills
+```
+
+Skills included:
+- **`rl-env-from-description`** — orchestrator. Just describe the env in plain English; it interviews you, picks an archetype, builds the shared domain module, and ports across all 4 frameworks.
+- **`generate-openenv-env`**, **`generate-ors-env`**, **`generate-verifiers-env`**, **`generate-nemo-gym-env`** — single-framework variant builders. Useful when you only want one.
+
+The skills are **folder-agnostic** — they work in any project, don't assume the `envs/<env>/` layout this repo uses, and ask where you want files written. See [Agent Skills](#agent-skills-detail) below for trigger phrases and design notes.
 
 ## Table of Contents
 
@@ -34,7 +47,7 @@ If you've ever wondered:
 - [How to Set Up the Wordle Environment](#how-to-set-up-the-wordle-environment)
 - [How to Set Up the Desktop Environment](#how-to-set-up-the-desktop-environment)
 - [How to Build an RL Environment](#how-to-build-an-rl-environment) (framework-agnostic)
-- [Agent Skills (for Claude Code)](#agent-skills-for-claude-code)
+- [Agent Skills](#agent-skills-detail)
 - [Further Reading](#further-reading)
 - [Contributing](#contributing)
 
@@ -520,9 +533,11 @@ The biggest mistakes in RL env design are caught by reading 5 trajectories. They
 
 ---
 
-## Agent Skills (for Claude Code)
+<a id="agent-skills-detail"></a>
 
-This repo ships **5 Claude Code agent skills** at `.claude/skills/` that turn a plain-English env description into runnable code across the four target frameworks.
+## Agent Skills
+
+5 agent skills under `.claude/skills/`, written to the open [SKILL.md spec](https://github.com/anthropics/skills) so any spec-compliant agent (Claude Code, Cursor, Codex, OpenCode, Gemini CLI, …) can load them.
 
 | Skill | What it builds |
 |---|---|
@@ -532,30 +547,18 @@ This repo ships **5 Claude Code agent skills** at `.claude/skills/` that turn a 
 | `generate-verifiers-env` | Verifiers (PrimeIntellect) in-process variant |
 | `generate-nemo-gym-env` | NeMo Gym (NVIDIA) Resources Server variant |
 
-### Get them
-
-If you have **this repo cloned**, the skills are already loaded — Claude Code auto-discovers `.claude/skills/` when you launch in the repo. Verify:
+### Install
 
 ```bash
-ls .claude/skills/    # should list the 5 skill directories
-```
-
-To install them into a different project or globally:
-
-```bash
-# Option 1 — npx skills (vercel-labs/skills CLI; supports Claude Code, Cursor, Codex, etc.)
+# auto-detects your agent (Claude Code, Cursor, Codex, etc.) and installs into the right place
 npx skills add adithya-s-k/RL_Envs_101 --path .claude/skills
-
-# Option 2 — copy into another project's local skills dir
-cp -r path/to/RL_Envs_101/.claude/skills/* /path/to/your-project/.claude/skills/
-
-# Option 3 — install globally (works in every project on your machine)
-cp -r path/to/RL_Envs_101/.claude/skills/* ~/.claude/skills/
 ```
 
-### Use them
+If you've cloned this repo, the skills are already loaded — every spec-compliant agent auto-discovers `.claude/skills/` when launched in the repo (verify with `ls .claude/skills/`).
 
-Just describe what you want. Triggering is automatic from the skill descriptions:
+### Use
+
+Triggering is automatic from the descriptions. Examples:
 
 | What you type | Triggers |
 |---|---|
@@ -565,7 +568,7 @@ Just describe what you want. Triggering is automatic from the skill descriptions
 | *"build a Verifiers toolkit for X"* | `generate-verifiers-env` |
 | *"make a NeMo Gym resources server"* | `generate-nemo-gym-env` |
 
-The skills are **folder-agnostic** — they work in any project; they don't assume the `envs/<env>/` layout this repo uses. They'll ask where you want files written.
+The skills are **folder-agnostic** — they work in any project, don't assume the `envs/<env>/` layout this repo uses, and ask where you want files written.
 
 ---
 
