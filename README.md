@@ -34,6 +34,7 @@ If you've ever wondered:
 - [How to Set Up the Wordle Environment](#how-to-set-up-the-wordle-environment)
 - [How to Set Up the Desktop Environment](#how-to-set-up-the-desktop-environment)
 - [How to Build an RL Environment](#how-to-build-an-rl-environment) (framework-agnostic)
+- [Agent Skills (for Claude Code)](#agent-skills-for-claude-code)
 - [Further Reading](#further-reading)
 - [Contributing](#contributing)
 
@@ -516,6 +517,55 @@ The biggest mistakes in RL env design are caught by reading 5 trajectories. They
 - **State leaks across rollouts.** Same sandbox or dict reused without reset, so episodes contaminate each other.
 - **No timeout or max turns.** A buggy model loops forever and stalls training.
 - **Observation format the model can't parse.** Huge JSON dumps, or stack traces longer than the context window.
+
+---
+
+## Agent Skills (for Claude Code)
+
+This repo ships **5 Claude Code agent skills** at `.claude/skills/` that turn a plain-English env description into runnable code across the four target frameworks.
+
+| Skill | What it builds |
+|---|---|
+| `rl-env-from-description` | Orchestrator — interview, archetype selection, shared domain module, all 4 framework variants, smoke-test rollouts |
+| `generate-openenv-env` | OpenEnv (Meta) MCP variant |
+| `generate-ors-env` | OpenReward (ORS) per-call-reward variant |
+| `generate-verifiers-env` | Verifiers (PrimeIntellect) in-process variant |
+| `generate-nemo-gym-env` | NeMo Gym (NVIDIA) Resources Server variant |
+
+### Get them
+
+If you have **this repo cloned**, the skills are already loaded — Claude Code auto-discovers `.claude/skills/` when you launch in the repo. Verify:
+
+```bash
+ls .claude/skills/    # should list the 5 skill directories
+```
+
+To install them into a different project or globally:
+
+```bash
+# Option 1 — npx skills (vercel-labs/skills CLI; supports Claude Code, Cursor, Codex, etc.)
+npx skills add adithya-s-k/RL_Envs_101 --path .claude/skills
+
+# Option 2 — copy into another project's local skills dir
+cp -r path/to/RL_Envs_101/.claude/skills/* /path/to/your-project/.claude/skills/
+
+# Option 3 — install globally (works in every project on your machine)
+cp -r path/to/RL_Envs_101/.claude/skills/* ~/.claude/skills/
+```
+
+### Use them
+
+Just describe what you want. Triggering is automatic from the skill descriptions:
+
+| What you type | Triggers |
+|---|---|
+| *"make me an env where the agent plays connect-four"* | `rl-env-from-description` (orchestrator) |
+| *"wrap my game in OpenEnv"* | `generate-openenv-env` |
+| *"add per-call rewards via OpenReward"* | `generate-ors-env` |
+| *"build a Verifiers toolkit for X"* | `generate-verifiers-env` |
+| *"make a NeMo Gym resources server"* | `generate-nemo-gym-env` |
+
+The skills are **folder-agnostic** — they work in any project; they don't assume the `envs/<env>/` layout this repo uses. They'll ask where you want files written.
 
 ---
 
