@@ -83,12 +83,16 @@ def main() -> int:
             history.append({"role": "assistant", "content": action_text})
 
             out = env.step(action_text)
-            for obs in out.observations:
+            # SkyRL's BaseTextEnvStepOutput is a TypedDict — access by key
+            obs_list = out["observations"] if isinstance(out, dict) else out.observations
+            reward = out["reward"] if isinstance(out, dict) else out.reward
+            done = out["done"] if isinstance(out, dict) else out.done
+            for obs in obs_list:
                 content = obs.get("content", "")
                 print(f"[env] {content[:200]}")
                 history.append(obs)
-            print(f"[reward={out.reward} done={out.done}]")
-            if out.done:
+            print(f"[reward={reward} done={done}]")
+            if done:
                 finished = True
                 break
 

@@ -135,13 +135,20 @@ class DesktopSkyRLEnv(BaseTextEnv):
         reward = self._compute_reward(terminated)
         done = terminated or self.turns >= self.max_turns
 
-        return BaseTextEnvStepOutput(
-            observations=[{"role": "user", "content": "\n".join(results)}],
-            reward=reward,
-            done=done,
-            metadata={"turns": self.turns, "errors": self.error_count,
-                      "terminate_status": getattr(self._ctrl, "terminate_status", None)},
-        )
+        # BaseTextEnvStepOutput is a TypedDict in skyrl-gym; build a plain dict
+        # so we work both with the installed lib and the fallback dataclass.
+        out = {
+            "observations": [{"role": "user", "content": "\n".join(results)}],
+            "reward": reward,
+            "done": done,
+            "metadata": {"turns": self.turns, "errors": self.error_count,
+                         "terminate_status": getattr(self._ctrl, "terminate_status", None)},
+            "postprocessed_action": None,
+        }
+        try:
+            return BaseTextEnvStepOutput(**out)  # works as TypedDict ctor too
+        except TypeError:
+            return out
 
     def close(self):
         if self._ctrl:

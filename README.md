@@ -385,6 +385,17 @@ The HTTP variants are deployed on HF Spaces (cold-start may take a minute):
 
 Both Spaces expect `E2B_API_KEY` set as a Space secret. The in-process variants need `E2B_API_KEY` in your repo-root `.env`.
 
+### Local-rollout status (verified)
+
+| Framework | Result |
+|---|---|
+| openenv | ✅ end-to-end vs deployed Space (OpenAI computer-use-preview + Qwen3-VL) |
+| ors     | ✅ end-to-end vs deployed Space (both models) |
+| nemo_gym | ⚙️ Ray init fails on shared cluster nodes (same as wordle/jupyter siblings) |
+| verifiers | ✅ in-process rollout via `DesktopToolkit` (Qwen3-VL) |
+| skyrl_gym | ✅ in-process rollout — tag-parsed actions reach E2B (Qwen3-VL) |
+| gem       | ✅ in-process rollout — `reward=1.0` on first turn (Qwen3-VL emitted `<click>`+`<type>`+`<key>`+`<terminate>` inline) |
+
 > Note on coordinate spaces: Qwen3-VL emits coordinates outside the configured display (e.g. y≈965 in a 768-px screen), suggesting an internal normalized scale. A small rescaling adapter in the rollout will be needed before training.
 
 ---
