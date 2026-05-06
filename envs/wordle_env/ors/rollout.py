@@ -14,7 +14,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from openai import OpenAI
-from ors.client import ORS
+from openreward import EnvironmentsAPI
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 load_dotenv(REPO_ROOT / ".env")
@@ -75,8 +75,8 @@ def main() -> int:
     print(f"Provider:   {provider}    Model: {MODEL}")
     print("=" * 80)
 
-    client = ORS(base_url=ENV_URL)
-    env = client.environment(ENV_NAME)
+    api = EnvironmentsAPI(base_url=ENV_URL, api_key="")
+    env = api.get(ENV_NAME)
     tasks = env.list_tasks(SPLIT)
     print(f"\n{len(tasks)} tasks in '{SPLIT}'. Using task #{TASK_INDEX}: answer={tasks[TASK_INDEX].task_spec.get('answer','?')}")
     tools = ors_tools_to_openai(env.list_tools())

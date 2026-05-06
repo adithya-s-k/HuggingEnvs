@@ -18,10 +18,10 @@ Tasks are bundled with the env: 50 hand-crafted answers in the `train` split, ea
 ## How to consume it
 
 ```python
-from ors.client import ORS
+from openreward import EnvironmentsAPI
 
-client = ORS(base_url="https://AdithyaSK-wordle-ors.hf.space")
-env = client.environment("wordleors")
+api = EnvironmentsAPI(base_url="https://AdithyaSK-wordle-ors.hf.space", api_key="")
+env = api.get("wordleors")
 tasks = env.list_tasks("train")              # 50 tasks
 with env.session(task=tasks[0]) as session:
     print(session.get_prompt())               # rules + symbols legend
@@ -75,9 +75,10 @@ Discovered 2 tools: ['get_history', 'guess']
 | `rollout.py` | Self-contained consumer demo. |
 | `server.py` | The ORS `Environment` subclass deployed to the HF Space. |
 | `Dockerfile`, `Dockerfile.spaces`, `README.spaces.md` | Deployment to HF Spaces. |
-| `pyproject.toml` | `ors-sdk` + rollout-side `openai`, `python-dotenv`. |
+| `pyproject.toml` | `openreward` + rollout-side `openai`, `python-dotenv`. |
 
 ## References
 
 - [Open Reward Standard](https://openrewardstandard.io)
-- [openreward / ors-sdk on PyPI](https://pypi.org/project/openreward/)
+- [openreward on PyPI](https://pypi.org/project/openreward/)
+- [OpenReward docs](https://docs.openreward.ai/) · [python-sdk source](https://github.com/openrewardstandard/python-sdk)

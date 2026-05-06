@@ -20,13 +20,13 @@ ORS environments **bundle their tasks** with the env: the server exposes a `trai
 
 ## How to consume it (the canonical ORS pattern)
 
-The env is just a deployed HTTP server. The [`ors-sdk`](https://pypi.org/project/openreward/) client connects, lists tasks/tools, opens a session, and calls tools. **No env-specific install needed**:
+The env is just a deployed HTTP server. The [`openreward`](https://pypi.org/project/openreward/) client connects, lists tasks/tools, opens a session, and calls tools. **No env-specific install needed**:
 
 ```python
-from ors.client import ORS
+from openreward import EnvironmentsAPI
 
-client = ORS(base_url="https://AdithyaSK-jupyter-agent-ors.hf.space")
-env = client.environment("jupyteragentors")        # name comes from /list_environments
+api = EnvironmentsAPI(base_url="https://AdithyaSK-jupyter-agent-ors.hf.space", api_key="")
+env = api.get("jupyteragentors")                   # name comes from /list_environments
 tasks = env.list_tasks("train")                    # 46 tasks in this env
 tools = env.list_tools()                           # ToolSpec(name, description, input_schema)
 
@@ -63,7 +63,7 @@ For local server, see [Running the env locally](#running-the-env-locally-recomme
 
 ### What it does
 
-1. `ORS(base_url=...)` connects to the deployed Space.
+1. `EnvironmentsAPI(base_url=..., api_key="")` connects to the deployed Space.
 2. `env.list_tasks("train")` pulls the 46 tasks; `TASK_INDEX` env var picks one (default `0`).
 3. `env.list_tools()` returns `ToolSpec` dataclasses; `rollout.py` converts them to OpenAI tool schemas.
 4. `with env.session(task=tasks[i]) as session:` opens a stateful HTTP session (each client call is tagged with the session id; the server keeps a sandbox per session).
@@ -118,7 +118,7 @@ FINAL  cumulative_reward=1.18  finished=True
 | `tasks.py` | The 46 task definitions used by the server. |
 | `e2b_sandbox.py`, `notebook_tracker.py` | Backend logic invoked from the tools. |
 | `Dockerfile` | Used to build the deployable image for HF Spaces. |
-| `pyproject.toml` | Lists `ors-sdk`, `e2b-code-interpreter`, plus rollout-side `openai`, `python-dotenv`. |
+| `pyproject.toml` | Lists `openreward`, `e2b-code-interpreter`, plus rollout-side `openai`, `python-dotenv`. |
 
 ## Running the env locally (recommended for real work)
 
@@ -144,6 +144,7 @@ ORS_URL=http://localhost:8080 uv run python rollout.py
 ## References
 
 - [Open Reward Standard](https://openrewardstandard.io)
-- [openreward / ors-sdk on PyPI](https://pypi.org/project/openreward/)
+- [openreward on PyPI](https://pypi.org/project/openreward/)
+- [OpenReward docs](https://docs.openreward.ai/) · [python-sdk source](https://github.com/openrewardstandard/python-sdk)
 - [HF Inference Providers — Chat Completion API](https://huggingface.co/docs/inference-providers/en/tasks/chat-completion)
 - [E2B Code Interpreter](https://e2b.dev)

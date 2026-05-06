@@ -4,6 +4,6 @@ Server:
     python -m environments.jupyter_agent.ors.server
 
 Client:
-    from ors.client import ORS
-    client = ORS(base_url="http://localhost:8080")
+    from openreward import EnvironmentsAPI
+    api = EnvironmentsAPI(base_url="http://localhost:8080", api_key="")
 """

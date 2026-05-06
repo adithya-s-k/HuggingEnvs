@@ -32,7 +32,7 @@ COPY pyproject.toml ./
 RUN uv venv /app/.venv && \
     . /app/.venv/bin/activate && \
     uv pip install --no-cache \
-        "ors-sdk>=0.1.0" \
+        "openreward>=0.1.33" \
         "e2b-code-interpreter>=1.0.0" \
         "pydantic>=2.0.0" \
         "python-dotenv>=1.0.0"

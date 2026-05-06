@@ -1,7 +1,7 @@
 FROM python:3.11-slim
 
 RUN useradd -m -u 1000 user
-RUN pip install --no-cache-dir ors-sdk pydantic
+RUN pip install --no-cache-dir openreward pydantic
 
 USER user
 ENV HOME=/home/user PATH=/home/user/.local/bin:$PATH

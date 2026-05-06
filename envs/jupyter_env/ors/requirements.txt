@@ -1,6 +1,5 @@
-# ORS server dependencies
-# Compatible with both ors-sdk and openreward package
-ors-sdk>=0.1.0
+# OpenReward (Open Reward Standard) server dependencies
+openreward>=0.1.33
 e2b-code-interpreter>=1.0.0
 pydantic>=2.0.0
 python-dotenv>=1.0.0

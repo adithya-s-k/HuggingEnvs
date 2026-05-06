@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Jupyter Agent environment using Open Reward Standard (ORS)"
 requires-python = ">=3.10"
 dependencies = [
-    "ors-sdk>=0.1.0",
+    "openreward>=0.1.33",
     "e2b-code-interpreter>=1.0.0",
     "pydantic>=2.0.0",
     "python-dotenv>=1.0.0",
@@ -17,11 +17,11 @@ dev = [
     "datasets>=2.0.0",
 ]
 client = [
-    "ors-sdk>=0.1.0",
+    "openreward>=0.1.33",
 ]
 train = [
     "datasets>=2.0.0",
-    "ors-sdk>=0.1.0",
+    "openreward>=0.1.33",
 ]
 
 [build-system]

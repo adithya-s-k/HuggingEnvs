@@ -126,7 +126,7 @@ The rollout uses `openenv-core`'s generic `MCPToolClient` — no env-specific pa
 </details>
 
 <details>
-<summary><b>2. ORS</b> &nbsp;·&nbsp; HTTP / REST + SSE &nbsp;·&nbsp; <code>ors-sdk</code> &nbsp;·&nbsp; per-call reward &nbsp;·&nbsp; deployed + local both verified</summary>
+<summary><b>2. ORS</b> &nbsp;·&nbsp; HTTP / REST + SSE &nbsp;·&nbsp; <code>openreward</code> &nbsp;·&nbsp; per-call reward &nbsp;·&nbsp; deployed + local both verified</summary>
 
 ```bash
 cd envs/jupyter_env/ors
@@ -136,7 +136,7 @@ uv run python rollout.py                 # talks to deployed HF Space
 uv run python server.py                  # serves on :8080
 ORS_URL=http://localhost:8080 uv run python rollout.py
 ```
-Uses the `ors-sdk` client: `ORS(base_url=...).environment("jupyteragentors").session(task=tasks[0])`. Reward arrives **per tool call** as `ToolOutput.reward`. Deployed: [`AdithyaSK/jupyter-agent-ors`](https://huggingface.co/spaces/AdithyaSK/jupyter-agent-ors). Verified end-to-end (`reward=1.18 finished=True`).
+Uses the official [`openreward`](https://pypi.org/project/openreward/) client: `EnvironmentsAPI(base_url=..., api_key="").get("jupyteragentors").session(task=tasks[0])`. Reward arrives **per tool call** as `ToolOutput.reward`. Deployed: [`AdithyaSK/jupyter-agent-ors`](https://huggingface.co/spaces/AdithyaSK/jupyter-agent-ors). Verified end-to-end (`reward=1.18 finished=True`).
 
 </details>
 
@@ -231,7 +231,7 @@ Generic `MCPToolClient` against [`AdithyaSK/wordle-openenv`](https://huggingface
 ```bash
 cd envs/wordle_env/ors && uv sync && uv run python rollout.py
 ```
-`ors-sdk` client → `client.environment("wordleors")` against [`AdithyaSK/wordle-ors`](https://huggingface.co/spaces/AdithyaSK/wordle-ors). Each task has the answer in `task_spec`.
+[`openreward`](https://pypi.org/project/openreward/) client → `EnvironmentsAPI(base_url=..., api_key="").get("wordleors")` against [`AdithyaSK/wordle-ors`](https://huggingface.co/spaces/AdithyaSK/wordle-ors). Each task has the answer in `task_spec`.
 
 </details>
 

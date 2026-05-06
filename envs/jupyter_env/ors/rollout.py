@@ -1,11 +1,11 @@
 """End-to-end rollout: LLM driving the deployed ORS Jupyter agent.
 
-Pattern (mirrors the ORS Python SDK quickstart):
+Pattern (mirrors the OpenReward Python SDK quickstart):
 
-    from ors.client import ORS
+    from openreward import EnvironmentsAPI
 
-    client = ORS(base_url="https://AdithyaSK-jupyter-agent-ors.hf.space")
-    env = client.environment("jupyteragentors")
+    api = EnvironmentsAPI(base_url="https://AdithyaSK-jupyter-agent-ors.hf.space", api_key="")
+    env = api.get("jupyteragentors")
     tasks = env.list_tasks("train")
     tools = env.list_tools()
 
@@ -38,7 +38,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from openai import OpenAI
-from ors.client import ORS
+from openreward import EnvironmentsAPI
 
 # ── config ────────────────────────────────────────────────────────────────
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -102,8 +102,8 @@ def main() -> int:
     print(f"Model:      {MODEL}")
     print("=" * 80)
 
-    ors_client = ORS(base_url=ENV_URL)
-    env = ors_client.environment(ENV_NAME)
+    api = EnvironmentsAPI(base_url=ENV_URL, api_key="")
+    env = api.get(ENV_NAME)
 
     tasks = env.list_tasks(SPLIT)
     print(f"\n{len(tasks)} tasks in '{SPLIT}' split. Using task #{TASK_INDEX}.")

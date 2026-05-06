@@ -24,10 +24,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-try:
-    from ors import Environment, Server, tool, ToolOutput, TextBlock, Split
-except ImportError:
-    from openreward.environments import Environment, Server, tool, ToolOutput, TextBlock, Split
+from openreward.environments import Environment, Server, tool, ToolOutput, TextBlock, Split
 
 # Add parent to path for game import
 _parent = str(Path(__file__).resolve().parents[1])

@@ -25,11 +25,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-# Support both ors-sdk (standalone) and openreward (platform deployment)
-try:
-    from ors import Environment, Server, tool, ToolOutput, TextBlock, Split
-except ImportError:
-    from openreward.environments import Environment, Server, tool, ToolOutput, TextBlock, Split
+from openreward.environments import Environment, Server, tool, ToolOutput, TextBlock, Split
 
 try:
     from .e2b_sandbox import E2BSandbox, CellResult
