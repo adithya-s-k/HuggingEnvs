@@ -20,8 +20,9 @@ import urllib.error
 import urllib.request
 
 PORT = 8888
-DEFAULT_IMAGE = "pytorch/pytorch:2.6.0-cuda12.4-cudnn9-devel"
+DEFAULT_IMAGE = "huggingface/trl"  # TRL image: torch + CUDA + trl preinstalled (same as the experiments)
 DEFAULT_REPO = "https://github.com/adithya-s-k/RL_Envs_101.git"
+TERMINAL_STAGES = {"CANCELED", "CANCELLED", "ERROR", "FAILED", "COMPLETED", "DELETED"}
 
 # Curated GPU menu (name, description). Full list: `hf jobs hardware`.
 GPU_MENU = [
@@ -106,7 +107,7 @@ def main():
 
     # Container startup: ensure git, install JupyterLab, clone the repo, serve on :8888 through the proxy.
     bootstrap = (
-        "set -e; export PATH=/root/.local/bin:$PATH; "
+        "set -e; cd /; export PATH=/root/.local/bin:$PATH; "  # cd / first: some images' WORKDIR is /workspace, which we rm below
         "command -v git >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq git >/dev/null 2>&1); "
         "pip install -q jupyterlab ipywidgets >/dev/null 2>&1; "
         f"rm -rf /workspace; git clone --depth 1 {args.repo} /workspace >/dev/null 2>&1; "
@@ -130,14 +131,23 @@ def main():
         kwargs["volumes"] = [Volume(type="bucket", source=args.bucket, mount_path="/workspace/persist", read_only=False)]
 
     print(f"🚀 Launching JupyterLab on HF Jobs  (flavor={args.flavor}, image={args.image}) ...")
-    job = HfApi(token=token).run_job(**kwargs)
+    api = HfApi(token=token)
+    job = api.run_job(**kwargs)
     jid = getattr(job, "id", None) or getattr(job, "job_id", "<job-id>")
     lab = f"https://{jid}--{PORT}.hf.jobs/lab"
 
-    # Wait until JupyterLab actually answers (image pull + pip + clone can take a few min).
+    # Wait until JupyterLab answers (image pull + clone can take a few min), while also watching the
+    # job's status so a cancel / error from the dashboard is reflected here immediately.
     print(f"   job {jid}  ·  waiting for JupyterLab to come up ", end="", flush=True)
-    ready = False
+    ready, stopped = False, None
     for _ in range(90):  # up to ~7.5 min
+        try:
+            stage = api.inspect_job(job_id=jid).status.stage
+        except Exception:
+            stage = None
+        if stage in TERMINAL_STAGES:
+            stopped = stage
+            break
         try:
             req = urllib.request.Request(lab, headers={"Authorization": f"Bearer {token}"})
             if urllib.request.urlopen(req, timeout=10).status == 200:
@@ -150,6 +160,12 @@ def main():
     print()
 
     print("─" * 60)
+    if stopped:
+        print(f"❌ Job is no longer running (status: {stopped}).")
+        print("   📋 dashboard:  https://huggingface.co/settings/jobs")
+        print(f"   logs:         hf jobs logs {jid}")
+        print("─" * 60)
+        sys.exit(1)
     print("✅ JupyterLab is READY — open it:" if ready else "⏳ Still starting — it should come up shortly at:")
     print(f"     {lab}")
     print("   (log into huggingface.co in the same browser first)")

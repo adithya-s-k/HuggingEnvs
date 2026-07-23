@@ -15,7 +15,7 @@ set -e
 
 TIMEOUT="${TIMEOUT:-4h}"
 REPO="${REPO_URL:-https://github.com/adithya-s-k/RL_Envs_101.git}"
-IMAGE="${IMAGE:-pytorch/pytorch:2.6.0-cuda12.4-cudnn9-devel}"
+IMAGE="${IMAGE:-huggingface/trl}"   # TRL image: torch + CUDA + trl preinstalled (same as the experiments)
 PORT=8888
 
 command -v hf >/dev/null 2>&1 || {
@@ -64,7 +64,7 @@ fi
 FLAVOR="${FLAVOR:-a100-large}"
 
 # Single-line container bootstrap (no newlines — the CLI mangles multi-line commands).
-BOOT="set -e; command -v git >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq git >/dev/null 2>&1); pip install -q jupyterlab ipywidgets >/dev/null 2>&1; rm -rf /workspace; git clone --depth 1 $REPO /workspace >/dev/null 2>&1; cd /workspace/tutorials 2>/dev/null || cd /workspace; echo '=== JupyterLab starting on :$PORT ==='; exec jupyter lab --ip 0.0.0.0 --port $PORT --no-browser --allow-root --ServerApp.token= --ServerApp.password= --ServerApp.disable_check_xsrf=True --ServerApp.allow_origin=* --ServerApp.trust_xheaders=True"
+BOOT="set -e; cd /; command -v git >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq git >/dev/null 2>&1); pip install -q jupyterlab ipywidgets >/dev/null 2>&1; rm -rf /workspace; git clone --depth 1 $REPO /workspace >/dev/null 2>&1; cd /workspace/tutorials 2>/dev/null || cd /workspace; echo '=== JupyterLab starting on :$PORT ==='; exec jupyter lab --ip 0.0.0.0 --port $PORT --no-browser --allow-root --ServerApp.token= --ServerApp.password= --ServerApp.disable_check_xsrf=True --ServerApp.allow_origin=* --ServerApp.trust_xheaders=True"
 
 echo "🚀 Launching JupyterLab on HF Jobs (flavor=$FLAVOR) ..."
 # NOTE: the `--` before the command is REQUIRED so the CLI stops parsing flags and forwards bash -c intact.
@@ -73,10 +73,15 @@ OUT=$(hf jobs run --flavor "$FLAVOR" --timeout "$TIMEOUT" --expose "$PORT" -s HF
 JID=$(echo "$OUT" | grep -oE '[0-9a-f]{24}' | head -1)
 LAB="https://${JID}--${PORT}.hf.jobs/lab"
 
-# Wait until JupyterLab actually answers (image pull + pip + clone can take a few min).
+# Wait until JupyterLab answers (image pull + clone can take a few min), while also
+# watching the job's status so a cancel / error from the dashboard is reflected here immediately.
 printf "   job %s  ·  waiting for JupyterLab to come up " "$JID"
-READY=""
+READY=""; STOPPED=""
 for _ in $(seq 1 90); do          # up to ~7.5 min
+  stage=$(hf jobs inspect "$JID" 2>/dev/null | grep -oE "'stage': '[A-Za-z_]+'" | head -1 | cut -d"'" -f4)
+  case "$stage" in
+    CANCELED|CANCELLED|ERROR|FAILED|COMPLETED|DELETED) STOPPED="$stage"; break ;;
+  esac
   code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $TOKEN" "$LAB" 2>/dev/null || true)
   [ "$code" = "200" ] && { READY=1; break; }
   printf "."; sleep 5
@@ -84,6 +89,13 @@ done
 echo
 
 echo "────────────────────────────────────────────────────────────"
+if [ -n "$STOPPED" ]; then
+  echo "❌ Job is no longer running (status: $STOPPED)."
+  echo "   📋 dashboard:  https://huggingface.co/settings/jobs"
+  echo "   logs:         hf jobs logs $JID"
+  echo "────────────────────────────────────────────────────────────"
+  exit 1
+fi
 if [ -n "$READY" ]; then
   echo "✅ JupyterLab is READY — open it:"
 else
