@@ -15,6 +15,9 @@ import argparse
 import os
 import subprocess
 import sys
+import time
+import urllib.error
+import urllib.request
 
 PORT = 8888
 DEFAULT_IMAGE = "pytorch/pytorch:2.6.0-cuda12.4-cudnn9-devel"
@@ -78,10 +81,28 @@ def main():
     print(f"🚀 Launching JupyterLab on HF Jobs  (flavor={args.flavor}, image={args.image}) ...")
     job = HfApi(token=token).run_job(**kwargs)
     jid = getattr(job, "id", None) or getattr(job, "job_id", "<job-id>")
-    print("\n" + "─" * 60)
-    print("⏳ JupyterLab will be ready in ~1-2 min at:")
-    print(f"     https://{jid}--{PORT}.hf.jobs/lab")
+    lab = f"https://{jid}--{PORT}.hf.jobs/lab"
+
+    # Wait until JupyterLab actually answers (image pull + pip + clone can take a few min).
+    print(f"   job {jid}  ·  waiting for JupyterLab to come up ", end="", flush=True)
+    ready = False
+    for _ in range(90):  # up to ~7.5 min
+        try:
+            req = urllib.request.Request(lab, headers={"Authorization": f"Bearer {token}"})
+            if urllib.request.urlopen(req, timeout=10).status == 200:
+                ready = True
+                break
+        except (urllib.error.URLError, urllib.error.HTTPError, OSError):
+            pass
+        print(".", end="", flush=True)
+        time.sleep(5)
+    print()
+
+    print("─" * 60)
+    print("✅ JupyterLab is READY — open it:" if ready else "⏳ Still starting — it should come up shortly at:")
+    print(f"     {lab}")
     print("   (log into huggingface.co in the same browser first)")
+    print("\n   📋 Track this & all your jobs:  https://huggingface.co/settings/jobs")
     print(f"   logs:  hf jobs logs -f {jid}")
     print(f"   stop:  hf jobs cancel {jid}")
     print("─" * 60)

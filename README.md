@@ -36,14 +36,12 @@ hf auth login                                      # paste your token
 ```
 <sub>Windows: `powershell -ExecutionPolicy ByPass -c "irm https://hf.co/cli/install.ps1 | iex"`</sub>
 
-**2. Launch** — **one line** spins up a GPU with the notebooks loaded and prints a JupyterLab URL (just the `hf` CLI — no Python, no cloning):
+**2. Launch** — **one line** spins up a GPU, pops a quick **GPU picker**, waits until JupyterLab is up, and prints the URL:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/launcher/launch.sh | bash
+curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch.sh | bash
 ```
-<sub>Windows (PowerShell): `irm https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/launcher/launch.ps1 | iex` · default GPU is an A100, set `FLAVOR=t4-small` for cheaper.</sub>
-
-<sub>Have Python? Same thing via the SDK: `curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/launcher/launch.py | python3 -` (PowerShell: `… | python -`).</sub>
+<sub>Windows / no bash — same thing via Python: `curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch.py | python3 -` (PowerShell: `irm …/tutorials/launch.py | python -`). Default GPU is an A100; set `FLAVOR=t4-small` for cheaper. Track jobs at [huggingface.co/settings/jobs](https://huggingface.co/settings/jobs).</sub>
 
 Inside: **`01_latex_ocr_grpo`** (teach Qwen3-VL-2B to read math → LaTeX, reward from an OpenEnv server)
 and **`02_lipogram_grpo`** (teach a model to avoid the letter “e” — a reward-design + reward-hacking
@@ -86,8 +84,7 @@ The skills are **folder-agnostic** — they work in any project, don't assume th
 RL_Envs_101/
 ├── README.md                       # this file
 ├── assets/                         # blog thumbnail, diagrams
-├── launcher/                       # one-command HF Jobs JupyterLab launchers (launch.sh / .ps1 / .py)
-├── tutorials/                      # GRPO notebooks the launcher opens (LaTeX-OCR, lipogram)
+├── tutorials/                      # one-command HF Jobs launchers (launch.sh / launch.py) + GRPO notebooks
 └── envs/
     ├── jupyter_env/                # E2B-sandboxed Jupyter agent (multi-turn, 4 tools)
     │   ├── openenv/                # HTTP, MCP protocol

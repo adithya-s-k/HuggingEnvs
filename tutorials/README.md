@@ -35,37 +35,33 @@ Check it worked with `hf whoami`. That's the whole setup — the same on **Windo
 
 ## ▶️ Run it — one command
 
-Spin up a GPU with the notebooks loaded and get a JupyterLab URL. Just the `hf` CLI — **no Python, no cloning:**
+Spin up a GPU with the notebooks loaded and get a JupyterLab URL. Just the `hf` CLI — **no cloning:**
 
-**macOS / Linux** (and Windows via Git Bash / WSL):
+**macOS / Linux** (Windows via Git Bash / WSL — or use the Python one-liner below):
 ```bash
-curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/launcher/launch.sh | bash
+curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch.sh | bash
 ```
 
-**Windows (PowerShell):**
-```powershell
-irm https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/launcher/launch.ps1 | iex
-```
+It pops a quick **GPU menu** (pick a number — Enter takes the A100 default), launches the job, **waits
+until JupyterLab is actually up**, then prints the URL. **Open it** (be logged into huggingface.co in the
+same browser), open a notebook, and run it. 🎉
 
-In ~1-2 min it prints a URL like `https://<id>--8888.hf.jobs/lab`. **Open it** (be logged into
-huggingface.co in the same browser), open a notebook, and run it. 🎉
-
-**Pick the hardware** (default is an **A100 80 GB**; list all with `hf jobs hardware`):
+**Skip the menu** — name the GPU directly (full list + prices: `hf jobs hardware`):
 ```bash
-FLAVOR=t4-small  curl -sSL .../launch.sh | bash          # cheaper
-# PowerShell:  $env:FLAVOR="t4-small"; irm .../launch.ps1 | iex
+FLAVOR=t4-small  curl -sSL .../launch.sh | bash          # or, if cloned:  bash launch.sh t4-small
 ```
 
-**Prefer Python?** If you have Python installed, this one-liner does the same thing via the SDK:
+**On Windows, or if you have Python** — same thing via the SDK, no bash needed:
 ```bash
-curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/launcher/launch.py | python3 -
-# PowerShell:  irm https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/launcher/launch.py | python -
-# set the GPU with the FLAVOR env var, e.g.  FLAVOR=t4-small curl -sSL .../launch.py | python3 -
+curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch.py | python3 -
+# Windows PowerShell:  irm https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch.py | python -
+# pick the GPU with the FLAVOR env var, e.g.  FLAVOR=t4-small curl -sSL .../launch.py | python3 -
 ```
 
-> The GPU is pay-as-you-go and auto-stops after 4h (or `hf jobs cancel <id>`). Under the hood the script
-> calls `hf jobs run --expose 8888` — a GPU container that clones this repo and serves JupyterLab through
-> the HF Jobs proxy (the URL is gated to your HF login). No files touch your machine.
+> The GPU is pay-as-you-go and auto-stops after 4h. Track / stop your jobs anytime at
+> **https://huggingface.co/settings/jobs** (or `hf jobs cancel <id>`). Under the hood the script calls
+> `hf jobs run --expose 8888` — a GPU container that clones this repo and serves JupyterLab through the
+> HF Jobs proxy (the URL is gated to your HF login). No files touch your machine.
 
 ---
 
@@ -75,9 +71,9 @@ Prefer to have the files locally, tweak them, or run on your own GPU? Clone and 
 
 ```bash
 git clone https://github.com/adithya-s-k/RL_Envs_101
-cd RL_Envs_101
-bash launcher/launch.sh a100-large      # Windows:  ./launcher/launch.ps1 -Flavor a100-large
-# …or just open tutorials/notebooks/*.ipynb in your own Jupyter if you already have a GPU
+cd RL_Envs_101/tutorials
+bash launch.sh a100-large               # Windows / no bash:  python launch.py --flavor a100-large
+# …or just open notebooks/*.ipynb in your own Jupyter if you already have a GPU
 ```
 
 ---
