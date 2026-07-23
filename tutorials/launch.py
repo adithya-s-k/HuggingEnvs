@@ -23,6 +23,17 @@ PORT = 8888
 DEFAULT_IMAGE = "pytorch/pytorch:2.6.0-cuda12.4-cudnn9-devel"
 DEFAULT_REPO = "https://github.com/adithya-s-k/RL_Envs_101.git"
 
+# Curated GPU menu (name, description). Full list: `hf jobs hardware`.
+GPU_MENU = [
+    ("t4-small",   "1x T4  16GB  · $0.40/hr · cheapest, slow"),
+    ("l4x1",       "1x L4  24GB  · $0.80/hr · good budget pick"),
+    ("a10g-large", "1x A10G 24GB · $1.50/hr"),
+    ("l40sx1",     "1x L40S 48GB · $1.80/hr · roomy VRAM"),
+    ("a100-large", "1x A100 80GB · $2.50/hr · recommended for these tutorials"),
+    ("h200",       "1x H200 141GB · $5.00/hr · fastest"),
+]
+DEFAULT_FLAVOR = "a100-large"
+
 
 def _hub():
     try:
@@ -34,15 +45,55 @@ def _hub():
     return HfApi, get_token, login
 
 
+def _open_console():
+    """Return a readable console handle (works even under `curl … | python -`, where stdin is the script)."""
+    try:
+        return open("CON") if os.name == "nt" else open("/dev/tty")
+    except OSError:
+        return None
+
+
+def pick_gpu():
+    """Interactive GPU picker. Falls back to the default if no console is available."""
+    con = _open_console()
+    if con is None:
+        return DEFAULT_FLAVOR
+    default_i = next(i for i, (n, _) in enumerate(GPU_MENU) if n == DEFAULT_FLAVOR)
+    print(f"Select a GPU  (Enter = {DEFAULT_FLAVOR}, the default):")
+    for i, (name, desc) in enumerate(GPU_MENU):
+        star = "*" if i == default_i else " "
+        print(f"  {star}{i + 1}) {name:<12} {desc}")
+    print(f"  {len(GPU_MENU) + 1}) other      (type any flavor name — see: hf jobs hardware)")
+    try:
+        print("> ", end="", flush=True)
+        choice = con.readline().strip()
+    except (EOFError, OSError):
+        choice = ""
+    if not choice:
+        return DEFAULT_FLAVOR
+    if choice.isdigit():
+        n = int(choice)
+        if n == len(GPU_MENU) + 1:
+            print("flavor name > ", end="", flush=True)
+            return con.readline().strip() or DEFAULT_FLAVOR
+        if 1 <= n <= len(GPU_MENU):
+            return GPU_MENU[n - 1][0]
+    return choice  # user typed a flavor name directly
+
+
 def main():
     ap = argparse.ArgumentParser(description="Launch a JupyterLab on HF Jobs with the RL Envs 101 notebooks.")
-    ap.add_argument("--flavor", default=os.environ.get("FLAVOR", "a100-large"), help="GPU (list: hf jobs hardware)")
+    ap.add_argument("--flavor", default=os.environ.get("FLAVOR"), help="GPU (list: hf jobs hardware)")
     ap.add_argument("--image", default=os.environ.get("IMAGE", DEFAULT_IMAGE))
     ap.add_argument("--timeout", default=os.environ.get("TIMEOUT", "4h"))
     ap.add_argument("--repo", default=os.environ.get("REPO_URL", DEFAULT_REPO))
     ap.add_argument("--bucket", default=os.environ.get("HF_BUCKET", ""),
                     help="optional HF bucket 'name' to mount at /workspace/persist (survives restarts)")
     args = ap.parse_args()
+
+    # No flavor given (neither --flavor nor FLAVOR env) -> show the interactive picker.
+    if not args.flavor:
+        args.flavor = pick_gpu()
 
     HfApi, get_token, login = _hub()
     token = os.environ.get("HF_TOKEN") or get_token()
