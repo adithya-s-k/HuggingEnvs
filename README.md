@@ -26,15 +26,22 @@ If you've ever wondered:
 ## Train a model in one command (Tutorials)
 
 The [`tutorials/`](tutorials/) folder is the *hands-on* half — actually **training** an LLM against an
-environment with GRPO. No GPU, no cluster, no setup: just a free
-[HF token](https://huggingface.co/settings/tokens), then **one line** spins up a GPU with the notebooks
-loaded and prints a JupyterLab URL:
+environment with GRPO. No GPU, no cluster, no local setup.
+
+**1. Install the `hf` CLI and log in** (once) with a free [HF token](https://huggingface.co/settings/tokens):
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch_jupyter.sh | bash
+curl -LsSf https://hf.co/cli/install.sh | bash    # or: pip install -U huggingface_hub
+hf auth login                                      # paste your token
 ```
+<sub>Windows: `powershell -ExecutionPolicy ByPass -c "irm https://hf.co/cli/install.ps1 | iex"`</sub>
 
-<sub>macOS / Linux directly; **Windows** via Git Bash or WSL. No repo cloning needed.</sub>
+**2. Launch** — **one line** spins up a GPU with the notebooks loaded and prints a JupyterLab URL:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch_jupyter.py | python3 -
+```
+<sub>Windows (PowerShell): `irm https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch_jupyter.py | python -` · default GPU is an A100, set `FLAVOR=t4-small` for cheaper · no repo cloning needed.</sub>
 
 Inside: **`01_latex_ocr_grpo`** (teach Qwen3-VL-2B to read math → LaTeX, reward from an OpenEnv server)
 and **`02_lipogram_grpo`** (teach a model to avoid the letter “e” — a reward-design + reward-hacking

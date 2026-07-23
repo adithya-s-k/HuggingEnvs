@@ -1,47 +1,88 @@
 # RL Environments 101: From "What Is an Env?" to Training Your Own
 
-Hands-on notebooks that **train an LLM against an RL environment** with GRPO — running on a GPU you
-spin up in one command. No cluster, no local GPU, no setup. **All you need is a free Hugging Face token.**
+Hands-on notebooks that **train an LLM against an RL environment** with GRPO, on a GPU you spin up in one
+command. No cluster, no local GPU, no environment setup. **All you need is a free Hugging Face token.**
 
 ---
 
-## ▶️ Run it (any OS — macOS, Linux, Windows)
+## ⚡ Setup (once, ~30 seconds)
 
-**1. Get a token** (free): https://huggingface.co/settings/tokens → "New token" → copy it.
-
-**2. One command** — paste this in a terminal. It installs the tool, asks for your token, and launches a
-GPU with the notebooks loaded:
+**1. Install the Hugging Face CLI** (`hf`). Pick either:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch_jupyter.sh | bash
+# Standalone installer — no Python needed (recommended)
+# macOS / Linux:
+curl -LsSf https://hf.co/cli/install.sh | bash
+# Windows (PowerShell):
+powershell -ExecutionPolicy ByPass -c "irm https://hf.co/cli/install.ps1 | iex"
+```
+```bash
+# …or via pip, if you already have Python:
+pip install -U huggingface_hub
 ```
 
-<sub>**Windows:** open **Git Bash** (comes with [git](https://git-scm.com/download/win)) or **WSL**, then paste the same line. No repo cloning needed.</sub>
+**2. Get a token** (free): https://huggingface.co/settings/tokens → **New token** → *Read* is enough → copy it.
 
-**3. Open the link** it prints (`https://…--8888.hf.jobs/lab`) — be logged into huggingface.co in the same
-browser — and open a notebook. That's it. 🎉
+**3. Log in** (paste the token when asked):
 
-> The GPU is pay-as-you-go and auto-stops after 4h (or `hf jobs cancel <id>`). Default hardware: A10G 24 GB.
+```bash
+hf auth login
+```
+
+Check it worked with `hf whoami`. That's the whole setup — the same on **Windows, macOS, and Linux**.
+
+---
+
+## ▶️ Run it — one command
+
+Spin up a GPU with the notebooks loaded and get a JupyterLab URL:
+
+**macOS / Linux** (and Windows via Git Bash / WSL):
+```bash
+curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch_jupyter.py | python3 -
+```
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch_jupyter.py | python -
+```
+
+In ~1-2 min it prints a URL like `https://<id>--8888.hf.jobs/lab`. **Open it** (be logged into
+huggingface.co in the same browser), open a notebook, and run it. 🎉
+
+**Pick the hardware** (default is an **A100 80 GB**; list all with `hf jobs hardware`):
+```bash
+FLAVOR=t4-small  curl -sSL .../launch_jupyter.py | python3 -      # cheaper
+# PowerShell:  $env:FLAVOR="t4-small"; irm .../launch_jupyter.py | python -
+```
+
+> The GPU is pay-as-you-go and auto-stops after 4h (or `hf jobs cancel <id>`). Under the hood the launcher
+> calls `run_job(..., expose=8888)` — a GPU container that clones this repo and serves JupyterLab through
+> the HF Jobs proxy (the URL is gated to your HF login).
+
+---
+
+## 🛠️ Dev setup (clone the repo)
+
+Prefer to have the files locally, tweak them, or run on your own GPU? Clone and go:
+
+```bash
+git clone https://github.com/adithya-s-k/RL_Envs_101
+cd RL_Envs_101/tutorials
+python launch_jupyter.py --flavor a100-large       # or: bash launch_jupyter.sh   /   ./launch_jupyter.ps1
+# …or just open notebooks/*.ipynb in your own Jupyter if you already have a GPU
+```
 
 ---
 
 ## 📓 The notebooks
 
-- **[`notebooks/01_latex_ocr_grpo.ipynb`](notebooks/01_latex_ocr_grpo.ipynb)** — teach **Qwen3-VL-2B** to read
-  math images → LaTeX. Reward comes from an **OpenEnv** environment (served as an HF Space).
-- **[`notebooks/02_lipogram_grpo.ipynb`](notebooks/02_lipogram_grpo.ipynb)** — teach **Qwen3.5-2B** to answer
-  **without the letter “e”**. Reward is a plain **Python function** — and you'll watch a lazy reward get
-  *hacked*, then fix it.
+| notebook | what you train | reward comes from | the lesson |
+|---|---|---|---|
+| **[`notebooks/01_latex_ocr_grpo.ipynb`](notebooks/01_latex_ocr_grpo.ipynb)** | **Qwen3-VL-2B** — read math images → LaTeX | an **OpenEnv** environment (served as an HF Space) | a *verifiable* reward + a clean upward curve |
+| **[`notebooks/02_lipogram_grpo.ipynb`](notebooks/02_lipogram_grpo.ipynb)** | **Qwen3.5-2B** — answer **without the letter “e”** | a plain **Python function** you own | **reward design + reward hacking** (watch a lazy reward get gamed, then fix it) |
 
-Two notebooks, two ways rewards enter GRPO: an environment server (#1) vs. a function you own (#2).
-
-## 🖥️ Prefer to run locally?
-
-If you already have a GPU + Python, clone the repo and open the notebooks directly — they run the same:
-
-```bash
-git clone https://github.com/adithya-s-k/RL_Envs_101 && cd RL_Envs_101/tutorials/notebooks
-```
+Two notebooks, the two ways rewards enter GRPO: an environment server (#1) vs. a function you own (#2).
 
 ## 🎞️ Slides
 
