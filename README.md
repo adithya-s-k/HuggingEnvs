@@ -39,7 +39,7 @@ hf auth login                                      # paste your token
 **2. Launch** — **one line** spins up a GPU, pops a quick **GPU picker**, waits until JupyterLab is up, and prints the URL:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch.sh | bash
+curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/jupyter_launch.sh | bash
 ```
 <sub>Windows / no bash — same thing via Python: `curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch.py | python3 -` (PowerShell: `irm …/tutorials/launch.py | python -`). Default GPU is an A100; set `FLAVOR=t4-small` for cheaper. Track jobs at [huggingface.co/settings/jobs](https://huggingface.co/settings/jobs).</sub>
 
@@ -84,7 +84,7 @@ The skills are **folder-agnostic** — they work in any project, don't assume th
 RL_Envs_101/
 ├── README.md                       # this file
 ├── assets/                         # blog thumbnail, diagrams
-├── tutorials/                      # one-command HF Jobs launchers (launch.sh / launch.py) + GRPO notebooks
+├── tutorials/                      # one-command HF Jobs launchers (jupyter_launch.sh / launch.py) + GRPO notebooks
 └── envs/
     ├── jupyter_env/                # E2B-sandboxed Jupyter agent (multi-turn, 4 tools)
     │   ├── openenv/                # HTTP, MCP protocol

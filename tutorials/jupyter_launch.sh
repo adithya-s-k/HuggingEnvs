@@ -7,9 +7,9 @@
 #   hf auth login                                      # paste a free token from hf.co/settings/tokens
 #
 # Run:
-#   curl -sSL .../tutorials/launch.sh | bash           # interactive GPU picker
-#   bash launch.sh t4-small                            # or name the GPU directly (arg / FLAVOR env)
-#   FLAVOR=t4-small curl -sSL .../tutorials/launch.sh | bash
+#   curl -sSL .../tutorials/jupyter_launch.sh | bash           # interactive GPU picker
+#   bash jupyter_launch.sh t4-small                            # or name the GPU directly (arg / FLAVOR env)
+#   FLAVOR=t4-small curl -sSL .../tutorials/jupyter_launch.sh | bash
 # Full flavor list + prices:  hf jobs hardware
 set -e
 

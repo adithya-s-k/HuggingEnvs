@@ -39,7 +39,7 @@ Spin up a GPU with the notebooks loaded and get a JupyterLab URL. Just the `hf` 
 
 **macOS / Linux** (Windows via Git Bash / WSL — or use the Python one-liner below):
 ```bash
-curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch.sh | bash
+curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/jupyter_launch.sh | bash
 ```
 
 It pops a quick **GPU menu** (pick a number — Enter takes the A100 default), launches the job, **waits
@@ -48,7 +48,7 @@ same browser), open a notebook, and run it. 🎉
 
 **Skip the menu** — name the GPU directly (full list + prices: `hf jobs hardware`):
 ```bash
-FLAVOR=t4-small  curl -sSL .../launch.sh | bash          # or, if cloned:  bash launch.sh t4-small
+FLAVOR=t4-small  curl -sSL .../jupyter_launch.sh | bash          # or, if cloned:  bash jupyter_launch.sh t4-small
 ```
 
 **On Windows, or if you have Python** — same thing via the SDK, no bash needed:
@@ -72,7 +72,7 @@ Prefer to have the files locally, tweak them, or run on your own GPU? Clone and 
 ```bash
 git clone https://github.com/adithya-s-k/RL_Envs_101
 cd RL_Envs_101/tutorials
-bash launch.sh a100-large               # Windows / no bash:  python launch.py --flavor a100-large
+bash jupyter_launch.sh a100-large               # Windows / no bash:  python launch.py --flavor a100-large
 # …or just open notebooks/*.ipynb in your own Jupyter if you already have a GPU
 ```
 
