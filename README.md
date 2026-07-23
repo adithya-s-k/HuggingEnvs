@@ -23,6 +23,23 @@ If you've ever wondered:
 
 …this repo is the answer. Each framework folder is a **runnable, minimal example** showing how to set up the environment and do a sample LLM rollout against it. We also walk through **how to think about designing an environment** in the first place: the components, the key decisions, and the common pitfalls, independent of any framework.
 
+## Train a model in one command (Tutorials)
+
+The [`tutorials/`](tutorials/) folder is the *hands-on* half — actually **training** an LLM against an
+environment with GRPO. No GPU, no cluster, no setup: just a free
+[HF token](https://huggingface.co/settings/tokens), then **one line** spins up a GPU with the notebooks
+loaded and prints a JupyterLab URL:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch_jupyter.sh | bash
+```
+
+<sub>macOS / Linux directly; **Windows** via Git Bash or WSL. No repo cloning needed.</sub>
+
+Inside: **`01_latex_ocr_grpo`** (teach Qwen3-VL-2B to read math → LaTeX, reward from an OpenEnv server)
+and **`02_lipogram_grpo`** (teach a model to avoid the letter “e” — a reward-design + reward-hacking
+lesson). See [`tutorials/README.md`](tutorials/README.md).
+
 ## Agent Skills
 
 This repo also ships **5 agent skills** at `.claude/skills/` that turn a plain-English env description into runnable code across the 4 target frameworks. They follow the open [SKILL.md spec](https://github.com/anthropics/skills) and work with any agent that supports it — **Claude Code, Cursor, Codex, OpenCode, Gemini CLI**, and dozens more.
@@ -40,6 +57,7 @@ The skills are **folder-agnostic** — they work in any project, don't assume th
 
 ## Table of Contents
 
+- [Train a model in one command (Tutorials)](#train-a-model-in-one-command-tutorials)
 - [Repository Layout](#repository-layout)
 - [The Reference Environments](#the-reference-environments)
 - [Framework Cheat Sheet](#framework-cheat-sheet)
@@ -59,6 +77,7 @@ The skills are **folder-agnostic** — they work in any project, don't assume th
 RL_Envs_101/
 ├── README.md                       # this file
 ├── assets/                         # blog thumbnail, diagrams
+├── tutorials/                      # train a model on HF Jobs (one-command JupyterLab + GRPO notebooks)
 └── envs/
     ├── jupyter_env/                # E2B-sandboxed Jupyter agent (multi-turn, 4 tools)
     │   ├── openenv/                # HTTP, MCP protocol
