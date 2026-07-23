@@ -36,12 +36,12 @@ hf auth login                                      # paste your token
 ```
 <sub>Windows: `powershell -ExecutionPolicy ByPass -c "irm https://hf.co/cli/install.ps1 | iex"`</sub>
 
-**2. Launch** — **one line** spins up a GPU with the notebooks loaded and prints a JupyterLab URL:
+**2. Launch** — **one line** spins up a GPU with the notebooks loaded and prints a JupyterLab URL (just the `hf` CLI — no Python, no cloning):
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch_jupyter.py | python3 -
+curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch_jupyter.sh | bash
 ```
-<sub>Windows (PowerShell): `irm https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch_jupyter.py | python -` · default GPU is an A100, set `FLAVOR=t4-small` for cheaper · no repo cloning needed.</sub>
+<sub>Windows (PowerShell): `irm https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch_jupyter.ps1 | iex` · default GPU is an A100, set `FLAVOR=t4-small` for cheaper.</sub>
 
 Inside: **`01_latex_ocr_grpo`** (teach Qwen3-VL-2B to read math → LaTeX, reward from an OpenEnv server)
 and **`02_lipogram_grpo`** (teach a model to avoid the letter “e” — a reward-design + reward-hacking
