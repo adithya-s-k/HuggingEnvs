@@ -39,12 +39,12 @@ Spin up a GPU with the notebooks loaded and get a JupyterLab URL. Just the `hf` 
 
 **macOS / Linux** (and Windows via Git Bash / WSL):
 ```bash
-curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch.sh | bash
+curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/launcher/launch.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch.ps1 | iex
+irm https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/launcher/launch.ps1 | iex
 ```
 
 In ~1-2 min it prints a URL like `https://<id>--8888.hf.jobs/lab`. **Open it** (be logged into
@@ -58,8 +58,8 @@ FLAVOR=t4-small  curl -sSL .../launch.sh | bash          # cheaper
 
 **Prefer Python?** If you have Python installed, this one-liner does the same thing via the SDK:
 ```bash
-curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch.py | python3 -
-# PowerShell:  irm https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch.py | python -
+curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/launcher/launch.py | python3 -
+# PowerShell:  irm https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/launcher/launch.py | python -
 # set the GPU with the FLAVOR env var, e.g.  FLAVOR=t4-small curl -sSL .../launch.py | python3 -
 ```
 
@@ -75,9 +75,9 @@ Prefer to have the files locally, tweak them, or run on your own GPU? Clone and 
 
 ```bash
 git clone https://github.com/adithya-s-k/RL_Envs_101
-cd RL_Envs_101/tutorials
-bash launch.sh a100-large               # Windows:  ./launch.ps1 -Flavor a100-large
-# …or just open notebooks/*.ipynb in your own Jupyter if you already have a GPU
+cd RL_Envs_101
+bash launcher/launch.sh a100-large      # Windows:  ./launcher/launch.ps1 -Flavor a100-large
+# …or just open tutorials/notebooks/*.ipynb in your own Jupyter if you already have a GPU
 ```
 
 ---
