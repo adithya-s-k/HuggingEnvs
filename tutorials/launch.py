@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """RL Envs 101 — launch a JupyterLab on Hugging Face Jobs with the tutorial notebooks loaded.
 
-Cross-platform (Windows / macOS / Linux). Alternative to launch_jupyter.sh / .ps1 for people who
+Cross-platform (Windows / macOS / Linux). Alternative to launch.sh / .ps1 for people who
 already have Python — same result, uses the huggingface_hub SDK (`run_job`) instead of the `hf` CLI.
 
 Prereqs (once):  pip install -U huggingface_hub   &&   hf auth login
-Run:             python launch_jupyter.py                    # default A100 (80 GB)
-                 python launch_jupyter.py --flavor t4-small  # pick hardware  (list: hf jobs hardware)
-       one-line:  curl -sSL <raw>/tutorials/launch_jupyter.py | python3 -     (FLAVOR=t4-small to pick GPU)
+Run:             python launch.py                    # default A100 (80 GB)
+                 python launch.py --flavor t4-small  # pick hardware  (list: hf jobs hardware)
+       one-line:  curl -sSL <raw>/tutorials/launch.py | python3 -     (FLAVOR=t4-small to pick GPU)
 
 Opens a JupyterLab URL in ~1-2 min. GPU is pay-as-you-go; auto-stops at --timeout or `hf jobs cancel`.
 """

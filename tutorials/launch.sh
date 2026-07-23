@@ -6,7 +6,7 @@
 #   curl -LsSf https://hf.co/cli/install.sh | bash    # or: pip install -U huggingface_hub
 #   hf auth login                                      # paste a free token from hf.co/settings/tokens
 #
-# Run:   bash launch_jupyter.sh [FLAVOR]      e.g.  bash launch_jupyter.sh t4-small
+# Run:   bash launch.sh [FLAVOR]      e.g.  bash launch.sh t4-small
 #        FLAVOR env also works.   Default: a100-large (A100 80GB).   List: hf jobs hardware
 set -e
 

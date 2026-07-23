@@ -5,7 +5,7 @@
 #   powershell -ExecutionPolicy ByPass -c "irm https://hf.co/cli/install.ps1 | iex"   # or: pip install -U huggingface_hub
 #   hf auth login                                      # paste a free token from hf.co/settings/tokens
 #
-# Run:   ./launch_jupyter.ps1 [-Flavor t4-small]       Default: a100-large.   List: hf jobs hardware
+# Run:   ./launch.ps1 [-Flavor t4-small]       Default: a100-large.   List: hf jobs hardware
 param(
   [string]$Flavor  = $(if ($env:FLAVOR)  { $env:FLAVOR }  else { "a100-large" }),
   [string]$Timeout = $(if ($env:TIMEOUT) { $env:TIMEOUT } else { "4h" }),
