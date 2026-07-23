@@ -56,6 +56,13 @@ FLAVOR=t4-small  curl -sSL .../launch_jupyter.sh | bash          # cheaper
 # PowerShell:  $env:FLAVOR="t4-small"; irm .../launch_jupyter.ps1 | iex
 ```
 
+**Prefer Python?** If you have Python installed, this one-liner does the same thing via the SDK:
+```bash
+curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch_jupyter.py | python3 -
+# PowerShell:  irm https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch_jupyter.py | python -
+# set the GPU with the FLAVOR env var, e.g.  FLAVOR=t4-small curl -sSL .../launch_jupyter.py | python3 -
+```
+
 > The GPU is pay-as-you-go and auto-stops after 4h (or `hf jobs cancel <id>`). Under the hood the script
 > calls `hf jobs run --expose 8888` — a GPU container that clones this repo and serves JupyterLab through
 > the HF Jobs proxy (the URL is gated to your HF login). No files touch your machine.
