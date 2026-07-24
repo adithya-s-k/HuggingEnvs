@@ -42,7 +42,6 @@ import { Repo2RLEnvIntroSlide } from "./Repo2RLEnvIntroSlide";
 import { Repo2RLEnvSlide } from "./Repo2RLEnv";
 import { StarRepoSlide } from "./StarRepo";
 import { ExampleEnvsSlide } from "./ExampleEnvs";
-import { SpoilerSlide } from "./Spoiler";
 import { RHDividerSlide } from "./rh/01_Divider";
 import { RHSetupSlide } from "./rh/02_Setup";
 import { RHTwistSlide } from "./rh/03_Twist";
@@ -123,7 +122,6 @@ export const slides: Slide[] = [
   { id: "star-repo", title: "Star the repo", component: StarRepoSlide },
   { id: "example-envs", title: "Try example envs", component: ExampleEnvsSlide },
 
-  { id: "spoiler", title: "Spoiler — hands-on next", component: SpoilerSlide, bare: true },
 
   // ── Reward hacking (example 1) ──
   { id: "rh-divider", title: "Reward hacking", component: RHDividerSlide, bare: true },

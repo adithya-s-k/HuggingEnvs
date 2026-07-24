@@ -11,7 +11,8 @@ const BASE_STARS = 450;
 
 function BigCountdown({ secs }: { secs: number }) {
   const { T, glow } = useTheme();
-  const R = 138;
+  const SIZE = 236;
+  const R = 100;
   const C = 2 * Math.PI * R;
   const frac = secs / START;
   const urgent = secs > 0 && secs <= 5;
@@ -23,21 +24,21 @@ function BigCountdown({ secs }: { secs: number }) {
     <motion.div
       animate={panic ? { x: [0, -5, 5, -4, 4, 0] } : { x: 0 }}
       transition={panic ? { duration: 0.4, repeat: Infinity } : { duration: 0.2 }}
-      style={{ position: "relative", width: 320, height: 320 }}
+      style={{ position: "relative", width: SIZE, height: SIZE }}
     >
-      <svg width={320} height={320} style={{ transform: "rotate(-90deg)" }}>
-        <circle cx={160} cy={160} r={R} fill="none" stroke={T.border} strokeWidth={16} />
+      <svg width={SIZE} height={SIZE} style={{ transform: "rotate(-90deg)" }}>
+        <circle cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke={T.border} strokeWidth={14} />
         <circle
-          cx={160}
-          cy={160}
+          cx={SIZE / 2}
+          cy={SIZE / 2}
           r={R}
           fill="none"
           stroke={done ? T.emerald : color}
-          strokeWidth={16}
+          strokeWidth={14}
           strokeLinecap="round"
           strokeDasharray={C}
           strokeDashoffset={C * (1 - frac)}
-          style={{ transition: "stroke-dashoffset 1s linear, stroke .3s", filter: `drop-shadow(0 0 18px ${done ? T.emerald : color})` }}
+          style={{ transition: "stroke-dashoffset 1s linear, stroke .3s", filter: `drop-shadow(0 0 16px ${done ? T.emerald : color})` }}
         />
       </svg>
       <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
@@ -50,11 +51,11 @@ function BigCountdown({ secs }: { secs: number }) {
             transition={{ type: "spring", damping: 13, stiffness: 260 }}
             style={{
               fontFamily: MONO,
-              fontSize: done ? 110 : 172,
+              fontSize: done ? 84 : 124,
               fontWeight: 800,
               lineHeight: 1,
               color: done ? T.emerald : color,
-              textShadow: done ? glow.emeraldText : urgent ? "0 0 34px rgba(255,59,92,0.8)" : "none",
+              textShadow: done ? glow.emeraldText : urgent ? "0 0 30px rgba(255,59,92,0.8)" : "none",
             }}
           >
             {done ? "⭐" : secs}
@@ -81,10 +82,9 @@ export function StarRepoSlide() {
       <div
         style={{
           position: "absolute",
-          top: 200,
+          top: 172,
           left: 80,
           right: 80,
-          bottom: 40,
           display: "grid",
           gridTemplateColumns: "1.05fr 1fr",
           gap: 48,
@@ -98,13 +98,13 @@ export function StarRepoSlide() {
           transition={{ type: "spring", damping: 22, delay: 0.3 }}
           style={{ display: "flex", justifyContent: "center" }}
         >
-          <div style={{ background: "#fff", borderRadius: 24, padding: 24 }}>
-            <img src={qr} alt="Star Repo2RLEnv" style={{ width: 400, height: 400, display: "block", imageRendering: "pixelated" }} />
+          <div style={{ background: "#fff", borderRadius: 22, padding: 20 }}>
+            <img src={qr} alt="Star Repo2RLEnv" style={{ width: 360, height: 360, display: "block", imageRendering: "pixelated" }} />
           </div>
         </motion.div>
 
         {/* timer + small live card */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 26 }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
           <BigCountdown secs={secs} />
           <GitHubCard
             owner="huggingface"
