@@ -60,6 +60,7 @@ import { RH2Cheat3Slide } from "./rh2/06_Cheat3";
 import { RH2CantOutscrubSlide } from "./rh2/07_CantOutscrub";
 import { RH2HonestSlide } from "./rh2/08_Honest";
 import { RH2RulesSlide } from "./rh2/09_Rules";
+import { RH2QuoteSlide } from "./rh2/10_Quote";
 import { DemoIntroSlide } from "./demo/01_Intro";
 import { DemoTaskSlide } from "./demo/02_Task";
 import { DemoFollowAlongSlide } from "./demo/03_FollowAlong";
@@ -144,6 +145,7 @@ export const slides: Slide[] = [
   { id: "rh2-outscrub", title: "Can't out-scrub the internet", component: RH2CantOutscrubSlide, bare: true },
   { id: "rh2-honest", title: "RH2 · what honest looks like", component: RH2HonestSlide },
   { id: "rh2-rules", title: "RH2 · trust the environment", component: RH2RulesSlide },
+  { id: "rh2-quote", title: "Quote — reward modeling", component: RH2QuoteSlide, bare: true },
 
   // ── Hands-on demo (LaTeX-OCR) ──
   { id: "demo-intro", title: "Hands-on — train a model", component: DemoIntroSlide, bare: true },
