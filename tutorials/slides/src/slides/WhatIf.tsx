@@ -43,8 +43,9 @@ export function WhatIfSlide() {
           transition={{ type: "spring", damping: 20 }}
           style={{ fontSize: 56, fontWeight: 800, color: T.white, lineHeight: 1.22, maxWidth: 1120 }}
         >
-          What if we could just generate{" "}
-          <Accent color="emerald">1,000+ coding environments</Accent> on the go?
+          That’s a lot of repos. Could we turn them into{" "}
+          <Accent color="emerald">thousands of environments</Accent> — automatically,{" "}
+          <Accent color="emerald">at scale</Accent>?
         </motion.div>
       </motion.div>
     </div>
