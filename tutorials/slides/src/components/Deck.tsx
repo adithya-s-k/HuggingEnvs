@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type TouchEvent as ReactTouchEvent,
+} from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTheme } from "../ThemeContext";
 import { MONO, STAGE_W, STAGE_H } from "../theme";
@@ -41,7 +48,7 @@ export function Deck({ slides }: { slides: Slide[] }) {
     return [start, 0];
   });
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [showArrows, setShowArrows] = useState(false);
+  const [showArrows, setShowArrows] = useState(true);
 
   // remember which slide we're on across refreshes
   useEffect(() => {
@@ -66,6 +73,29 @@ export function Deck({ slides }: { slides: Slide[] }) {
   const next = useCallback(() => go(index + 1, 1), [go, index]);
   const prev = useCallback(() => go(index - 1, -1), [go, index]);
   const goto = useCallback((i: number) => go(i, i >= index ? 1 : -1), [go, index]);
+
+  // touch swipe (mobile): horizontal drag → prev/next
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const onTouchStart = useCallback((e: ReactTouchEvent) => {
+    const t = e.touches[0];
+    touchStart.current = { x: t.clientX, y: t.clientY };
+  }, []);
+  const onTouchEnd = useCallback(
+    (e: ReactTouchEvent) => {
+      const s = touchStart.current;
+      touchStart.current = null;
+      if (!s) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - s.x;
+      const dy = t.clientY - s.y;
+      // mostly-horizontal swipe past a threshold
+      if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+        if (dx < 0) next();
+        else prev();
+      }
+    },
+    [next, prev],
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -145,6 +175,8 @@ export function Deck({ slides }: { slides: Slide[] }) {
       {/* Stage area — takes the remaining space; slide scales to fit it. */}
       <div
         ref={stageAreaRef}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
         style={{
           flex: 1,
           minWidth: 0,
@@ -153,6 +185,7 @@ export function Deck({ slides }: { slides: Slide[] }) {
           alignItems: "center",
           justifyContent: "center",
           overflow: "hidden",
+          touchAction: "pan-y",
         }}
       >
         <div
@@ -229,17 +262,17 @@ function Arrow({
       style={{
         position: "absolute",
         top: "50%",
-        [side]: 22,
+        [side]: 14,
         transform: "translateY(-50%)",
-        width: 52,
-        height: 52,
+        width: 40,
+        height: 40,
         display: "grid",
         placeItems: "center",
         borderRadius: "50%",
         border: `1.5px solid ${T.border}`,
         background: T.bgRaised,
         color: T.textMuted,
-        fontSize: 26,
+        fontSize: 20,
         lineHeight: 1,
         cursor: disabled ? "default" : "pointer",
         zIndex: 40,
