@@ -52,9 +52,10 @@ export const light: Palette = {
   border: "#e3e8f1",
   borderStrong: "#cbd3e1",
   white: "#0b1020",
-  text: "#1a2233",
-  textMuted: "#5a6679",
-  textDim: "#9aa4b6",
+  text: "#161d2b",
+  textMuted: "#3d4657", // darkened for readability on white
+  textDim: "#616c80", // darkened
+
   lavender: "#7c3aed",
   lavenderDim: "#9d6bff",
   emerald: "#059669",
