@@ -3,6 +3,9 @@
 Talk slides for **"RL Environments 101: From 'What Is an Env?' to Training Your Own"**
 by Adithya S Kolavi.
 
+> ▶️ **Live deck:** https://huggingface.co/spaces/AdithyaSK/rl-environments-101-slides
+> ([direct link](https://adithyask-rl-environments-101-slides.static.hf.space)) — arrow keys / clicker / swipe to navigate.
+
 A self-contained **React** deck. Each slide is its own component. Dark/light
 theme, arrow-key navigation, fully static → deployable to a Hugging Face Space.
 

@@ -3,6 +3,9 @@
 Hands-on notebooks that **train an LLM against an RL environment** with GRPO, on a GPU you spin up in one
 command. No cluster, no local GPU, no environment setup. **All you need is a free Hugging Face token.**
 
+> 🎞️ **Talk slides:** https://huggingface.co/spaces/AdithyaSK/rl-environments-101-slides
+> — the companion deck for this material (source in [`slides/`](slides/)).
+
 ---
 
 ## ⚡ Setup (once, ~30 seconds)
