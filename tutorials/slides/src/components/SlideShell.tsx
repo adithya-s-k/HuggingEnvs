@@ -63,18 +63,6 @@ export function SlideShell({
         >
           {title}
         </motion.div>
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: 260 }}
-          transition={{ ...spring, delay: 0.24 }}
-          style={{
-            marginTop: 20,
-            height: 7,
-            background: T.white,
-            opacity: 1,
-            borderRadius: 4,
-          }}
-        />
       </div>
 
       {/* Content region — slides position their own content below the header */}
