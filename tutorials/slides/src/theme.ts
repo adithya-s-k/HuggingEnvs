@@ -49,8 +49,8 @@ export const dark: Palette = {
 export const light: Palette = {
   bg: "#fbfcfe",
   bgRaised: "#ffffff",
-  border: "#e3e8f1",
-  borderStrong: "#cbd3e1",
+  border: "#c4cddb", // darkened so card/chip outlines read on white
+  borderStrong: "#9fabc0",
   white: "#0b1020",
   text: "#161d2b",
   textMuted: "#3d4657", // darkened for readability on white

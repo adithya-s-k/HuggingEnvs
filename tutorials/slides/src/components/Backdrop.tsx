@@ -4,7 +4,7 @@ import { useTheme } from "../ThemeContext";
 // forge theme's gridBackdrop / vignette.
 export function Backdrop() {
   const { T, mode } = useTheme();
-  const gridOpacity = mode === "dark" ? 0.18 : 0.5;
+  const gridOpacity = mode === "dark" ? 0.18 : 0.3;
   const vignette =
     mode === "dark"
       ? "radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.55) 100%)"
