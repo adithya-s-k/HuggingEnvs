@@ -150,9 +150,9 @@ export const slides: Slide[] = [
   // ── Hands-on demo (LaTeX-OCR) ──
   { id: "demo-intro", title: "Hands-on — train a model", component: DemoIntroSlide, bare: true },
   { id: "demo-task", title: "Task · LaTeX OCR", component: DemoTaskSlide },
-  { id: "demo-follow", title: "Follow along (QR)", component: DemoFollowAlongSlide, bare: true },
   { id: "demo-curves-1", title: "Results · GLM-OCR & Gemma", component: DemoCurvesGlmGemmaSlide },
   { id: "demo-curves-2", title: "Results · Qwen 3 / 3.5", component: DemoCurvesQwenSlide },
+  { id: "demo-follow", title: "Follow along (QR)", component: DemoFollowAlongSlide, bare: true },
 ];
 
 // Section numbers shown in the kicker — auto-derived from position, skipping

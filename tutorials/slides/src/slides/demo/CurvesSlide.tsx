@@ -20,10 +20,9 @@ export function CurvesSlide({
       <div
         style={{
           position: "absolute",
-          top: 190,
+          top: 200,
           left: 90,
           right: 90,
-          bottom: 50,
           display: "grid",
           gridTemplateColumns: "1fr 360px",
           gap: 44,
@@ -34,9 +33,9 @@ export function CurvesSlide({
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", damping: 22, delay: 0.3 }}
-          style={{ background: "#fff", borderRadius: 12, padding: 12, border: `1.5px solid ${T.border}`, display: "grid", placeItems: "center", height: "100%" }}
+          style={{ background: "#fff", borderRadius: 12, padding: 12, border: `1.5px solid ${T.border}`, display: "grid", placeItems: "center" }}
         >
-          <img src={img} alt={title} style={{ maxWidth: "100%", maxHeight: "100%", display: "block", borderRadius: 6 }} />
+          <img src={img} alt={title} style={{ maxWidth: "100%", maxHeight: 440, display: "block", borderRadius: 6 }} />
         </motion.div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
