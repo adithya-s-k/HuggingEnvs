@@ -1,0 +1,32 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family:
+    ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Monaco, Consolas,
+    monospace;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* no focus ring flash on the click targets, but keep it for keyboard users */
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+button:focus:not(:focus-visible) {
+  outline: none;
+}

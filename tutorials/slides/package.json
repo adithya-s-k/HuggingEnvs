@@ -1,0 +1,24 @@
+{
+  "name": "rl-envs-101-slides",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "RL Environments 101 — talk slides. React deck, dark/light, arrow-key navigation.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview --host --port 7860"
+  },
+  "dependencies": {
+    "framer-motion": "^11.11.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}
