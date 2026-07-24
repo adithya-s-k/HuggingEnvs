@@ -7,61 +7,54 @@ command. No cluster, no local GPU, no environment setup. **All you need is a fre
 
 ## ⚡ Setup (once, ~30 seconds)
 
-**1. Install the Hugging Face CLI** (`hf`). Pick either:
+You need **Python** and one package — `huggingface_hub` (which also gives you the `hf` command):
 
 ```bash
-# Standalone installer — no Python needed (recommended)
-# macOS / Linux:
-curl -LsSf https://hf.co/cli/install.sh | bash
-# Windows (PowerShell):
-powershell -ExecutionPolicy ByPass -c "irm https://hf.co/cli/install.ps1 | iex"
-```
-```bash
-# …or via pip, if you already have Python:
 pip install -U huggingface_hub
 ```
 
-**2. Get a token** (free): https://huggingface.co/settings/tokens → **New token** → *Read* is enough → copy it.
-
-**3. Log in** (paste the token when asked):
+**Get a token** (free): https://huggingface.co/settings/tokens → **New token** → *Read* is enough. Then log in:
 
 ```bash
-hf auth login
+hf auth login          # paste the token; check with: hf whoami
 ```
 
-Check it worked with `hf whoami`. That's the whole setup — the same on **Windows, macOS, and Linux**.
+That's the whole setup — the same on **Windows, macOS, and Linux**.
 
 ---
 
 ## ▶️ Run it — one command
 
-Spin up a GPU with the notebooks loaded and get a JupyterLab URL. Just the `hf` CLI — **no cloning:**
+Spin up a GPU with the notebooks loaded and get a JupyterLab URL. **No cloning:**
 
-**macOS / Linux** (Windows via Git Bash / WSL — or use the Python one-liner below):
+**macOS / Linux:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/jupyter_launch.sh | bash
+curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/jupyter_launch.py | python3 -
+```
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/jupyter_launch.py | python -
 ```
 
 It pops a quick **GPU menu** (pick a number — Enter takes the A100 default), launches the job, **waits
 until JupyterLab is actually up**, then prints the URL. **Open it** (be logged into huggingface.co in the
 same browser), open a notebook, and run it. 🎉
 
-**Skip the menu** — name the GPU directly (full list + prices: `hf jobs hardware`):
+**Skip the menu** — name the GPU with the `FLAVOR` env var (full list + prices: `hf jobs hardware`):
 ```bash
-FLAVOR=t4-small  curl -sSL .../jupyter_launch.sh | bash          # or, if cloned:  bash jupyter_launch.sh t4-small
+FLAVOR=t4-small  curl -sSL .../jupyter_launch.py | python3 -
+# PowerShell:  $env:FLAVOR="t4-small"; irm .../jupyter_launch.py | python -
 ```
 
-**On Windows, or if you have Python** — same thing via the SDK, no bash needed:
-```bash
-curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch.py | python3 -
-# Windows PowerShell:  irm https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch.py | python -
-# pick the GPU with the FLAVOR env var, e.g.  FLAVOR=t4-small curl -sSL .../launch.py | python3 -
-```
-
-> The GPU is pay-as-you-go and auto-stops after 4h. Track / stop your jobs anytime at
-> **https://huggingface.co/settings/jobs** (or `hf jobs cancel <id>`). Under the hood the script calls
-> `hf jobs run --expose 8888` — a GPU container that clones this repo and serves JupyterLab through the
-> HF Jobs proxy (the URL is gated to your HF login). No files touch your machine.
+> **Your work is saved.** The notebooks are the JupyterLab root and live on a personal HF **storage
+> bucket** (`<you>/rl-envs-101-notebooks`, created automatically) — anything you edit or add persists
+> across sessions. Pass `--no-bucket` for a throwaway session.
+>
+> Needs the `huggingface_hub` **package** (`pip install -U huggingface_hub` — not the standalone `hf`
+> binary). The GPU is pay-as-you-go and auto-stops after 4h; track / stop jobs anytime at
+> **https://huggingface.co/settings/jobs**. Uses the SDK (not the `hf` CLI), so CLI version quirks
+> don't matter. The URL is gated to your HF login.
 
 ---
 
@@ -72,7 +65,7 @@ Prefer to have the files locally, tweak them, or run on your own GPU? Clone and 
 ```bash
 git clone https://github.com/adithya-s-k/RL_Envs_101
 cd RL_Envs_101/tutorials
-bash jupyter_launch.sh a100-large               # Windows / no bash:  python launch.py --flavor a100-large
+python3 jupyter_launch.py --flavor a100-large
 # …or just open notebooks/*.ipynb in your own Jupyter if you already have a GPU
 ```
 

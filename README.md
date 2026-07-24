@@ -28,20 +28,19 @@ If you've ever wondered:
 The [`tutorials/`](tutorials/) folder is the *hands-on* half — actually **training** an LLM against an
 environment with GRPO. No GPU, no cluster, no local setup.
 
-**1. Install the `hf` CLI and log in** (once) with a free [HF token](https://huggingface.co/settings/tokens):
+**1. Install `huggingface_hub` and log in** (once) with a free [HF token](https://huggingface.co/settings/tokens) — needs Python:
 
 ```bash
-curl -LsSf https://hf.co/cli/install.sh | bash    # or: pip install -U huggingface_hub
-hf auth login                                      # paste your token
+pip install -U huggingface_hub
+hf auth login                    # paste your token
 ```
-<sub>Windows: `powershell -ExecutionPolicy ByPass -c "irm https://hf.co/cli/install.ps1 | iex"`</sub>
 
 **2. Launch** — **one line** spins up a GPU, pops a quick **GPU picker**, waits until JupyterLab is up, and prints the URL:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/jupyter_launch.sh | bash
+curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/jupyter_launch.py | python3 -
 ```
-<sub>Windows / no bash — same thing via Python: `curl -sSL https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/launch.py | python3 -` (PowerShell: `irm …/tutorials/launch.py | python -`). Default GPU is an A100; set `FLAVOR=t4-small` for cheaper. Track jobs at [huggingface.co/settings/jobs](https://huggingface.co/settings/jobs).</sub>
+<sub>Windows (PowerShell): `irm https://raw.githubusercontent.com/adithya-s-k/RL_Envs_101/main/tutorials/jupyter_launch.py | python -`. Default GPU is an A100; set `FLAVOR=t4-small` for cheaper. Track jobs at [huggingface.co/settings/jobs](https://huggingface.co/settings/jobs).</sub>
 
 Inside: **`01_latex_ocr_grpo`** (teach Qwen3-VL-2B to read math → LaTeX, reward from an OpenEnv server)
 and **`02_lipogram_grpo`** (teach a model to avoid the letter “e” — a reward-design + reward-hacking
@@ -84,7 +83,7 @@ The skills are **folder-agnostic** — they work in any project, don't assume th
 RL_Envs_101/
 ├── README.md                       # this file
 ├── assets/                         # blog thumbnail, diagrams
-├── tutorials/                      # one-command HF Jobs launchers (jupyter_launch.sh / launch.py) + GRPO notebooks
+├── tutorials/                      # one-command HF Jobs launcher (jupyter_launch.py) + GRPO notebooks
 └── envs/
     ├── jupyter_env/                # E2B-sandboxed Jupyter agent (multi-turn, 4 tools)
     │   ├── openenv/                # HTTP, MCP protocol
