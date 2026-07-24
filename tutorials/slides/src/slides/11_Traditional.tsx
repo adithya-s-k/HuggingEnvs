@@ -33,10 +33,23 @@ export function TraditionalRLSlide() {
               </div>
             </motion.div>
 
-            {/* action arrow */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flex: "0 0 auto" }}>
+            {/* action arrow — a real connector Agent → Env */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, width: 130, flex: "0 0 auto" }}>
               <span style={{ fontFamily: MONO, fontSize: 18, color: T.emerald }}>action</span>
-              <span style={{ color: T.lavender, fontSize: 32 }}>→</span>
+              <div style={{ position: "relative", width: "100%", height: 0, borderTop: `2px solid ${T.lavender}` }}>
+                <div
+                  style={{
+                    position: "absolute",
+                    right: -2,
+                    top: -6,
+                    width: 0,
+                    height: 0,
+                    borderTop: "6px solid transparent",
+                    borderBottom: "6px solid transparent",
+                    borderLeft: `11px solid ${T.lavender}`,
+                  }}
+                />
+              </div>
             </div>
 
             {/* Environment = the live CartPole */}
@@ -50,22 +63,32 @@ export function TraditionalRLSlide() {
             </motion.div>
           </div>
 
-          {/* return path: state · reward, back to the agent */}
+          {/* return path: state · reward — loops from the env back to the agent */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.9 }}
             style={{
               position: "absolute",
-              left: 40,
-              right: 300,
-              bottom: 4,
+              left: 115,
+              right: 20,
+              bottom: 6,
               display: "flex",
               alignItems: "center",
-              gap: 12,
+              gap: 14,
             }}
           >
-            <span style={{ color: T.lavender, fontSize: 26 }}>←</span>
+            {/* arrowhead pointing left, into the agent */}
+            <div
+              style={{
+                width: 0,
+                height: 0,
+                borderTop: "6px solid transparent",
+                borderBottom: "6px solid transparent",
+                borderRight: `11px solid ${T.lavender}`,
+                flex: "0 0 auto",
+              }}
+            />
             <div style={{ flex: 1, borderTop: `2px dashed ${T.lavender}`, opacity: 0.6 }} />
             <span style={{ fontFamily: MONO, fontSize: 20, color: T.emerald }}>state · reward</span>
             <div style={{ flex: 1, borderTop: `2px dashed ${T.lavender}`, opacity: 0.6 }} />

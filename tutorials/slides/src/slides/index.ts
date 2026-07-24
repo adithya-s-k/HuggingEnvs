@@ -42,6 +42,8 @@ import { Repo2RLEnvIntroSlide } from "./Repo2RLEnvIntroSlide";
 import { Repo2RLEnvSlide } from "./Repo2RLEnv";
 import { StarRepoSlide } from "./StarRepo";
 import { ExampleEnvsSlide } from "./ExampleEnvs";
+import { RHOpenAINewsSlide } from "./rh/00_OpenAINews";
+import { RHOpenAIDetailSlide } from "./rh/00b_OpenAIDetail";
 import { RHDividerSlide } from "./rh/01_Divider";
 import { RHSetupSlide } from "./rh/02_Setup";
 import { RHTwistSlide } from "./rh/03_Twist";
@@ -123,8 +125,14 @@ export const slides: Slide[] = [
   { id: "example-envs", title: "Try example envs", component: ExampleEnvsSlide },
 
 
-  // ── Reward hacking (example 1) ──
+  // ── Reward hacking ──
   { id: "rh-divider", title: "Reward hacking", component: RHDividerSlide, bare: true },
+
+  // cold open — OpenAI hacked HF
+  { id: "rh-openai-news", title: "OpenAI hacked HF (news)", component: RHOpenAINewsSlide },
+  { id: "rh-openai-detail", title: "OpenAI hacked HF (what)", component: RHOpenAIDetailSlide },
+
+  // example 1 — my GSM8K run
   { id: "rh-setup", title: "RH · setup", component: RHSetupSlide },
   { id: "rh-twist", title: "RH · the twist", component: RHTwistSlide },
   { id: "rh-rewards", title: "RH · the rewards", component: RHRewardsSlide },
