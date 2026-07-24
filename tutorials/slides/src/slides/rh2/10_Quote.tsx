@@ -26,11 +26,11 @@ export function RH2QuoteSlide() {
         <motion.div
           variants={fade}
           transition={{ type: "spring", damping: 20 }}
-          style={{ fontSize: 46, fontWeight: 700, color: T.white, lineHeight: 1.32, maxWidth: 1080 }}
+          style={{ fontSize: 50, fontWeight: 700, color: T.white, lineHeight: 1.3, maxWidth: 1080 }}
         >
-          Reward hacking isn’t an edge case — it happens{" "}
-          <Accent color="emerald">at scale</Accent>. Reward modeling is{" "}
-          <Accent color="emerald">trial and error</Accent>, every single time.
+          A model never does the task — it does the{" "}
+          <Accent color="emerald">reward</Accent>. At scale, every gap gets found, so reward design
+          is <Accent color="emerald">never done — only iterated</Accent>.
         </motion.div>
 
         <motion.div

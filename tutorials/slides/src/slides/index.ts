@@ -145,7 +145,6 @@ export const slides: Slide[] = [
   { id: "rh2-outscrub", title: "Can't out-scrub the internet", component: RH2CantOutscrubSlide, bare: true },
   { id: "rh2-honest", title: "RH2 · what honest looks like", component: RH2HonestSlide },
   { id: "rh2-rules", title: "RH2 · trust the environment", component: RH2RulesSlide },
-  { id: "rh2-quote", title: "Quote — reward modeling", component: RH2QuoteSlide, bare: true },
 
   // ── Hands-on demo (LaTeX-OCR) ──
   { id: "demo-intro", title: "Hands-on — train a model", component: DemoIntroSlide, bare: true },
@@ -153,6 +152,9 @@ export const slides: Slide[] = [
   { id: "demo-follow", title: "Follow along (QR)", component: DemoFollowAlongSlide, bare: true },
   { id: "demo-curves-1", title: "Results · GLM-OCR & Gemma", component: DemoCurvesGlmGemmaSlide },
   { id: "demo-curves-2", title: "Results · Qwen 3 / 3.5", component: DemoCurvesQwenSlide },
+
+  // ── Closing ──
+  { id: "quote", title: "Closing quote", component: RH2QuoteSlide, bare: true },
 ];
 
 // Section numbers shown in the kicker — auto-derived from position, skipping
