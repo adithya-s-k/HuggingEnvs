@@ -5,3 +5,7 @@ dist/
 .DS_Store
 *.log
 *.tsbuildinfo
+
+# large uncropped screenshot sources (only the *-crop versions are used)
+src/assets/openai-ss2.png
+src/assets/openai-ss3.png
