@@ -11,7 +11,7 @@
 #     -e ENABLE_WEB_INTERFACE=true \
 #     jupyter-agent-openenv
 
-ARG BASE_IMAGE=ghcr.io/meta-pytorch/openenv-base:latest
+ARG BASE_IMAGE=ghcr.io/huggingface/openenv-base:latest
 
 # ── Stage 1: builder ──────────────────────────────────────────────────────────
 FROM ${BASE_IMAGE} AS builder

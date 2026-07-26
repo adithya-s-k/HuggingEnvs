@@ -1,6 +1,6 @@
 # Wordle — OpenEnv
 
-A multi-turn Wordle environment, packaged using **[OpenEnv](https://github.com/meta-pytorch/OpenEnv)** (Meta's HTTP-server / MCP-protocol framework). Pure Python game logic, no E2B sandbox needed — Wordle is the cleanest way to see how OpenEnv handles a multi-turn env.
+A multi-turn Wordle environment, packaged using **[OpenEnv](https://github.com/huggingface/OpenEnv)** (Hugging Face's HTTP-server / MCP-protocol framework). Pure Python game logic, no E2B sandbox needed — Wordle is the cleanest way to see how OpenEnv handles a multi-turn env.
 
 **Deployed:** [`AdithyaSK/wordle-openenv`](https://huggingface.co/spaces/AdithyaSK/wordle-openenv)
 
@@ -32,7 +32,7 @@ with MCPToolClient(base_url="https://AdithyaSK-wordle-openenv.hf.space").sync() 
     print(out)   # '⬛⬛🟨🟨⬛ — 5 guesses remaining.'
 ```
 
-No env-specific install needed — `openenv-core`'s generic `MCPToolClient` discovers the tools at runtime.
+No env-specific install needed — `openenv`'s generic `MCPToolClient` discovers the tools at runtime.
 
 ## Run the rollout
 
@@ -94,9 +94,9 @@ Discovered 3 tools: ['guess', 'get_history', 'reset_game']
 | `rollout.py` | Self-contained consumer demo. |
 | `server/` | The OpenEnv server source deployed to the HF Space (env definition with `@mcp.tool` registrations). |
 | `Dockerfile`, `Dockerfile.spaces`, `README.spaces.md` | Build / deploy the server image to HF Spaces. |
-| `pyproject.toml` | `openenv-core`, `fastmcp`, plus rollout-side `openai`, `python-dotenv`. |
+| `pyproject.toml` | `openenv`, `fastmcp`, plus rollout-side `openai`, `python-dotenv`. |
 
 ## References
 
-- [OpenEnv tutorial](https://github.com/meta-pytorch/OpenEnv/blob/main/tutorial/01-environments.md)
+- [OpenEnv tutorial](https://github.com/huggingface/OpenEnv/blob/main/tutorial/01-environments.md)
 - [HF Inference Providers — Chat Completion API](https://huggingface.co/docs/inference-providers/en/tasks/chat-completion)

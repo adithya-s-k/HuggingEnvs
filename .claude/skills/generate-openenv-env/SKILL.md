@@ -1,11 +1,11 @@
 ---
 name: generate-openenv-env
-description: Builds an OpenEnv (Meta) variant of an RL environment. Use whenever someone asks to scaffold an OpenEnv server, port an existing env to OpenEnv, add MCP tools to an env, or deploy an OpenEnv to HF Spaces. OpenEnv is the right framework when the user wants HTTP+MCP, structured tool calls discovered via `list_tools()`, an optional Gradio UI, sandbox-backed sessions, or deployment as a Docker container / HF Space. Output is a runnable `<env_dir>/openenv/` folder with `server/app.py`, `server/<env>_environment.py`, `pyproject.toml`, `Dockerfile`, and `rollout.py`. Use for prompts like "wrap my game in OpenEnv", "make an MCP env for X", or "add the openenv variant".
+description: Builds an OpenEnv (Hugging Face) variant of an RL environment. Use whenever someone asks to scaffold an OpenEnv server, port an existing env to OpenEnv, add MCP tools to an env, or deploy an OpenEnv to HF Spaces. OpenEnv is the right framework when the user wants HTTP+MCP, structured tool calls discovered via `list_tools()`, an optional Gradio UI, sandbox-backed sessions, or deployment as a Docker container / HF Space. Output is a runnable `<env_dir>/openenv/` folder with `server/app.py`, `server/<env>_environment.py`, `pyproject.toml`, `Dockerfile`, and `rollout.py`. Use for prompts like "wrap my game in OpenEnv", "make an MCP env for X", or "add the openenv variant".
 ---
 
 # generate-openenv-env
 
-Build the OpenEnv variant of an env. Targets OpenEnv >= 0.2.3 (`openenv-core[core]`).
+Build the OpenEnv variant of an env. Targets OpenEnv >= 0.4.1 (the `openenv` package — formerly `openenv-core[core]`).
 
 ## Concept
 
@@ -27,10 +27,10 @@ The user picks the actual paths. The canonical shape:
 
 ```
 <env_dir>/openenv/
-├── pyproject.toml      # openenv-core[core] + e2b-* + fastmcp + uvicorn + gradio
+├── pyproject.toml      # openenv + e2b-* + fastmcp + uvicorn + gradio
 ├── __init__.py
 ├── models.py           # Pydantic State / typed action / observation models
-├── Dockerfile          # multi-stage from ghcr.io/meta-pytorch/openenv-base
+├── Dockerfile          # multi-stage from ghcr.io/huggingface/openenv-base
 ├── openenv.yaml        # spec_version 1, name, runtime, app, port
 ├── server/
 │   ├── __init__.py
@@ -130,7 +130,7 @@ For multimodal models (Qwen3-VL, GPT-4o), feed the latest screenshot as an image
 ### 6. The Dockerfile
 
 Use a multi-stage build:
-- `FROM ghcr.io/meta-pytorch/openenv-base:latest` (the official base — already has FastAPI, MCP, Gradio).
+- `FROM ghcr.io/huggingface/openenv-base:latest` (the official base — already has FastAPI, MCP, Gradio).
 - `uv sync` twice (no-install-project, then with project) for cache friendliness.
 - Healthcheck via `/health`.
 - Expose port 8000.
@@ -176,8 +176,8 @@ Before declaring done, all four must pass:
 
 ## Official documentation
 
-- [meta-pytorch/OpenEnv](https://github.com/meta-pytorch/OpenEnv) — source repo
-- [OpenEnv docs](https://meta-pytorch.org/OpenEnv/) — environment-builder + Core API
-- [Environment Builder guide](https://meta-pytorch.org/OpenEnv/environment-builder/)
+- [huggingface/OpenEnv](https://github.com/huggingface/OpenEnv) — source repo
+- [OpenEnv docs](https://huggingface.co/docs/openenv) — environment-builder + Core API
+- [Build your first environment](https://huggingface.co/docs/openenv/guides/first-environment)
 - [HF org](https://huggingface.co/openenv) — example deployments
 - Upstream ships a `generate-openenv-env` skill at `.claude/skills/generate-openenv-env/` in their repo — useful as a second opinion if behaviour is unclear.

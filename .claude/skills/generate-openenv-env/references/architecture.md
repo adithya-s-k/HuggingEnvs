@@ -67,7 +67,7 @@ Same applies inside `server/<env>_environment.py` for sibling modules. **Always 
 
 ## Production deployment
 
-`Dockerfile` uses `ghcr.io/meta-pytorch/openenv-base:latest` as a multi-stage builder. The runtime image copies the venv and source. Healthcheck via `/health`. For HF Spaces:
+`Dockerfile` uses `ghcr.io/huggingface/openenv-base:latest` as a multi-stage builder. The runtime image copies the venv and source. Healthcheck via `/health`. For HF Spaces:
 
 - `app_port: 8000` in README frontmatter
 - `base_path: /web` if you want the Gradio UI mounted

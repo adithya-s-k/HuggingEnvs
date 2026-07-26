@@ -3,7 +3,7 @@ Jupyter Agent OpenEnv. E2B-powered stateful notebook environment.
 
 This package contains the server-side env definition under `server/`.
 
-To consume the deployed environment, point the generic openenv-core MCP client
+To consume the deployed environment, point the generic openenv MCP client
 at the HF Space (no env-specific install required):
 
     from openenv.core.mcp_client import MCPToolClient

@@ -1,6 +1,6 @@
 # Jupyter Agent — OpenEnv
 
-A multi-turn Jupyter notebook agent environment, packaged using **[OpenEnv](https://github.com/meta-pytorch/OpenEnv)** (Meta's HTTP-server / MCP-protocol framework for RL environments). The environment is a real Jupyter kernel running inside an [E2B](https://e2b.dev) cloud sandbox, exposed over MCP.
+A multi-turn Jupyter notebook agent environment, packaged using **[OpenEnv](https://github.com/huggingface/OpenEnv)** (Hugging Face's HTTP-server / MCP-protocol framework for RL environments). The environment is a real Jupyter kernel running inside an [E2B](https://e2b.dev) cloud sandbox, exposed over MCP.
 
 **Deployed:** [`AdithyaSK/jupyter-agent-openenv`](https://huggingface.co/spaces/AdithyaSK/jupyter-agent-openenv)
 
@@ -26,7 +26,7 @@ You can either (a) talk to the deployed HF Space (zero setup, ~1 min cold start)
 
 ### Option A — Direct URL to the deployed HF Space (zero setup)
 
-The HF Space at [`AdithyaSK/jupyter-agent-openenv`](https://huggingface.co/spaces/AdithyaSK/jupyter-agent-openenv) is a running OpenEnv server. Connect with the generic [`openenv-core`](https://pypi.org/project/openenv-core/) MCP client. No env-specific package install required:
+The HF Space at [`AdithyaSK/jupyter-agent-openenv`](https://huggingface.co/spaces/AdithyaSK/jupyter-agent-openenv) is a running OpenEnv server. Connect with the generic [`openenv`](https://pypi.org/project/openenv/) MCP client. No env-specific package install required:
 
 ```python
 from openenv.core.mcp_client import MCPToolClient
@@ -60,7 +60,7 @@ This is the recommended path for development. The HF Space is just convenience.
 
 ```bash
 cd envs/jupyter_env/openenv
-uv sync                                      # installs openenv-core, fastmcp, e2b
+uv sync                                      # installs openenv, fastmcp, e2b
 export E2B_API_KEY=e2b_...                   # or rely on the repo-root .env
 uv run python -m server.app                  # serves on http://0.0.0.0:8000
 # in another shell:
@@ -83,7 +83,7 @@ docker run -it -p 8000:8000 -e E2B_API_KEY=$E2B_API_KEY \
     registry.hf.space/adithyask-jupyter-agent-openenv:latest
 ```
 
-> Reference: [OpenEnv deployment tutorial](https://github.com/meta-pytorch/OpenEnv/blob/main/tutorial/02-deployment.md).
+> Reference: [OpenEnv deployment tutorial](https://github.com/huggingface/OpenEnv/blob/main/tutorial/02-deployment.md).
 
 ## Run the rollout
 
@@ -156,7 +156,7 @@ Standard Deviation: 8.080222769206305
 | `models.py` | Pydantic models for the env's internal state, used by the server. |
 | `Dockerfile` | Used by `openenv push` / HF Spaces to build the deployable image. |
 | `openenv.yaml` | OpenEnv manifest (env name, version). |
-| `pyproject.toml` | Lists `openenv-core`, `fastmcp`, `e2b-code-interpreter`, plus rollout-side `openai`, `python-dotenv`. |
+| `pyproject.toml` | Lists `openenv`, `fastmcp`, `e2b-code-interpreter`, plus rollout-side `openai`, `python-dotenv`. |
 | `tests/` | Server-side tests (require a running server). |
 
 ## Redeploying the server (optional)
@@ -172,7 +172,7 @@ Requires `E2B_API_KEY` set as a Space secret.
 
 ## References
 
-- [OpenEnv getting started](https://github.com/meta-pytorch/OpenEnv/blob/main/tutorial/01-environments.md)
-- [OpenEnv deployment guide](https://github.com/meta-pytorch/OpenEnv/blob/main/tutorial/02-deployment.md)
+- [OpenEnv getting started](https://github.com/huggingface/OpenEnv/blob/main/tutorial/01-environments.md)
+- [OpenEnv deployment guide](https://github.com/huggingface/OpenEnv/blob/main/tutorial/02-deployment.md)
 - [HF Inference Providers — Chat Completion API](https://huggingface.co/docs/inference-providers/en/tasks/chat-completion)
 - [E2B Code Interpreter](https://e2b.dev)

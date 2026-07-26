@@ -1,7 +1,7 @@
 """End-to-end rollout: LLM playing Wordle on the deployed OpenEnv server.
 
 Pattern (same as the jupyter_agent/openenv rollout):
-    1. Connect to the OpenEnv server with `openenv-core`'s generic MCPToolClient.
+    1. Connect to the OpenEnv server with `openenv`'s generic MCPToolClient.
     2. Auto-discover the tools (`guess`, `get_history`, `reset_game`).
     3. Convert MCP tool schemas to OpenAI tool schemas.
     4. Drive a multi-turn Wordle loop with Qwen-Coder via HF Router (or any

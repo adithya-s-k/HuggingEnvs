@@ -175,7 +175,7 @@ uv run python rollout.py                 # talks to deployed HF Space by default
 uv run python -m server.app              # serves on :8000
 OPENENV_URL=http://localhost:8000 uv run python rollout.py
 ```
-The rollout uses `openenv-core`'s generic `MCPToolClient` — no env-specific package install required. Tools are auto-discovered via `list_tools()` and converted to OpenAI tool schemas. Deployed: [`AdithyaSK/jupyter-agent-openenv`](https://huggingface.co/spaces/AdithyaSK/jupyter-agent-openenv). Verified end-to-end with both Qwen and `gpt-4o-mini`.
+The rollout uses `openenv`'s generic `MCPToolClient` — no env-specific package install required. Tools are auto-discovered via `list_tools()` and converted to OpenAI tool schemas. Deployed: [`AdithyaSK/jupyter-agent-openenv`](https://huggingface.co/spaces/AdithyaSK/jupyter-agent-openenv). Verified end-to-end with both Qwen and `gpt-4o-mini`.
 
 </details>
 
@@ -567,7 +567,7 @@ The biggest mistakes in RL env design are caught by reading 5 trajectories. They
 | Skill | What it builds |
 |---|---|
 | `rl-env-from-description` | Orchestrator — interview, archetype selection, shared domain module, all 4 framework variants, smoke-test rollouts |
-| `generate-openenv-env` | OpenEnv (Meta) MCP variant |
+| `generate-openenv-env` | OpenEnv (Hugging Face) MCP variant |
 | `generate-ors-env` | OpenReward (ORS) per-call-reward variant |
 | `generate-verifiers-env` | Verifiers (PrimeIntellect) in-process variant |
 | `generate-nemo-gym-env` | NeMo Gym (NVIDIA) Resources Server variant |
@@ -603,7 +603,7 @@ The skills are **folder-agnostic** — they work in any project, don't assume th
 
 ### Framework links
 
-- [OpenEnv](https://github.com/meta-pytorch/OpenEnv) (Meta)
+- [OpenEnv](https://github.com/huggingface/OpenEnv) (Hugging Face)
 - [ORS / OpenReward](https://openrewardstandard.io/) (General Reasoning)
 - [NeMo Gym](https://github.com/NVIDIA-NeMo/Gym) (NVIDIA)
 - [Verifiers](https://github.com/PrimeIntellect-ai/verifiers) (PrimeIntellect)
