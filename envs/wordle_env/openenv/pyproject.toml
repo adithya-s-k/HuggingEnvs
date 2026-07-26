@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "OpenEnv Wordle environment"
 requires-python = ">=3.11"
 dependencies = [
-    "openenv-core[core]>=0.2.3",
+    "openenv>=0.4.1",
     "fastmcp>=3.0.0",
     "fastapi>=0.115.0",
     "pydantic>=2.0.0",
