@@ -30,6 +30,7 @@ export function GearButton({
       onClick={onToggle}
       aria-label="Settings"
       title="Settings"
+      data-chrome
       style={{
         position: "fixed",
         top: 18,

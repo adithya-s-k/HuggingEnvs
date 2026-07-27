@@ -59,6 +59,32 @@ repos). Not committed. Currently holds the
 [rl-environments-guide](https://huggingface.co/spaces/AdithyaSK/rl-environments-guide)
 article the talk draws from.
 
+## Export to PPTX / PDF
+
+```bash
+npm run export                          # -> export/RL-Environments-101.{pptx,pdf}
+npm run export -- --theme light         # light deck
+npm run export -- --scale 1.5           # 1920×1080 frames (~half the file size)
+npm run export -- --pdf-only            # or --pptx-only
+```
+
+`scripts/export-deck.mjs` serves `dist/`, drives the real deck in headless
+Chromium through the `window.__DECK__` hook, waits for each slide's entrance
+animation to finish, and screenshots the `[data-stage]` element at 2× (2560×1440).
+The frames become a 16:9 PPTX (one full-bleed image per slide, slide title as a
+speaker note) and a same-size PDF. Frames are kept in `export/slides/`.
+
+**Slides export as images, not editable shapes** — the deck is React +
+framer-motion, so there is nothing to map onto PowerPoint text boxes. What you
+get opens anywhere and projects identically.
+
+Slides with continuous motion (CartPole, the D3 embeds, the repo2rlenv reveal)
+have no final state, so they get a longer dwell in the `DWELL` map at the top of
+the script and are captured on a representative frame. Adjust the numbers there
+if a frame lands somewhere unflattering. Requires `npx playwright install chromium`
+once; the deck's own chrome (progress bar, arrows, gear) is tagged `data-chrome`
+and hidden during capture.
+
 ## Deploy to Hugging Face Spaces
 
 Static build → static Space (added in a later step):

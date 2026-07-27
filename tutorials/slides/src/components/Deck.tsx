@@ -74,6 +74,19 @@ export function Deck({ slides }: { slides: Slide[] }) {
   const prev = useCallback(() => go(index - 1, -1), [go, index]);
   const goto = useCallback((i: number) => go(i, i >= index ? 1 : -1), [go, index]);
 
+  // Control surface for scripts/export-deck.mjs: it drives the deck slide by
+  // slide and screenshots [data-stage]. Harmless in a talk, and jumping by
+  // index beats simulating 69 arrow presses.
+  useEffect(() => {
+    (window as unknown as Record<string, unknown>).__DECK__ = {
+      total,
+      index,
+      ids: slides.map((s) => s.id),
+      titles: slides.map((s) => s.title),
+      goto,
+    };
+  }, [total, index, slides, goto]);
+
   // touch swipe (mobile): horizontal drag → prev/next
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const onTouchStart = useCallback((e: ReactTouchEvent) => {
@@ -189,6 +202,7 @@ export function Deck({ slides }: { slides: Slide[] }) {
         }}
       >
         <div
+          data-stage
           style={{
             width: STAGE_W,
             height: STAGE_H,
@@ -259,6 +273,7 @@ function Arrow({
       whileHover={disabled ? {} : { opacity: 1, scale: 1.06 }}
       onClick={disabled ? undefined : onClick}
       aria-label={side === "left" ? "Previous" : "Next"}
+      data-chrome
       style={{
         position: "absolute",
         top: "50%",
@@ -288,6 +303,7 @@ function ProgressBar({ index, total }: { index: number; total: number }) {
   const pct = total <= 1 ? 100 : (index / (total - 1)) * 100;
   return (
     <div
+      data-chrome
       style={{
         position: "absolute",
         top: 0,

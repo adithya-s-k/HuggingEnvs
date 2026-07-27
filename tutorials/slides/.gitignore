@@ -9,3 +9,7 @@ dist/
 # large uncropped screenshot sources (only the *-crop versions are used)
 src/assets/openai-ss2.png
 src/assets/openai-ss3.png
+
+# deck exports: the .pptx/.pdf are committed, the intermediate frames are not
+export/slides/
+export/_print.html
