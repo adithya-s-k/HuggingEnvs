@@ -13,7 +13,6 @@ import { ServeFlowSlide } from "./11_ServeFlow";
 import { DialectsSlide } from "./12_Dialects";
 import { GraphSlide } from "./13_Graph";
 import { ContractSlide } from "./14_Contract";
-import { PushSlide } from "./15_Push";
 import { WhySlide } from "./16_Why";
 import { EndSlide } from "./09_End";
 import type { Slide } from "./types";
@@ -41,7 +40,6 @@ export const slides: Slide[] = [
   { id: "dialects", title: "Four wire dialects", component: DialectsSlide },
   { id: "graph", title: "Turns link by token prefix", component: GraphSlide },
   { id: "contract", title: "What a rollout returns", component: ContractSlide },
-  { id: "push", title: "Ships as a Space", component: PushSlide },
   { id: "why", title: "Why OpenEnv in the middle", component: WhySlide },
   { id: "end", title: "Thanks", component: EndSlide },
 ];
