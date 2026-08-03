@@ -1,0 +1,26 @@
+---
+description: Authoring rules for this research-talk deck
+globs: ["src/**/*.tsx", "src/**/*.ts", "presentation.config.json"]
+alwaysApply: true
+---
+
+Read `CLAUDE.md` at the repo root — it is the full authoring guide and applies
+here verbatim. The short version:
+
+- One idea per slide. If it needs a paragraph, split it. The dev-only
+  `OverflowGuard` badge means redesign, not smaller type.
+- Type floors: body ≥ 22px, bullets ~34px, slide titles ~46px, big claims 54–92px.
+- Title / authors / venue / links / theme live in `presentation.config.json` —
+  never hard-coded in a slide.
+- Colours come from `useTheme()` tokens (`T.bg`, `T.white`, `T.text`,
+  `T.textMuted`, `T.textDim`, `T.accent`, `T.accent2`, `glow.*`). **No raw hex
+  in slides** — it breaks the other themes and light mode.
+- A content slide is `SlideShell` + absolutely-positioned content starting
+  around `top: 210`, with `left/right: 96`. Use `Stagger` + `Rise` for entrances.
+- Add a slide: new `src/slides/NN_Name.tsx`, then one line in
+  `src/slides/index.ts`. Never hard-code the section number; set `bare: true`
+  for title/divider/closing slides.
+- Deck UI that overlays the stage must be tagged `data-chrome` so the PPTX/PDF
+  export can hide it.
+
+Done means: `npx tsc --noEmit` clean, renders in dark and light, no overflow badge.

@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.tsbuildinfo
+*.log
+.DS_Store
+
+# deck exports — regenerate with `npm run export`
+export/
+
+# local scratch (cloned reference material, notes)
+reference/
+
+# the template's own bundled demo deck: kept locally so `DECK=...` still runs,
+# not committed here because it is a copy of upstream, not part of this talk.
+examples/

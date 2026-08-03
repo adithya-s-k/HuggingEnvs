@@ -1,0 +1,29 @@
+{
+  "title": "Multi-Harness Training",
+  "titleAccent": "Multi-Harness",
+  "subtitle": "OpenEnv \u00d7 Harbor",
+  "authors": [
+    "Adithya S K"
+  ],
+  "handle": "@adithya_s_k",
+  "venue": "RL Environments 101",
+  "date": "2026",
+  "theme": "forge",
+  "defaultMode": "dark",
+  "links": {
+    "paper": "https://github.com/huggingface/OpenEnv/pull/1036",
+    "code": "https://github.com/adithya-s-k/RL_Envs_101",
+    "site": "https://huggingface.co/spaces/AdithyaSK/rl-environments-guide"
+  },
+  "meta": {
+    "description": "Why an RL environment's failure model decides whether it can be trained against: in-process agent loops versus an HTTP boundary, and what it takes to capture trainable tokens.",
+    "url": "https://example.com/",
+    "ogImage": "og.png"
+  },
+  "export": {
+    "fileName": "Multi-Harness-Training-OpenEnv-Harbor"
+  },
+  "deploy": {
+    "hfSpace": ""
+  }
+}

@@ -1,0 +1,22 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # Typechecks and builds the default deck, then builds the bundled example —
+      # so a change to src/ that breaks an example is caught here, not by whoever
+      # tries to run it.
+      - run: npm run build
+      - run: DECK=rl-environments-101 npm run build
