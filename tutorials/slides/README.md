@@ -1,94 +1,34 @@
-# Slides — RL Environments 101
+# Slides
 
-Talk slides for **"RL Environments 101: From 'What Is an Env?' to Training Your Own"**
-by Adithya S Kolavi.
+Two decks live here, one folder each. They are independent projects — separate
+`package.json`, `node_modules`, themes and exports — so install and run whichever
+one you're presenting.
 
-> ▶️ **Live deck:** https://huggingface.co/spaces/AdithyaSK/rl-environments-101-slides
-> ([direct link](https://adithyask-rl-environments-101-slides.static.hf.space)) — arrow keys / clicker / swipe to navigate.
+| Deck | Folder | Talk |
+| --- | --- | --- |
+| **RL Environments 101** | [`rl-environments-101/`](rl-environments-101/) | "From 'What Is an Env?' to Training Your Own" — the full conference talk: RL fundamentals → env anatomy → OpenEnv → training with TRL. |
+| **RL Environments 101 (AMD)** | [`rl-environments-101-amd/`](rl-environments-101-amd/) | The AMD cut of the same talk — forked from the deck above, edited for that audience. Exports as `RL-Environments-101-AMD.{pptx,pdf}`. |
+| **Multi-Harness Training** | [`multi-harness-training/`](multi-harness-training/) | "OpenEnv × Harbor" — why an env's failure model decides whether it can be trained against: in-process agent loops vs. an HTTP boundary, and what it takes to capture trainable tokens. |
 
-A self-contained **React** deck. Each slide is its own component. Dark/light
-theme, arrow-key navigation, fully static → deployable to a Hugging Face Space.
-
-## Run locally
+## Run one
 
 ```bash
-cd tutorials/slides
+cd tutorials/slides/rl-environments-101     # or multi-harness-training
 npm install
-npm run dev        # http://localhost:5173
+npm run dev                                 # http://localhost:5173
 ```
+
+Both decks bind port 5173, so run one at a time (or pass `--port` to the second).
+
+Shared conventions across both: React components on a fixed **1280×720** canvas
+that scales to any projector, dark/light themes, arrow-key navigation, and
+`npm run export` for PPTX + PDF. Each deck's own README has the details.
 
 ## Controls
 
-| Key                     | Action                |
-| ----------------------- | --------------------- |
-| `→` / `Space` / `PgDn`  | Next slide            |
-| `←` / `PgUp`            | Previous slide        |
-| `Home` / `End`          | First / last slide    |
-| `t`                     | Toggle dark / light   |
-| `f`                     | Fullscreen            |
-
-On-screen controls (bottom-right) mirror these: prev, next, theme toggle, and a
-slide counter. A progress bar runs along the top.
-
-## Adding / editing slides
-
-1. Create `src/slides/NN_Name.tsx` exporting a component.
-2. Register it in `src/slides/index.ts` — the deck order, counts, nav, and
-   progress bar all derive from that array.
-
-Use the shared building blocks so every slide stays on-theme:
-
-- `SlideShell` — kicker + big title + footer chrome (for content slides).
-- `Stagger` / `Rise` — staggered enter animations.
-- `Panel`, `Chip`, `Bullet`, `Accent` — themed primitives.
-- `useTheme()` — the resolved palette `T` + `glow` for the current mode.
-
-**House style:** less text, huge fonts, one idea per slide, lean on animation.
-Slides are authored against a fixed **1280×720** canvas (`STAGE_W`/`STAGE_H`)
-that scales to fit any screen, so layout is identical on any projector.
-
-## Theme
-
-The "forge" palette (near-black bg · lavender · emerald) is ported from
-`hf-motion/src/AdithyaSK`. See `src/theme.ts` for dark + light values.
-
-## `reference/` (git-ignored)
-
-Scratch space for source material cloned locally (the article Space, framework
-repos). Not committed. Currently holds the
-[rl-environments-guide](https://huggingface.co/spaces/AdithyaSK/rl-environments-guide)
-article the talk draws from.
-
-## Export to PPTX / PDF
-
-```bash
-npm run export                          # -> export/RL-Environments-101.{pptx,pdf}
-npm run export -- --theme light         # light deck
-npm run export -- --scale 1.5           # 1920×1080 frames (~half the file size)
-npm run export -- --pdf-only            # or --pptx-only
-```
-
-`scripts/export-deck.mjs` serves `dist/`, drives the real deck in headless
-Chromium through the `window.__DECK__` hook, waits for each slide's entrance
-animation to finish, and screenshots the `[data-stage]` element at 2× (2560×1440).
-The frames become a 16:9 PPTX (one full-bleed image per slide, slide title as a
-speaker note) and a same-size PDF. Frames are kept in `export/slides/`.
-
-**Slides export as images, not editable shapes** — the deck is React +
-framer-motion, so there is nothing to map onto PowerPoint text boxes. What you
-get opens anywhere and projects identically.
-
-Slides with continuous motion (CartPole, the D3 embeds, the repo2rlenv reveal)
-have no final state, so they get a longer dwell in the `DWELL` map at the top of
-the script and are captured on a representative frame. Adjust the numbers there
-if a frame lands somewhere unflattering. Requires `npx playwright install chromium`
-once; the deck's own chrome (progress bar, arrows, gear) is tagged `data-chrome`
-and hidden during capture.
-
-## Deploy to Hugging Face Spaces
-
-Static build → static Space (added in a later step):
-
-```bash
-npm run build      # → dist/
-```
+| Key | Action |
+| --- | --- |
+| `→` / `Space` / `PgDn` | Next slide |
+| `←` / `PgUp` | Previous slide |
+| `t` | Toggle dark / light |
+| `f` | Fullscreen |

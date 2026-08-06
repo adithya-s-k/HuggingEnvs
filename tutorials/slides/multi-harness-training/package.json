@@ -1,9 +1,9 @@
 {
-  "name": "research-presentation-template",
+  "name": "multi-harness-training-slides",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "A template for research talks: fixed-canvas React deck, dark/light, PPTX + PDF export, AI authoring instructions.",
+  "description": "Multi-Harness Training (OpenEnv × Harbor) — talk slides. React deck, dark/light, arrow-key navigation.",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
