@@ -31,7 +31,7 @@ export function TRLCodeSlide() {
         <CodeBlock filename="train.py" code={CODE} fontSize={17} />
       </div>
       <div style={{ position: "absolute", bottom: 46, left: 96, fontFamily: MONO, fontSize: 17, color: T.textDim }}>
-        the upcoming tutorial → OpenEnv env + TRL + <span style={{ color: T.emerald }}>GRPO</span>
+        the recipe → OpenEnv env + TRL + <span style={{ color: T.emerald }}>GRPO</span>
       </div>
     </SlideShell>
   );

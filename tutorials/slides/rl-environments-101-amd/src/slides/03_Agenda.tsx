@@ -87,8 +87,6 @@ export function AgendaSlide() {
           <span style={{ fontFamily: MONO, fontSize: 24, color: T.textDim }}>
             then →
           </span>
-          <Accent color="emerald">Tutorial demo</Accent>
-          <span style={{ color: T.textDim }}>·</span>
           <Accent color="emerald">Q &amp; A</Accent>
         </motion.div>
       </div>
