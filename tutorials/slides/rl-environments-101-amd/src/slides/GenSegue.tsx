@@ -3,8 +3,10 @@ import { useTheme } from "../ThemeContext";
 import { MONO } from "../theme";
 import { Accent } from "../components/primitives";
 
+// The pivot into generation. The whole beat is one asymmetry: one side of the
+// RL loop scales by spending money, the other doesn't scale at all.
 export function GenSegueSlide() {
-  const { T } = useTheme();
+  const { T, glow } = useTheme();
   const fade = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
 
   return (
@@ -42,17 +44,39 @@ export function GenSegueSlide() {
         <motion.div
           variants={fade}
           transition={{ type: "spring", damping: 20 }}
-          style={{ fontSize: 58, fontWeight: 800, color: T.white, lineHeight: 1.18, maxWidth: 1080 }}
+          style={{ fontSize: 56, fontWeight: 800, color: T.white, lineHeight: 1.16, maxWidth: 1060 }}
         >
-          Training is the <span style={{ color: T.textMuted }}>easy</span> part now.
+          Scaling training is <span style={{ color: T.textMuted }}>easy</span>.
         </motion.div>
 
         <motion.div
           variants={fade}
           transition={{ type: "spring", damping: 20 }}
-          style={{ marginTop: 30, fontSize: 40, fontWeight: 700, lineHeight: 1.3, maxWidth: 1000 }}
+          style={{
+            marginTop: 16,
+            fontFamily: MONO,
+            fontSize: 28,
+            color: T.textDim,
+            letterSpacing: 0.5,
+          }}
         >
-          You still need the <Accent color="emerald">environments</Accent> — thousands of them.
+          you just add GPUs.
+        </motion.div>
+
+        <motion.div
+          variants={fade}
+          transition={{ type: "spring", damping: 20 }}
+          style={{
+            marginTop: 52,
+            fontSize: 62,
+            fontWeight: 800,
+            color: T.white,
+            lineHeight: 1.14,
+            maxWidth: 1100,
+          }}
+        >
+          Scaling <Accent color="emerald" glow>RL environments</Accent> is{" "}
+          <span style={{ color: T.emerald, textShadow: glow.emeraldText }}>hard</span>.
         </motion.div>
       </motion.div>
     </div>

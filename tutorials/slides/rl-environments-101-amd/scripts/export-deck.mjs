@@ -40,10 +40,13 @@ const ONLY = argv.includes("--pptx-only") ? "pptx" : argv.includes("--pdf-only")
 // lands them on a representative frame instead of an empty first one.
 const SETTLE_MS = 1500;
 const DWELL = {
+  title: 3200, // the tile field accretes + expands for ~2.4s
   traditional: 4200, // CartPole — a running sim; catch it mid-swing
   anatomy: 3200, // D3 embed in an iframe
   "coding-example": 2600, // D3 embed
   "repo2rlenv-intro": 3600, // typewriter + staged reveal
+  "hard-to-generate": 2800, // the tile swarm accretes for ~2s
+  "coding-rollout": 2000, // two terminals + the closing line settle by ~1.6s
 };
 
 /** Wait until no finite CSS/WAAPI animation is still running (springs get the floor below). */
