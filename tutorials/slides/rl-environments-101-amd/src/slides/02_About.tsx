@@ -134,10 +134,12 @@ export function AboutSlide() {
             </Row>
 
             <Row>
-              <GitHubLogo size={38} color={T.text} />
-              <span>
-                I <span style={{ color: "#ff5470" }}>❤</span> open source ·{" "}
-                <Accent color="emerald">12k+ stars</Accent> across my repos
+              <GitHubLogo size={34} color={T.text} />
+              {/* nowrap: at 30px this line wrapped "my repos" onto a second row,
+                  which left the mark floating between two lines. */}
+              <span style={{ whiteSpace: "nowrap", fontSize: 28 }}>
+                I <span style={{ color: "#ff5470", fontSize: 24 }}>❤</span> open source ·{" "}
+                <Accent color="emerald">13k+ stars</Accent> across my repos
               </span>
             </Row>
           </Stagger>

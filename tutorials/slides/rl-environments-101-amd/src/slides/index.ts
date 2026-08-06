@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import { TitleSlide } from "./00_Title";
 import { AboutSlide } from "./02_About";
+import { HuggingFaceSlide } from "./02b_HuggingFace";
 import { AgendaSlide } from "./03_Agenda";
 import { QuestionSlide } from "./04_Question";
 import { ParadigmSlide } from "./05_Paradigm";
@@ -19,7 +20,6 @@ import { AnatomySlide } from "./15_Anatomy";
 import { DefinitionSlide } from "./16_Definition";
 import { CodingExampleSlide } from "./17_CodingExample";
 import { CodingRolloutSlide } from "./17b_CodingRollout";
-import { CodingRolloutsSlide } from "./17c_CodingRollouts";
 import { ComponentsSlide } from "./18_Components";
 import { EnvTypesSlide } from "./EnvTypes";
 import { BlogGuideSlide } from "./BlogGuide";
@@ -40,7 +40,6 @@ import { RepoSegueSlide } from "./RepoSegue";
 import { WhatIfSlide } from "./WhatIf";
 import { Repo2RLEnvIntroSlide } from "./Repo2RLEnvIntroSlide";
 import { Repo2RLEnvSlide } from "./Repo2RLEnv";
-import { StarRepoSlide } from "./StarRepo";
 import { ExampleEnvsSlide } from "./ExampleEnvs";
 import { RHOpenAINewsSlide } from "./rh/00_OpenAINews";
 import { RHOpenAIDetailSlide } from "./rh/00b_OpenAIDetail";
@@ -62,11 +61,6 @@ import { RH2CantOutscrubSlide } from "./rh2/07_CantOutscrub";
 import { RH2HonestSlide } from "./rh2/08_Honest";
 import { RH2RulesSlide } from "./rh2/09_Rules";
 import { RH2QuoteSlide } from "./rh2/10_Quote";
-import { DemoIntroSlide } from "./demo/01_Intro";
-import { DemoTaskSlide } from "./demo/02_Task";
-import { DemoFollowAlongSlide } from "./demo/03_FollowAlong";
-import { DemoCurvesGlmGemmaSlide } from "./demo/04_CurvesGlmGemma";
-import { DemoCurvesQwenSlide } from "./demo/05_CurvesQwen";
 
 export type Slide = {
   id: string;
@@ -80,6 +74,7 @@ export type Slide = {
 export const slides: Slide[] = [
   { id: "title", title: "Title", component: TitleSlide, bare: true },
   { id: "about", title: "About me", component: AboutSlide },
+  { id: "huggingface", title: "What is Hugging Face?", component: HuggingFaceSlide },
   { id: "agenda", title: "What we'll cover", component: AgendaSlide },
   { id: "question", title: "Opening question", component: QuestionSlide, bare: true },
   { id: "paradigm", title: "How did we get here?", component: ParadigmSlide },
@@ -97,8 +92,7 @@ export const slides: Slide[] = [
   { id: "anatomy", title: "Anatomy of an env", component: AnatomySlide },
   { id: "definition", title: "What is an env?", component: DefinitionSlide, bare: true },
   { id: "coding-example", title: "A coding environment", component: CodingExampleSlide },
-  { id: "coding-rollout", title: "One rollout", component: CodingRolloutSlide },
-  { id: "coding-rollouts", title: "Many rollouts", component: CodingRolloutsSlide },
+  { id: "coding-rollout", title: "Rollouts — same task, many attempts", component: CodingRolloutSlide },
   { id: "components", title: "Each piece, in the example", component: ComponentsSlide },
   { id: "env-types", title: "Types of environments", component: EnvTypesSlide },
   { id: "blog-guide", title: "The ultimate guide (blog)", component: BlogGuideSlide },
@@ -115,13 +109,12 @@ export const slides: Slide[] = [
 
   // ── Generating environments (Repo2RLEnv) ──
   { id: "gen-segue", title: "The catch", component: GenSegueSlide, bare: true },
-  { id: "hard-to-generate", title: "Generation is hard", component: HardToGenerateSlide },
+  { id: "hard-to-generate", title: "Scaling environments is hard", component: HardToGenerateSlide },
   { id: "why-coding", title: "Why coding envs", component: WhyCodingSlide },
   { id: "repo-segue", title: "Repos are a goldmine", component: RepoSegueSlide, bare: true },
   { id: "what-if", title: "What if…", component: WhatIfSlide, bare: true },
   { id: "repo2rlenv-intro", title: "Introducing repo2rlenv", component: Repo2RLEnvIntroSlide, bare: true },
   { id: "repo2rlenv", title: "Repo2RLEnv — at scale", component: Repo2RLEnvSlide },
-  { id: "star-repo", title: "Star the repo", component: StarRepoSlide },
   { id: "example-envs", title: "Try example envs", component: ExampleEnvsSlide },
 
 
@@ -152,13 +145,6 @@ export const slides: Slide[] = [
   { id: "rh2-honest", title: "RH2 · what honest looks like", component: RH2HonestSlide },
   { id: "rh2-rules", title: "RH2 · trust the environment", component: RH2RulesSlide },
   { id: "quote", title: "Quote — reward modeling", component: RH2QuoteSlide, bare: true },
-
-  // ── Hands-on demo (LaTeX-OCR) ──
-  { id: "demo-intro", title: "Hands-on — train a model", component: DemoIntroSlide, bare: true },
-  { id: "demo-task", title: "Task · LaTeX OCR", component: DemoTaskSlide },
-  { id: "demo-curves-1", title: "Results · GLM-OCR & Gemma", component: DemoCurvesGlmGemmaSlide },
-  { id: "demo-curves-2", title: "Results · Qwen 3 / 3.5", component: DemoCurvesQwenSlide },
-  { id: "demo-follow", title: "Follow along (QR)", component: DemoFollowAlongSlide, bare: true },
 ];
 
 // Section numbers shown in the kicker — auto-derived from position, skipping

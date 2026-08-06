@@ -36,7 +36,9 @@ export function ContrastSlide() {
           }}
         >
           <div style={{ fontFamily: MONO, fontSize: 20, letterSpacing: 2, color: T.textDim, textTransform: "uppercase", marginBottom: 22 }}>
-            Supervised
+            SFT{" "}
+            {/* spelled out once, smaller, so the acronym still reads as the label */}
+            <span style={{ fontSize: 15, letterSpacing: 1 }}>(supervised finetuning)</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {SUPERVISED.map((s, i) => (
