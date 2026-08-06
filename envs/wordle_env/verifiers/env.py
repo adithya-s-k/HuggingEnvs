@@ -59,6 +59,8 @@ class WordleToolkit:
         self._ensure_game()
         self.step_count += 1
         result = self._game.guess(word)
+        if "Invalid" in result:
+            self.error_count += 1
         self.last_output = result
         return result
 
