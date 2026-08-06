@@ -1,28 +1,32 @@
 # Slides
 
-Two decks live here, one folder each. They are independent projects — separate
+Three decks live here, one folder each. They are independent projects — separate
 `package.json`, `node_modules`, themes and exports — so install and run whichever
 one you're presenting.
 
-| Deck | Folder | Talk |
-| --- | --- | --- |
-| **RL Environments 101** | [`rl-environments-101/`](rl-environments-101/) | "From 'What Is an Env?' to Training Your Own" — the full conference talk: RL fundamentals → env anatomy → OpenEnv → training with TRL. |
-| **RL Environments 101 (AMD)** | [`rl-environments-101-amd/`](rl-environments-101-amd/) | The AMD cut of the same talk — forked from the deck above, edited for that audience. Exports as `RL-Environments-101-AMD.{pptx,pdf}`. |
-| **Multi-Harness Training** | [`multi-harness-training/`](multi-harness-training/) | "OpenEnv × Harbor" — why an env's failure model decides whether it can be trained against: in-process agent loops vs. an HTTP boundary, and what it takes to capture trainable tokens. |
+> 📚 **All decks on the Hub:** [Talks / Slides collection](https://huggingface.co/collections/AdithyaSK/talks-slides-6a7454392540983bfc2414f4)
+
+## The decks
+
+| Deck | Folder | Live | Talk |
+| --- | --- | --- | --- |
+| **Scaling RL for LLMs** | [`rl-environments-101-amd/`](rl-environments-101-amd/) | [▶️ Space](https://huggingface.co/spaces/AdithyaSK/scaling-rl-for-llms-amd-ai-dev-day) · [direct](https://adithyask-scaling-rl-for-llms-amd-ai-dev-day.static.hf.space) | "RL Environments and RL Training" — the 20-minute cut for **[AMD AI Dev Day](https://amd.indiadevday.com/)**. Forked from the deck below and edited down. |
+| **RL Environments 101** | [`rl-environments-101/`](rl-environments-101/) | [▶️ Space](https://huggingface.co/spaces/AdithyaSK/rl-environments-101-slides) · [direct](https://adithyask-rl-environments-101-slides.static.hf.space) | "From 'What Is an Env?' to Training Your Own" — the original 30-minute talk: RL fundamentals → env anatomy → OpenEnv → training with TRL. |
+| **Multi-Harness Training** | [`multi-harness-training/`](multi-harness-training/) | — | "OpenEnv × Harbor" — why an env's failure model decides whether it can be trained against: in-process agent loops vs. an HTTP boundary, and what it takes to capture trainable tokens. |
 
 ## Run one
 
 ```bash
-cd tutorials/slides/rl-environments-101     # or multi-harness-training
+cd tutorials/slides/rl-environments-101-amd     # or any other deck folder
 npm install
-npm run dev                                 # http://localhost:5173
+npm run dev                                     # http://localhost:5173
 ```
 
-Both decks bind port 5173, so run one at a time (or pass `--port` to the second).
+All three decks bind port 5173, so run one at a time (or pass `--port` to the second).
 
-Shared conventions across both: React components on a fixed **1280×720** canvas
-that scales to any projector, dark/light themes, arrow-key navigation, and
-`npm run export` for PPTX + PDF. Each deck's own README has the details.
+Shared conventions: React components on a fixed **1280×720** canvas that scales to
+any projector, dark/light themes, arrow-key navigation, and `npm run export` for
+PPTX + PDF. Each deck's own README has the details.
 
 ## Controls
 
@@ -32,3 +36,17 @@ that scales to any projector, dark/light themes, arrow-key navigation, and
 | `←` / `PgUp` | Previous slide |
 | `t` | Toggle dark / light |
 | `f` | Fullscreen |
+
+## Deploying a deck to a Space
+
+The Spaces above are **static** SDK — the Vite build is uploaded to the repo root.
+
+```bash
+cd tutorials/slides/<deck>
+npm run build                                   # → dist/
+hf upload <user>/<space-name> dist . --repo-type space
+```
+
+The Space needs a `README.md` at its root with `sdk: static` and
+`app_file: index.html` frontmatter; it is not part of `dist/`, so keep it in the
+Space repo rather than regenerating it on each upload.
