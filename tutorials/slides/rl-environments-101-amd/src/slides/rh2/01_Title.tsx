@@ -3,6 +3,7 @@ import { useTheme } from "../../ThemeContext";
 import { MONO } from "../../theme";
 import { Accent } from "../../components/primitives";
 import thumb from "../../assets/cheating-agents.jpeg";
+import qr from "../../assets/qr-rh2-thread.png";
 
 export function RH2TitleSlide() {
   const { T } = useTheme();
@@ -19,12 +20,45 @@ export function RH2TitleSlide() {
           Reward hacking · example 2
         </motion.div>
 
+        {/* Thumbnail plus a way out: if this section gets cut for time, the QR
+            is the whole story and the room can read it later. */}
         <motion.div
           variants={fade}
           transition={{ type: "spring", damping: 20 }}
-          style={{ borderRadius: 16, overflow: "hidden", border: `1.5px solid ${T.border}`, boxShadow: "0 20px 60px rgba(0,0,0,0.5)", marginBottom: 30 }}
+          style={{ display: "flex", alignItems: "center", gap: 30, marginBottom: 30 }}
         >
-          <img src={thumb} alt="cheating agents" style={{ width: 620, display: "block" }} />
+          <div
+            style={{
+              borderRadius: 16,
+              overflow: "hidden",
+              border: `1.5px solid ${T.border}`,
+              boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+            }}
+          >
+            <img src={thumb} alt="cheating agents" style={{ width: 486, display: "block" }} />
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+            <div style={{ background: "#fff", borderRadius: 16, padding: 14 }}>
+              <img
+                src={qr}
+                alt="Read the full thread on X"
+                style={{ width: 254, height: 254, display: "block", imageRendering: "pixelated" }}
+              />
+            </div>
+            <div
+              style={{
+                fontFamily: MONO,
+                fontSize: 19,
+                color: T.textDim,
+                letterSpacing: 1,
+                textAlign: "center",
+                lineHeight: 1.35,
+              }}
+            >
+              scan for the full thread
+            </div>
+          </div>
         </motion.div>
 
         <motion.div variants={fade} transition={{ type: "spring", damping: 20 }} style={{ fontSize: 54, fontWeight: 800, color: T.white, lineHeight: 1.12 }}>
