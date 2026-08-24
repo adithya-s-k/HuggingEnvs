@@ -1,0 +1,484 @@
+<title>OSS Japan 2026 — Session Proposal Draft</title>
+<style>
+  :root {
+    --ground: #FAFAFB;
+    --surface: #FFFFFF;
+    --surface-2: #F1F3F7;
+    --ink: #16181D;
+    --muted: #5C6270;
+    --faint: #8B91A0;
+    --rule: #DCDFE7;
+    --accent: #2B4C7E;
+    --accent-soft: #E7EDF6;
+    --signal: #8A5A00;
+    --signal-soft: #F7EFDF;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #12141A;
+      --surface: #1B1E26;
+      --surface-2: #22262F;
+      --ink: #E8EAEF;
+      --muted: #A0A6B4;
+      --faint: #767C8B;
+      --rule: #2C313C;
+      --accent: #8FB3E0;
+      --accent-soft: #1E2836;
+      --signal: #D9A34A;
+      --signal-soft: #2A2317;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #12141A;
+    --surface: #1B1E26;
+    --surface-2: #22262F;
+    --ink: #E8EAEF;
+    --muted: #A0A6B4;
+    --faint: #767C8B;
+    --rule: #2C313C;
+    --accent: #8FB3E0;
+    --accent-soft: #1E2836;
+    --signal: #D9A34A;
+    --signal-soft: #2A2317;
+  }
+  :root[data-theme="light"] {
+    --ground: #FAFAFB;
+    --surface: #FFFFFF;
+    --surface-2: #F1F3F7;
+    --ink: #16181D;
+    --muted: #5C6270;
+    --faint: #8B91A0;
+    --rule: #DCDFE7;
+    --accent: #2B4C7E;
+    --accent-soft: #E7EDF6;
+    --signal: #8A5A00;
+    --signal-soft: #F7EFDF;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 7rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3.25rem;
+  }
+
+  /* ---------- masthead ---------- */
+  .masthead { display: flex; flex-direction: column; gap: 1rem; }
+  .eyebrow {
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--faint);
+    font-weight: 600;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-size: clamp(1.9rem, 5vw, 2.6rem);
+    line-height: 1.15;
+    font-weight: 600;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+  .dek { color: var(--muted); max-width: 34rem; }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--rule);
+    font-size: 0.875rem;
+  }
+  .meta div { display: flex; gap: 0.5rem; }
+  .meta dt { color: var(--faint); }
+  .meta dd { color: var(--ink); font-weight: 500; }
+  .deadline { color: var(--signal); font-weight: 600; }
+
+  /* ---------- sections ---------- */
+  section { display: flex; flex-direction: column; gap: 1.25rem; }
+  h2 {
+    font-family: var(--sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  h3 {
+    font-family: var(--sans);
+    font-size: 0.95rem;
+    font-weight: 650;
+    letter-spacing: -0.005em;
+  }
+
+  /* ---------- field card: text that goes in the form ---------- */
+  .field {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    display: flex;
+    flex-direction: column;
+  }
+  .field-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.7rem 1.25rem;
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface-2);
+  }
+  .field-name {
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--muted);
+  }
+  .count {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.72rem;
+    color: var(--faint);
+    white-space: nowrap;
+  }
+  .count b { color: var(--ink); font-weight: 600; }
+  .field-body {
+    padding: 1.4rem 1.25rem;
+    font-family: var(--serif);
+    font-size: 1.02rem;
+    line-height: 1.68;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  /* ---------- internal note: never goes in the form ---------- */
+  .note {
+    font-size: 0.9rem;
+    color: var(--muted);
+    padding-left: 1rem;
+    border-left: 2px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .note strong { color: var(--ink); font-weight: 600; }
+  .note.open {
+    border-left-color: var(--signal);
+    background: var(--signal-soft);
+    padding: 0.9rem 1rem;
+    border-radius: 0 3px 3px 0;
+  }
+
+  /* ---------- title shortlist ---------- */
+  .titles { display: flex; flex-direction: column; gap: 0.5rem; }
+  .title-row {
+    display: flex;
+    gap: 0.9rem;
+    align-items: baseline;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+  }
+  .title-row.live { border-color: var(--accent); background: var(--accent-soft); }
+  .title-row.dead { opacity: 0.55; }
+  .title-row .tag {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--faint);
+    flex: 0 0 auto;
+    padding-top: 0.15rem;
+  }
+  .title-row.live .tag { color: var(--accent); font-weight: 700; }
+  .title-text { font-family: var(--serif); font-size: 1.02rem; }
+  .title-row .why {
+    display: block;
+    font-family: var(--sans);
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-top: 0.25rem;
+  }
+
+  /* ---------- outline table ---------- */
+  .scroller { overflow-x: auto; border: 1px solid var(--rule); border-radius: 3px; }
+  table { border-collapse: collapse; width: 100%; min-width: 34rem; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  thead th {
+    background: var(--surface-2);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 700;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.beat-n {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+    font-weight: 600;
+    width: 2.5rem;
+  }
+  td.src { color: var(--faint); font-family: var(--mono); font-size: 0.76rem; white-space: nowrap; }
+
+  ul { display: flex; flex-direction: column; gap: 0.45rem; padding-left: 1.1rem; }
+  li::marker { color: var(--faint); }
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+  code {
+    font-family: var(--mono);
+    font-size: 0.85em;
+    background: var(--surface-2);
+    padding: 0.1em 0.35em;
+    border-radius: 2px;
+  }
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 1.25rem;
+    font-size: 0.82rem;
+    color: var(--faint);
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">Session proposal &middot; draft for review</div>
+    <h1>Building and Sharing Open RL Environments with OpenEnv</h1>
+    <p class="dek">A talk proposal for Open Source Summit Japan, on the OpenEnv standard and how to
+      build, publish, and train against an RL environment anyone can reuse.</p>
+    <dl class="meta">
+      <div><dt>Event</dt><dd>OSS Japan + ALS + ELC Asia</dd></div>
+      <div><dt>Dates</dt><dd>7&ndash;9 Dec 2026, Tokyo</dd></div>
+      <div><dt>Track</dt><dd>Open AI + Data</dd></div>
+      <div><dt>Format</dt><dd>Session, 30&ndash;40 min</dd></div>
+      <div><dt>Level</dt><dd>Intermediate</dd></div>
+      <div><dt>CFP closes</dt><dd class="deadline">Today, 20:29 IST / 23:59 JST</dd></div>
+    </dl>
+  </header>
+
+  <section>
+    <h2>Status</h2>
+    <div class="note">
+      <div><strong>Resolved.</strong> Title settled. Three facts corrected against the OpenEnv
+        repository and the project blog posts: it was launched as a Meta-PyTorch and Hugging Face
+        partnership rather than by Meta alone, the steering committee is eleven organizations
+        (Meta-PyTorch, Reflection, Unsloth, Modal, Prime Intellect, Nvidia, Mercor, Fleet AI,
+        Microsoft, Hugging Face, RadixArk), and OpenEnv is BSD-3-Clause, not Apache-2.0.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Title</h2>
+    <div class="titles">
+      <div class="title-row live">
+        <span class="tag">&#10003;</span>
+        <span class="title-text">Building and Sharing Open RL Environments with OpenEnv
+          <span class="why">Settled. Names the project and matches the build-then-share arc,
+            without the unearned &ldquo;scaling&rdquo; claim of the earlier variant.</span></span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Submitted text</h2>
+
+    <div class="field">
+      <div class="field-head">
+        <span class="field-name">Description</span>
+        <span class="count"><b>1,198</b> / 1,200</span>
+      </div>
+      <div class="field-body">
+        <p>Post-training is where model capability is now won, and reinforcement learning is the
+          method. That makes the RL environment a central piece of infrastructure: the sandbox a
+          model acts in, the tools it can call, and the grader that scores it. It has many moving
+          parts, from task sets and tool schemas to session state and a transport to the trainer.
+          Every team wires them together differently, so environments stay locked to the setup they
+          were born in.</p>
+        <p>OpenEnv is one effort to standardize them. Launched as a partnership between
+          Meta-PyTorch and Hugging Face, with a committee of eleven organizations steering where
+          the specification goes, it gives an environment a single interface, a Docker package, and
+          a hub to publish it on. The same container also runs as an eval harness, since the
+          tools and grader that train a model are the ones that score it.</p>
+        <p>Drawing on the speaker&rsquo;s work as an OpenEnv contributor, this talk covers what
+          the standard asks of an environment, builds one end to end (a tool, a task set, a reward,
+          a served container), then publishes it so anyone can pull it into their own training run.
+          It closes with the failure modes worth knowing before writing a grader of your own.</p>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-head">
+        <span class="field-name">Benefits to the ecosystem</span>
+        <span class="count"><b>1,366</b> chars &middot; no stated limit</span>
+      </div>
+      <div class="field-body">
+        <p>Small open models are where most teams can realistically work, and sovereign AI
+          efforts increasingly need to post-train their own rather than call someone else&rsquo;s API.
+          Both depend on RL environments, and today almost none are reusable. Each is assembled
+          differently, wired to a single trainer, and thrown away after one run, which leaves the
+          benefit of RL concentrated among the few labs that can afford to rebuild the harness every
+          time.</p>
+        <p>A shared standard changes that arithmetic. If an environment is a container with one
+          interface and a hub to publish it on, a small team can pull a coding, terminal, or
+          domain-specific environment off the shelf and spend its compute on training instead of
+          plumbing. Because the same container that trains a model also evaluates one, a published
+          environment does double duty: a reproducible benchmark anyone can rerun, not only a
+          training target. That matters most where evaluation is hardest to come by, on a language
+          or a regulatory domain no public benchmark covers, and it is exactly what a sovereign
+          effort can contribute back.</p>
+        <p>This talk treats the OpenEnv specification as an open question rather than a finished
+          product, so attendees leave able to build an environment, publish it for others to train
+          against, and argue with the spec. OpenEnv is BSD-3-Clause and the environments shown
+          are Apache-2.0, all of it runnable.</p>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-head">
+        <span class="field-name">Speaker biography</span>
+        <span class="count"><b>456</b> / 500</span>
+      </div>
+      <div class="field-body">
+        <p>Adithya S Kolavi works on post-training and reinforcement learning at Hugging Face,
+          where he builds open RL environments and training recipes and contributes to OpenEnv. He
+          was previously at Apple and Microsoft Research, and founded CognitiveLab, an
+          open-source-first research lab that received a six-figure grant from Meta. He wrote the
+          ultimate guide to RL environments, read by over 30,000 people, and has 13k+ stars across
+          his open source repositories.</p>
+      </div>
+    </div>
+
+    <div class="note">
+      <div><strong>Audience level.</strong> Intermediate. Assumes Python and familiarity with LLM
+        APIs; no reinforcement learning background required, since the talk builds the concepts it
+        needs.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Talk outline</h2>
+    <p class="dek">Not submitted. Every beat maps to slides that already exist.</p>
+    <div class="scroller">
+      <table>
+        <thead>
+          <tr><th scope="col">#</th><th scope="col">Beat</th><th scope="col">Slides</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="beat-n">1</td>
+            <td>Post-training is the lever, RL is the method. Verifiable rewards, and why the input
+              to training became an environment rather than a dataset.</td>
+            <td class="src">Paradigm &rarr; GRPO<br>Unlock, Scale</td>
+          </tr>
+          <tr>
+            <td class="beat-n">2</td>
+            <td>The moving parts. Tasks, tool schemas, observations, session state, sandbox, reward,
+              termination, transport, and why every team wires them differently.</td>
+            <td class="src">GymAPI, Analogy<br>Anatomy, Components</td>
+          </tr>
+          <tr>
+            <td class="beat-n">3</td>
+            <td>OpenEnv as the standardization effort. A Meta-PyTorch and Hugging Face
+              partnership, an eleven-organization steering committee, BSD-3-Clause, and what the
+              spec commits you to.</td>
+            <td class="src">WhyOpenEnv<br>OpenEnv</td>
+          </tr>
+          <tr>
+            <td class="beat-n">4</td>
+            <td>Build one. Tool, then tasks, then reward, then serve.</td>
+            <td class="src">BuildTool &rarr; BuildServe<br>OpenEnvCLI</td>
+          </tr>
+          <tr>
+            <td class="beat-n">5</td>
+            <td>Share it. Docker package, push to the Hub, someone else pulls it into their trainer,
+              then train against it with TRL to prove the loop closes.</td>
+            <td class="src">TRL, TRLCode<br>ExampleEnvs</td>
+          </tr>
+          <tr>
+            <td class="beat-n">6</td>
+            <td>Closing. Three real reward-hacking cases, the healthy-looking reward curves, and
+              the rules that came out of them.</td>
+            <td class="src">rh/*, rh2/*</td>
+          </tr>
+          <tr>
+            <td class="beat-n">7</td>
+            <td>How to contribute. Publish an environment, comment on the spec.</td>
+            <td class="src">NowWhat</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note">
+      <div><strong>Cut from the earlier version of this talk:</strong> the six-framework comparison,
+        Repo2RLEnv, and most GRPO internals.</div>
+      <div><strong>Held back:</strong> the multi-harness and proxy material
+        (<code>multi-harness-training</code> deck, OpenEnv PR #1036). It does not fit a
+        build-and-share arc. Better as its own talk, or as a single slide under beat 5 if the
+        upstream-contribution signal is worth having on stage.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Form checklist</h2>
+    <div class="scroller">
+      <table>
+        <thead>
+          <tr><th scope="col">Field</th><th scope="col">Answer</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Track</td><td>Open AI + Data</td></tr>
+          <tr><td>Session format</td><td>Session Presentation, 30 to 40 min</td></tr>
+          <tr><td>Audience level</td><td>Intermediate</td></tr>
+          <tr><td>Submitter and speaker</td><td>Yes, and no co-speakers, which avoids the panel-composition rules</td></tr>
+          <tr><td>Presented before</td><td>Yes. AMD AI Dev Day India, and a Hugging Face and Red Hat event. Re-cut here for an
+            open source infrastructure audience: OpenEnv&rsquo;s spec and governance lead, and the
+            reward-hacking material is new</td></tr>
+          <tr><td>Language</td><td>English</td></tr>
+          <tr><td>Office hours</td><td>Yes</td></tr>
+          <tr><td>Company / title</td><td>Hugging Face, post-training and RL <em>(confirm official job title)</em></td></tr>
+          <tr><td>Country</td><td>India <em>(confirm)</em></td></tr>
+          <tr><td>Photo</td><td><code>rl-environments-101-amd/src/assets/adithyask.jpeg</code>, cropped square</td></tr>
+          <tr><td>Travel funding</td><td>Non-binding and does not affect review. Ticking yes still requires a separate
+            application to the LF travel fund</td></tr>
+          <tr><td>Acknowledgements</td><td>Tick the AI, Code of Conduct, and inclusivity boxes</td></tr>
+          <tr><td>Demographics</td><td>Optional and confidential</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Reference</h2>
+    <ul>
+      <li>Submit at <a href="https://sessionize.com/oss-als-elc-japan-26/">sessionize.com/oss-als-elc-japan-26</a>.
+        No per-speaker cap is stated; the only rule is one proposal per track.</li>
+      <li>Notifications 23 Sep. Schedule announced 28 Sep. Accepted speakers must submit slides
+        before the event, and get one complimentary pass per submission.</li>
+      <li>Prior versions of this talk were given at AMD AI Dev Day India and a Hugging Face and Red
+        Hat event.</li>
+    </ul>
+  </section>
+
+  <footer>
+    Draft for review. Text in bordered cards is what goes into the submission form verbatim;
+    everything in the margins is working notes.
+  </footer>
+
+</div>
