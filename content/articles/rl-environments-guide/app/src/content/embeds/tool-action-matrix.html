@@ -1,0 +1,198 @@
+<div class="tool-action-matrix" style="width:100%;margin:14px 0;"></div>
+<style>
+  .tool-action-matrix {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-bg);
+    overflow: hidden;
+    color: var(--text-color);
+  }
+  .tool-action-matrix__head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 4%, transparent);
+    flex-wrap: wrap;
+  }
+  .tool-action-matrix__title {
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    margin-right: auto;
+  }
+  .tool-action-matrix__legend {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 10.5px; color: var(--muted-color);
+  }
+  .tool-action-matrix__legend .item {
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .tam-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 9px;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 999px;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+  .tam-pill.yes {
+    background: color-mix(in oklab, #22c55e 14%, transparent);
+    color: #16a34a;
+    border: 1px solid color-mix(in oklab, #22c55e 35%, transparent);
+  }
+  .tam-pill.kind-http {
+    background: color-mix(in oklab, #3b82f6 12%, transparent);
+    color: color-mix(in oklab, #3b82f6 80%, var(--text-color));
+    border: 1px solid color-mix(in oklab, #3b82f6 30%, transparent);
+  }
+  .tam-pill.kind-inproc {
+    background: color-mix(in oklab, #ec4899 10%, transparent);
+    color: color-mix(in oklab, #ec4899 80%, var(--text-color));
+    border: 1px solid color-mix(in oklab, #ec4899 28%, transparent);
+  }
+
+  .tool-action-matrix__wrap { overflow-x: auto; }
+  .tool-action-matrix table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    min-width: 760px;
+  }
+  .tool-action-matrix table thead th {
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted-color);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+    white-space: nowrap;
+  }
+  .tool-action-matrix table thead th .swatch {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--c, var(--muted-color));
+    display: inline-block;
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+  .tool-action-matrix table tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid color-mix(in oklab, var(--border-color) 60%, transparent);
+    vertical-align: middle;
+    color: var(--text-color);
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+  .tool-action-matrix table tbody tr:last-child td { border-bottom: 0; }
+  .tool-action-matrix table tbody tr:hover td {
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+  }
+  .tool-action-matrix table tbody td.row-name {
+    font-weight: 600;
+    color: var(--text-color);
+    white-space: nowrap;
+    font-size: 12px;
+  }
+  .tool-action-matrix table tbody td code {
+    background: color-mix(in oklab, var(--muted-color) 10%, transparent);
+    border-radius: 3px;
+    padding: 0 5px;
+    font-size: 11px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+</style>
+<script>
+(() => {
+  const bootstrap = () => {
+    const scriptEl = document.currentScript;
+    let container = scriptEl ? scriptEl.previousElementSibling : null;
+    if (!(container && container.classList && container.classList.contains('tool-action-matrix'))) {
+      const cands = Array.from(document.querySelectorAll('.tool-action-matrix'))
+        .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+      container = cands[cands.length - 1] || null;
+    }
+    if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+    container.dataset.mounted = 'true';
+
+    const FRAMEWORKS = [
+      { key: 'openenv', name: 'OpenEnv',   color: '#3b82f6', kind: 'http' },
+      { key: 'ors',     name: 'ORS',       color: '#a855f7', kind: 'http' },
+      { key: 'nemo',    name: 'NeMo Gym',  color: '#22c55e', kind: 'http' },
+      { key: 'verifs',  name: 'Verifiers', color: '#ec4899', kind: 'inproc' },
+      { key: 'skyrl',   name: 'SkyRL Gym', color: '#f59e0b', kind: 'inproc' },
+      { key: 'gem',     name: 'GEM',       color: '#14b8a6', kind: 'inproc' },
+    ];
+
+    const yes = '<span class="tam-pill yes">✓</span>';
+
+    const ROWS = [
+      { name: 'Tool definition', cells: {
+        openenv: '<code>@mcp.tool</code> on FastMCP',
+        ors:     '<code>@tool</code> + Pydantic model',
+        nemo:    'FastAPI <code>app.post()</code> endpoint',
+        verifs:  'Plain Python fns into <code>ToolEnv(tools=[...])</code>',
+        skyrl:   'Methods on <code>ToolGroup</code> subclass',
+        gem:     'Env wrappers (<code>ToolEnvWrapper</code>)',
+      }},
+      { name: 'Discovery', cells: {
+        openenv: 'MCP <code>tools/list</code>',
+        ors:     'HTTP <code>GET /tools</code>',
+        nemo:    'OpenAPI <code>GET /openapi.json</code>',
+        verifs:  'Explicit list at init',
+        skyrl:   '<code>init_tool_groups()</code>',
+        gem:     'Wrapper composition',
+      }},
+      { name: 'Schema format', cells: {
+        openenv: 'MCP tool spec (JSON Schema)',
+        ors:     'ORS ToolSpec',
+        nemo:    'OpenAPI JSON Schema',
+        verifs:  'Python type hints (auto)',
+        skyrl:   'Python type hints (auto)',
+        gem:     'Wrapper-defined',
+      }},
+      { name: 'Multi-turn', cells: {
+        openenv: yes, ors: yes, nemo: yes,
+        verifs: yes, skyrl: yes, gem: yes,
+      }},
+    ];
+
+    const headerCells = FRAMEWORKS.map(f =>
+      `<th><span class="swatch" style="--c:${f.color};"></span>${f.name}</th>`
+    ).join('');
+    const kindRow = FRAMEWORKS.map(f => `<td><span class="tam-pill kind-${f.kind}">${f.kind === 'http' ? 'HTTP' : 'In-process'}</span></td>`).join('');
+    const rowsHtml = ROWS.map(r => {
+      const cells = FRAMEWORKS.map(f => `<td>${r.cells[f.key]}</td>`).join('');
+      return `<tr><td class="row-name">${r.name}</td>${cells}</tr>`;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="tool-action-matrix__head">
+        <span class="tool-action-matrix__title">Tool & action model · 6 frameworks</span>
+      </div>
+      <div class="tool-action-matrix__wrap">
+        <table>
+          <thead>
+            <tr><th>Capability</th>${headerCells}</tr>
+          </thead>
+          <tbody>
+            <tr><td class="row-name">Kind</td>${kindRow}</tr>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      </div>
+    `;
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+  } else {
+    bootstrap();
+  }
+})();
+</script>

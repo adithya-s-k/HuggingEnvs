@@ -1,0 +1,42 @@
+import HtmlEmbed from "../../components/HtmlEmbed.astro";
+
+## Observations
+
+Six frameworks, same environment built across all of them. A few things popped out.
+
+### What stood out
+
+**The "environment" boundary is a design choice, not a standard.** Some frameworks (OpenEnv, SkyRL Gym) hand you a thin tool interface and let you own dataset, reward, and trainer wiring. Others (Verifiers, GEM) bundle all four. Neither is wrong, it's a control vs time-to-running trade.
+
+**HTTP vs in-process is the loudest fork.** Sandboxed execution (code, shell, browser) wants HTTP, you scale env compute independently from training. Pure Python (games, math, text reasoning) wants in-process, zero RPC overhead, no infra to babysit. Pick this axis first, the rest of the table narrows fast.
+
+**Dataset coupling cuts both ways.** Bundled (Verifiers, ORS) means env and dataset come as one unit, can't swap one without the other. Decoupled (OpenEnv, SkyRL Gym) makes you wire datasets yourself, but any task fits any env.
+
+**Reward timing matters more than reward content.** ORS scores per tool call, NeMo Gym scores post-episode via `/verify`, OpenEnv and Verifiers use composable Rubrics. Per-call is clean for per-step feedback, awkward when reward only makes sense at the end. Post-episode is clean for trajectory-level scoring, no in-episode signal.
+
+**Execution backend dominates per-step latency.** Sandbox creation and tool execution own most of the wall clock regardless of framework. Numbers in [Dimension 10](#dimension-10-scaling-deployment).
+
+### Picking one
+
+If you've made it this far and just want a recommendation, walk the tree. Four yes/no questions narrow the field, breadcrumb up top lets you backtrack.
+
+<HtmlEmbed src="pick-framework.html" frameless />
+
+### Framework-specific gotchas
+
+Stuff that bit us while integrating each one.
+
+| Framework | Note |
+| --- | --- |
+| **OpenEnv** | MCP protocol is still evolving, API changes between versions may need adapter updates |
+| **ORS** | aiohttp `base_url` handling in SDK client requires raw HTTP workaround |
+| **NeMo Gym** | Requires Python 3.12; strict Pydantic validation on `/verify` returns 422 on unexpected trajectory shapes |
+| **Verifiers** | Dataset required at init time, env and dataset coupled |
+| **SkyRL Gym** | `step()` returns dict, not dataclass, type inconsistency to handle |
+| **GEM** | `gem-llm` may not be installed, conditional imports needed |
+
+### Where this leaves us
+
+Snapshot is May 2026. The space is young, all six frameworks launched in 2025 and are moving fast. Six frameworks doing the same thing with different APIs is what early-stage exploration looks like. Expect consolidation around fewer protocols (MCP, ORS) over the next year.
+
+Each framework is the same thing wearing different clothes. The same environment ports across all six. What changes between them is how the env wires into the rest of training, not what it can do. You won't miss anything fundamental by picking one, what changes is convenience, which one is most pleasant depends on what's already in your stack.

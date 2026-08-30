@@ -1,0 +1,394 @@
+<div class="d3-task-flow" style="width:100%;margin:14px 0;"></div>
+<style>
+  .d3-task-flow {
+    position: relative;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-bg);
+    overflow: hidden;
+    color: var(--text-color);
+  }
+  .d3-task-flow__header {
+    display: flex; flex-wrap: wrap; align-items: center;
+    gap: 12px 16px; padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .d3-task-flow__title {
+    font-size: 11px; font-weight: 800; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--muted-color);
+    margin-right: auto;
+  }
+  .d3-task-flow__btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 7px;
+    border: 1px solid var(--border-color);
+    background: var(--surface-bg); color: var(--text-color);
+    font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .d3-task-flow__btn.primary {
+    border-color: var(--primary-color);
+    background: color-mix(in oklab, var(--primary-color) 12%, var(--surface-bg));
+  }
+  .d3-task-flow__btn svg { width: 12px; height: 12px; }
+  .d3-task-flow__speed {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; color: var(--muted-color);
+  }
+  .d3-task-flow__speed input[type=range] { width: 100px; accent-color: var(--primary-color); }
+  .d3-task-flow__speed-val {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--text-color); font-size: 11px;
+    min-width: 36px; text-align: right;
+  }
+
+  .d3-task-flow__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+  }
+  .tf-card {
+    padding: 14px 18px 14px 18px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--surface-bg);
+    min-width: 0;
+  }
+  .tf-card:last-child { border-bottom: 0; }
+  .tf-card__row {
+    display: flex; align-items: center; gap: 16px;
+    flex-wrap: wrap;
+  }
+  .tf-card__row .tf-card__rows {
+    margin-left: auto;
+  }
+  @media (max-width: 580px) {
+    .tf-card__row .tf-card__rows { margin-left: 0; }
+  }
+
+  .tf-card__head {
+    display: flex; align-items: center; gap: 10px;
+    flex-wrap: wrap;
+  }
+  .tf-card__head .swatch {
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    background: var(--c);
+    flex-shrink: 0;
+  }
+  .tf-card__head .name {
+    font-weight: 700;
+    font-size: 14.5px;
+    color: var(--text-color);
+  }
+  .tf-card__head .source-tag {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 4px;
+    color: color-mix(in oklab, var(--c) 90%, var(--text-color));
+    background: color-mix(in oklab, var(--c) 12%, transparent);
+    border: 1px solid color-mix(in oklab, var(--c) 30%, var(--border-color));
+  }
+  .tf-card__head .source-tag.byo {
+    color: var(--muted-color);
+    background: color-mix(in oklab, var(--muted-color) 8%, transparent);
+    border: 1px dashed color-mix(in oklab, var(--muted-color) 50%, transparent);
+  }
+  .tf-card__name-block {
+    display: flex; flex-direction: column; gap: 6px;
+    min-width: 0;
+  }
+
+  .tf-stage {
+    position: relative;
+    border-radius: 8px;
+    background: color-mix(in oklab, var(--muted-color) 4%, transparent);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    min-height: 130px;
+  }
+  .tf-stage svg {
+    width: 100%; height: 130px; display: block;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .tf-stage .node {
+    fill: color-mix(in oklab, var(--c) 8%, var(--surface-bg));
+    stroke: color-mix(in oklab, var(--c) 30%, var(--border-color));
+    stroke-width: 1.4;
+  }
+  .tf-stage .node.byo {
+    fill: color-mix(in oklab, var(--muted-color) 5%, var(--surface-bg));
+    stroke: var(--border-color);
+    stroke-dasharray: 4 3;
+  }
+  .tf-stage .label-title {
+    fill: var(--text-color);
+    font-size: 12px;
+    font-weight: 700;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .tf-stage .label-sub {
+    fill: var(--muted-color);
+    font-size: 10px;
+    font-weight: 500;
+  }
+  .tf-stage .arrow {
+    stroke: var(--muted-color);
+    stroke-width: 1.4;
+    fill: none;
+  }
+  .tf-stage .stage-tag {
+    fill: var(--muted-color);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .tf-stage .packet {
+    fill: var(--c);
+    opacity: 0;
+  }
+  .d3-task-flow.playing .packet { animation-play-state: running; }
+  .d3-task-flow:not(.playing) .packet { animation-play-state: paused; opacity: 0; }
+
+  /* packet flows source → loader → env in 3 phases */
+  .tf-stage .packet.p1 { animation: tf-p1 var(--dur, 3s) linear infinite; }
+  .tf-stage .packet.p2 { animation: tf-p2 var(--dur, 3s) linear infinite; }
+  @keyframes tf-p1 {
+    0%   { transform: translate(0, 0); opacity: 0; }
+    4%   { opacity: 1; }
+    44%  { transform: translate(44px, 0); opacity: 1; }
+    48%  { opacity: 0; }
+    100% { opacity: 0; }
+  }
+  @keyframes tf-p2 {
+    0%, 48% { opacity: 0; }
+    50%  { transform: translate(0, 0); opacity: 1; }
+    96%  { transform: translate(44px, 0); opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  .tf-card__rows {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 10px;
+    font-size: 11.5px;
+    line-height: 1.5;
+    align-self: center;
+  }
+  .tf-card__rows .k {
+    color: var(--muted-color);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-size: 10px;
+    padding-top: 2px;
+  }
+  .tf-card__rows .v {
+    color: var(--text-color);
+    overflow-wrap: anywhere;
+  }
+  .tf-card__rows code {
+    background: color-mix(in oklab, var(--muted-color) 10%, transparent);
+    border-radius: 3px;
+    padding: 0 4px;
+    font-size: 11px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  .d3-task-flow__caption {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border-color);
+    font-size: 11.5px;
+    color: var(--muted-color);
+    font-style: italic;
+    line-height: 1.55;
+  }
+</style>
+<script>
+(() => {
+  const bootstrap = () => {
+    const scriptEl = document.currentScript;
+    let container = scriptEl ? scriptEl.previousElementSibling : null;
+    if (!(container && container.classList && container.classList.contains('d3-task-flow'))) {
+      const cands = Array.from(document.querySelectorAll('.d3-task-flow'))
+        .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+      container = cands[cands.length - 1] || null;
+    }
+    if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+    container.dataset.mounted = 'true';
+
+    const FRAMEWORKS = [
+      {
+        key: 'openenv', name: 'OpenEnv', color: '#3b82f6', kind: 'BYO',
+        source: 'Your code',  sourceSub: 'task spec',
+        loader: 'trainer loop', loaderSub: 'feeds reset()',
+        prompt: 'BYO',
+        splits: '—',
+      },
+      {
+        key: 'ors', name: 'ORS', color: '#a855f7', kind: 'Server',
+        source: 'Server task DB', sourceSub: 'splits stored',
+        loader: 'list_tasks(split)', loaderSub: 'pulled at runtime',
+        prompt: 'get_prompt() from server',
+        splits: 'Yes (named)',
+      },
+      {
+        key: 'nemo', name: 'NeMo Gym', color: '#22c55e', kind: 'JSONL',
+        source: 'JSONL file', sourceSub: 'on disk',
+        loader: 'ng_prepare_data', loaderSub: 'CLI preprocess',
+        prompt: 'In JSONL · responses_create_params',
+        splits: 'Yes',
+      },
+      {
+        key: 'verifs', name: 'Verifiers', color: '#ec4899', kind: 'HF Dataset',
+        source: 'HF Dataset', sourceSub: 'load_dataset()',
+        loader: 'vf.ToolEnv(dataset=…)', loaderSub: 'bundled at init',
+        prompt: 'system_prompt param',
+        splits: 'Yes (HF splits)',
+      },
+      {
+        key: 'skyrl', name: 'SkyRL Gym', color: '#f59e0b', kind: 'BYO',
+        source: 'Your JSONL', sourceSub: 'or generator',
+        loader: 'BaseTextEnv.init()', loaderSub: 'one prompt in',
+        prompt: 'BYO',
+        splits: '—',
+      },
+      {
+        key: 'gem', name: 'GEM', color: '#14b8a6', kind: 'Built-in',
+        source: '24+ built-in envs', sourceSub: 'games · math · code',
+        loader: 'gem.make("Env-v0")', loaderSub: 'registry lookup',
+        prompt: 'Per-env instructions',
+        splits: 'Per-env',
+      },
+    ];
+
+    const cardSvg = (f) => {
+      const isByo = f.kind === 'BYO';
+      return `
+        <svg viewBox="0 0 560 130" preserveAspectRatio="none">
+          <defs>
+            <marker id="tf-arr-${f.key}" viewBox="0 0 10 10" refX="9" refY="5"
+              markerWidth="7" markerHeight="7" orient="auto" markerUnits="userSpaceOnUse">
+              <path d="M0,0 L10,5 L0,10 Z" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <!-- source -->
+          <rect class="node ${isByo ? 'byo' : ''}" x="14" y="32" width="148" height="68" rx="10"/>
+          <text class="label-title" x="88" y="64" text-anchor="middle">${f.source}</text>
+          <text class="label-sub"   x="88" y="84" text-anchor="middle">${f.sourceSub}</text>
+
+          <!-- loader -->
+          <rect class="node" x="206" y="32" width="148" height="68" rx="10"/>
+          <text class="label-title" x="280" y="64" text-anchor="middle">${f.loader}</text>
+          <text class="label-sub"   x="280" y="84" text-anchor="middle">${f.loaderSub}</text>
+
+          <!-- env -->
+          <rect class="node" x="398" y="32" width="148" height="68" rx="10" style="fill: color-mix(in oklab, var(--c) 14%, var(--surface-bg));"/>
+          <text class="label-title" x="472" y="64" text-anchor="middle">env.reset()</text>
+          <text class="label-sub"   x="472" y="84" text-anchor="middle">prompt in</text>
+
+          <!-- arrows -->
+          <g style="color: var(--muted-color);">
+            <path class="arrow" d="M162,66 L206,66" marker-end="url(#tf-arr-${f.key})"/>
+            <path class="arrow" d="M354,66 L398,66" marker-end="url(#tf-arr-${f.key})"/>
+          </g>
+
+          <text class="stage-tag" x="88"  y="22" text-anchor="middle">source</text>
+          <text class="stage-tag" x="280" y="22" text-anchor="middle">loader</text>
+          <text class="stage-tag" x="472" y="22" text-anchor="middle">env</text>
+
+          <!-- packets -->
+          <circle class="packet p1" cx="162" cy="66" r="4"/>
+          <circle class="packet p2" cx="354" cy="66" r="4"/>
+        </svg>
+      `;
+    };
+
+    const cardsHtml = FRAMEWORKS.map(f => `
+      <article class="tf-card" style="--c:${f.color};">
+        <div class="tf-card__row">
+          <div class="tf-card__head">
+            <span class="swatch"></span>
+            <span class="name">${f.name}</span>
+            <span class="source-tag ${f.kind === 'BYO' ? 'byo' : ''}">${f.kind}</span>
+          </div>
+          <div class="tf-card__rows">
+            <span class="k">prompt</span><span class="v">${f.prompt}</span>
+            <span class="k">splits</span><span class="v">${f.splits}</span>
+          </div>
+        </div>
+        <div class="tf-stage">${cardSvg(f)}</div>
+      </article>
+    `).join('');
+
+    container.innerHTML = `
+      <div class="d3-task-flow__header">
+        <div class="d3-task-flow__title">Where do prompts come from? · 6 frameworks</div>
+        <button type="button" class="d3-task-flow__btn primary" data-act="play">
+          <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>
+          <span data-label>Play</span>
+        </button>
+        <label class="d3-task-flow__speed">
+          Speed
+          <input type="range" min="0.4" max="2" step="0.1" value="1" data-act="speed">
+          <span class="d3-task-flow__speed-val" data-speed-val>1.0×</span>
+        </label>
+      </div>
+      <div class="d3-task-flow__grid">${cardsHtml}</div>
+      <div class="d3-task-flow__caption">
+        Same loop, six places the data comes from. BYO frameworks expect you to wire the source yourself. Server-side frameworks ship a task store with named splits. Bundled frameworks pull from HF datasets or a built-in env catalog.
+      </div>
+    `;
+
+    const playBtn = container.querySelector('[data-act="play"]');
+    const playLbl = container.querySelector('[data-label]');
+    const speedInput = container.querySelector('[data-act="speed"]');
+    const speedVal = container.querySelector('[data-speed-val]');
+
+    let playing = false;
+    const setPlaying = (next) => {
+      playing = next;
+      container.classList.toggle('playing', playing);
+      playLbl.textContent = playing ? 'Pause' : 'Play';
+      const icon = playBtn.querySelector('svg');
+      icon.innerHTML = playing
+        ? '<rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/>'
+        : '<polygon points="6,4 20,12 6,20" fill="currentColor"/>';
+    };
+    playBtn.addEventListener('click', () => setPlaying(!playing));
+
+    const updateSpeed = () => {
+      const s = parseFloat(speedInput.value);
+      const dur = (3 / s).toFixed(2) + 's';
+      container.style.setProperty('--dur', dur);
+      speedVal.textContent = s.toFixed(1) + '×';
+    };
+    speedInput.addEventListener('input', updateSpeed);
+    updateSpeed();
+
+    const io = ('IntersectionObserver' in window) ? new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting && !playing) {
+          setPlaying(true);
+          io.disconnect();
+        }
+      });
+    }, { threshold: 0.3 }) : null;
+    if (io) io.observe(container); else setPlaying(true);
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+  } else {
+    bootstrap();
+  }
+})();
+</script>

@@ -1,0 +1,406 @@
+<div class="d3-latency" style="width:100%;margin:14px 0;"></div>
+<style>
+  .d3-latency {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-bg);
+    overflow: hidden;
+    color: var(--text-color);
+    --c-connect: #3b82f6;
+    --c-reset:   #f59e0b;
+    --c-step:    #ec4899;
+    --c-p99:     #ef4444;
+  }
+
+  .d3-latency__header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 4%, transparent);
+    flex-wrap: wrap;
+  }
+  .d3-latency__title {
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    margin-right: auto;
+  }
+  .d3-latency__legend {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 10.5px; color: var(--muted-color);
+    flex-wrap: wrap;
+  }
+  .d3-latency__legend .item { display: inline-flex; align-items: center; gap: 5px; }
+  .d3-latency__legend .swatch {
+    width: 9px; height: 9px;
+    border-radius: 2px;
+    background: var(--c, var(--muted-color));
+    display: inline-block;
+  }
+  .d3-latency__legend .triangle {
+    width: 0; height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 8px solid var(--c-p99);
+  }
+  .d3-latency__view {
+    display: inline-flex;
+    background: var(--surface-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 2px;
+    gap: 2px;
+  }
+  .d3-latency__view button {
+    border: 0;
+    background: transparent;
+    color: var(--muted-color);
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }
+  .d3-latency__view button.active {
+    color: var(--text-color);
+    background: color-mix(in oklab, var(--text-color) 8%, transparent);
+  }
+
+  .d3-latency__sortbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px;
+    background: color-mix(in oklab, var(--muted-color) 2%, transparent);
+    border-bottom: 1px solid var(--border-color);
+    font-size: 11px;
+    color: var(--muted-color);
+  }
+  .d3-latency__sortbar select {
+    border: 1px solid var(--border-color);
+    background: var(--surface-bg);
+    color: var(--text-color);
+    border-radius: 5px;
+    padding: 3px 7px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .d3-latency__body > div { display: none; }
+  .d3-latency__body > div.active { display: block; }
+
+  /* ── Viz ── */
+  .d3-latency__viz { padding: 14px 18px 16px 18px; }
+  .lat-row {
+    display: grid;
+    grid-template-columns: minmax(150px, 180px) 1fr minmax(150px, 180px);
+    gap: 14px;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid color-mix(in oklab, var(--border-color) 40%, transparent);
+  }
+  .lat-row:last-child { border-bottom: 0; }
+  @media (max-width: 720px) {
+    .lat-row { grid-template-columns: 1fr; gap: 6px; padding: 10px 0; }
+    .lat-row__nums { text-align: left !important; }
+  }
+  .lat-row__name {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-color);
+  }
+  .lat-row__name .sub {
+    display: block;
+    font-size: 10.5px;
+    color: var(--muted-color);
+    font-weight: 500;
+    margin-top: 2px;
+  }
+  .lat-row__bar {
+    position: relative;
+    height: 22px;
+    border-radius: 5px;
+    background: color-mix(in oklab, var(--muted-color) 6%, transparent);
+    display: flex;
+    overflow: hidden;
+  }
+  .lat-row__seg {
+    height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10.5px;
+    font-weight: 700;
+    overflow: hidden;
+    transition: width 0.7s cubic-bezier(.2,.8,.3,1);
+    width: 0;
+    color: #fff;
+  }
+  .d3-latency.in-view .lat-row__seg {
+    width: var(--w, 0%);
+  }
+  .lat-row__seg.connect { background: color-mix(in oklab, var(--c-connect) 65%, var(--surface-bg)); }
+  .lat-row__seg.reset   { background: color-mix(in oklab, var(--c-reset) 65%, var(--surface-bg)); }
+  .lat-row__seg.step    { background: color-mix(in oklab, var(--c-step) 65%, var(--surface-bg)); }
+  .lat-row__seg span {
+    white-space: nowrap;
+    padding: 0 6px;
+  }
+  .lat-row__nums {
+    text-align: right;
+    font-size: 11.5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-feature-settings: "tnum";
+    display: flex; gap: 12px; justify-content: flex-end;
+    align-items: baseline;
+  }
+  .lat-row__nums .item {
+    display: inline-flex; flex-direction: column; align-items: flex-end;
+    line-height: 1.2;
+  }
+  .lat-row__nums .label {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--muted-color);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 1px;
+  }
+  .lat-row__nums .v-p50 { color: var(--text-color); font-weight: 700; }
+  .lat-row__nums .v-p99 { color: var(--c-p99); font-weight: 700; }
+
+  .lat-row__bar-note {
+    margin-top: 14px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border-color);
+    font-size: 11px;
+    color: var(--muted-color);
+    line-height: 1.5;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .lat-row__bar-note strong { color: var(--text-color); font-weight: 600; }
+
+  /* ── Table ── */
+  .d3-latency__table-wrap { overflow-x: auto; }
+  .d3-latency__table-wrap table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    min-width: 540px;
+  }
+  .d3-latency__table-wrap thead th {
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted-color);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+    white-space: nowrap;
+  }
+  .d3-latency__table-wrap tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid color-mix(in oklab, var(--border-color) 60%, transparent);
+    vertical-align: middle;
+    color: var(--text-color);
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+  .d3-latency__table-wrap tbody tr:last-child td { border-bottom: 0; }
+  .d3-latency__table-wrap tbody td.row-name {
+    font-weight: 600;
+    color: var(--text-color);
+    white-space: nowrap;
+  }
+  .d3-latency__table-wrap tbody td.num {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-feature-settings: "tnum";
+  }
+
+  .d3-latency__caption {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border-color);
+    font-size: 11.5px;
+    color: var(--muted-color);
+    font-style: italic;
+    line-height: 1.55;
+  }
+</style>
+<script>
+(() => {
+  const bootstrap = () => {
+    const scriptEl = document.currentScript;
+    let container = scriptEl ? scriptEl.previousElementSibling : null;
+    if (!(container && container.classList && container.classList.contains('d3-latency'))) {
+      const cands = Array.from(document.querySelectorAll('.d3-latency'))
+        .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+      container = cands[cands.length - 1] || null;
+    }
+    if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+    container.dataset.mounted = 'true';
+
+    // values in seconds (p50 phases + p99 total)
+    const ROWS = [
+      { name: 'Local uvicorn',   sub: '8 workers',         connect: 0.58, reset: 0.08, step: 1.05, p99: 1.95 },
+      { name: 'Local Docker',    sub: 'same image as HF',  connect: 1.38, reset: 0.19, step: 1.05, p99: 2.90 },
+      { name: 'HF Spaces',       sub: 'free tier · 2 cpu', connect: 0.79, reset: 0.10, step: 1.10, p99: 2.48 },
+      { name: 'SLURM single',    sub: '48 workers',        connect: 0.26, reset: 0.04, step: 1.00, p99: 1.33 },
+      { name: 'SLURM multi',     sub: '16K sessions',      connect:17.50, reset: 2.25, step: 2.42, p99:26.30 },
+    ];
+
+    let sortMode = 'p99';
+    const getSorted = () => {
+      const rows = ROWS.slice();
+      if (sortMode === 'p99') rows.sort((a, b) => a.p99 - b.p99);
+      else if (sortMode === 'connect') rows.sort((a, b) => a.connect - b.connect);
+      else if (sortMode === 'step') rows.sort((a, b) => a.step - b.step);
+      return rows;
+    };
+
+    const renderViz = () => {
+      const rows = getSorted();
+
+      const rowsHtml = rows.map(r => {
+        const sum = r.connect + r.reset + r.step;
+        const pctOf = (v) => (v / sum) * 100;
+        const wConn = pctOf(r.connect);
+        const wRst  = pctOf(r.reset);
+        const wStep = pctOf(r.step);
+        // only show the inline label if the segment is wide enough to fit it
+        const lbl = (w, val) => w > 14 ? `<span>${val.toFixed(2)}s</span>` : '';
+        return `
+          <div class="lat-row">
+            <div class="lat-row__name">
+              ${r.name}<span class="sub">${r.sub}</span>
+            </div>
+            <div class="lat-row__bar" title="connect ${r.connect.toFixed(2)}s · reset ${r.reset.toFixed(2)}s · step ${r.step.toFixed(2)}s">
+              <div class="lat-row__seg connect" style="--w:${wConn}%;">${lbl(wConn, r.connect)}</div>
+              <div class="lat-row__seg reset"   style="--w:${wRst}%;">${lbl(wRst, r.reset)}</div>
+              <div class="lat-row__seg step"    style="--w:${wStep}%;">${lbl(wStep, r.step)}</div>
+            </div>
+            <div class="lat-row__nums">
+              <span class="item"><span class="label">p50 sum</span><span class="v-p50">${sum.toFixed(2)}s</span></span>
+              <span class="item"><span class="label">p99</span><span class="v-p99">${r.p99.toFixed(2)}s</span></span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      const viz = container.querySelector('[data-pane="viz"]');
+      viz.innerHTML = `
+        <div class="d3-latency__viz">
+          ${rowsHtml}
+          <div class="lat-row__bar-note">
+            <span><strong>Read this as proportions, not absolute lengths.</strong> Each bar splits one infrastructure's p50 latency budget; the numbers on the right are the actual seconds. SLURM-multi's bar is mostly blue (connect-queueing); every other row is mostly pink (step latency).</span>
+          </div>
+        </div>
+      `;
+    };
+
+    const renderTable = () => {
+      const rows = getSorted();
+      const tbl = container.querySelector('[data-pane="table"]');
+      const body = rows.map(r => `
+        <tr>
+          <td class="row-name">${r.name}<br><span style="color:var(--muted-color); font-size:10.5px; font-weight:500;">${r.sub}</span></td>
+          <td class="num">${r.connect.toFixed(2)}s</td>
+          <td class="num">${r.reset.toFixed(2)}s</td>
+          <td class="num">${r.step.toFixed(2)}s</td>
+          <td class="num"><strong>${r.p99.toFixed(2)}s</strong></td>
+        </tr>
+      `).join('');
+      tbl.innerHTML = `
+        <div class="d3-latency__table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Infrastructure</th>
+                <th>Connect p50</th>
+                <th>Reset p50</th>
+                <th>Step p50</th>
+                <th>Total p99</th>
+              </tr>
+            </thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>
+      `;
+    };
+
+    container.innerHTML = `
+      <div class="d3-latency__header">
+        <span class="d3-latency__title">Latency at max load · 5 infrastructures</span>
+        <span class="d3-latency__legend">
+          <span class="item"><span class="swatch" style="--c: var(--c-connect);"></span>connect p50</span>
+          <span class="item"><span class="swatch" style="--c: var(--c-reset);"></span>reset p50</span>
+          <span class="item"><span class="swatch" style="--c: var(--c-step);"></span>step p50</span>
+          <span class="item"><span class="triangle"></span>total p99</span>
+        </span>
+        <div class="d3-latency__view" role="tablist">
+          <button type="button" data-view="table" class="active">Table</button>
+          <button type="button" data-view="viz">Chart</button>
+        </div>
+      </div>
+
+      <div class="d3-latency__sortbar">
+        <span>Sort by</span>
+        <select data-sort>
+          <option value="p99" selected>Total p99 (low → high)</option>
+          <option value="connect">Connect p50 (low → high)</option>
+          <option value="step">Step p50 (low → high)</option>
+        </select>
+      </div>
+
+      <div class="d3-latency__body">
+        <div data-pane="viz"></div>
+        <div data-pane="table" class="active"></div>
+      </div>
+
+      <div class="d3-latency__caption">
+        Stacked p50 segments (connect / reset / step) plus the p99 marker (▼). The SLURM-multi row is mostly connect-queueing across the Envoy proxy, every other row is dominated by step latency, the actual environment work.
+      </div>
+    `;
+
+    renderViz();
+    renderTable();
+
+    // toggle viz/table
+    const buttons = container.querySelectorAll('.d3-latency__view button');
+    const panes = container.querySelectorAll('.d3-latency__body > div');
+    buttons.forEach(b => b.addEventListener('click', () => {
+      const v = b.getAttribute('data-view');
+      buttons.forEach(x => x.classList.toggle('active', x === b));
+      panes.forEach(p => p.classList.toggle('active', p.getAttribute('data-pane') === v));
+    }));
+
+    // sort
+    const sortSelect = container.querySelector('[data-sort]');
+    sortSelect.addEventListener('change', () => {
+      sortMode = sortSelect.value;
+      renderViz();
+      renderTable();
+      // bars need to re-trigger growth
+      requestAnimationFrame(() => container.classList.add('in-view'));
+    });
+
+    // bars animate when in view
+    const io = ('IntersectionObserver' in window) ? new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          container.classList.add('in-view');
+          io.disconnect();
+        }
+      });
+    }, { threshold: 0.2 }) : null;
+    if (io) io.observe(container); else container.classList.add('in-view');
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+  } else {
+    bootstrap();
+  }
+})();
+</script>

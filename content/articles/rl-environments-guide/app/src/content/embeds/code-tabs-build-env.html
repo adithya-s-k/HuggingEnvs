@@ -1,0 +1,438 @@
+<div class="code-tabs" style="width:100%;margin:14px 0;"></div>
+<style>
+  .code-tabs {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-bg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Tab strip ── */
+  .code-tabs__bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 4%, transparent);
+    padding: 4px 6px;
+    gap: 2px;
+  }
+  .code-tabs__tab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    border: 0;
+    background: transparent;
+    color: var(--muted-color);
+    font-size: 11.5px;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color .12s ease, background .12s ease;
+  }
+  .code-tabs__tab:hover {
+    color: var(--text-color);
+    background: color-mix(in oklab, var(--text-color) 4%, transparent);
+  }
+  .code-tabs__tab.active {
+    color: var(--text-color);
+    background: color-mix(in oklab, var(--c, var(--primary-color)) 10%, transparent);
+  }
+  .code-tabs__tab.active::after {
+    content: '';
+    position: absolute;
+    left: 8px; right: 8px; bottom: -5px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--c, var(--primary-color));
+  }
+  .code-tabs__tab .swatch {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--c, var(--muted-color));
+    flex-shrink: 0;
+  }
+
+  .code-tabs__title {
+    margin-left: auto;
+    padding: 6px 10px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.0px;
+    text-transform: uppercase;
+    color: var(--muted-color);
+  }
+  @media (max-width: 580px) {
+    .code-tabs__title { display: none; }
+  }
+
+  /* ── Code body ── */
+  .code-tabs__body {
+    position: relative;
+  }
+  .code-tabs__panel {
+    display: none;
+    padding: 0;
+  }
+  .code-tabs__panel.active { display: block; }
+
+  .code-tabs__panel-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    font-size: 11px;
+    color: var(--muted-color);
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--c) 4%, transparent);
+  }
+  .code-tabs__panel-meta strong {
+    color: var(--text-color);
+    font-weight: 700;
+  }
+  .code-tabs__panel-meta .lang {
+    margin-left: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+
+  .code-tabs__copy {
+    border: 1px solid var(--border-color);
+    background: var(--surface-bg);
+    color: var(--muted-color);
+    border-radius: 5px;
+    padding: 3px 7px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color .12s ease, border-color .12s ease;
+  }
+  .code-tabs__copy:hover { color: var(--text-color); border-color: var(--text-color); }
+  .code-tabs__copy.copied { color: #22c55e; border-color: #22c55e; }
+
+  .code-tabs pre,
+  .code-tabs pre.language-python {
+    margin: 0 0 0 0 !important;
+    padding: 24px 32px 0 44px;
+    background: color-mix(in oklab, var(--muted-color) 4%, var(--surface-bg));
+    color: var(--text-color);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    line-height: 1.7;
+    overflow-x: auto;
+    white-space: pre;
+    tab-size: 4;
+    text-shadow: none;
+    scrollbar-width: thin;
+  }
+  @media (max-width: 580px) {
+    .code-tabs pre,
+    .code-tabs pre.language-python { padding: 18px 18px 0 24px; }
+  }
+  .code-tabs pre code {
+    font-family: inherit;
+    font-size: inherit;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    color: inherit;
+    display: block;
+  }
+  /* Prism token colors — keyed to the article's palette so it stays on-brand */
+  .code-tabs pre code .token.comment,
+  .code-tabs pre code .token.prolog,
+  .code-tabs pre code .token.doctype,
+  .code-tabs pre code .token.cdata { color: var(--muted-color); font-style: italic; }
+  .code-tabs pre code .token.string,
+  .code-tabs pre code .token.triple-quoted-string,
+  .code-tabs pre code .token.string-interpolation { color: #22c55e; }
+  .code-tabs pre code .token.keyword,
+  .code-tabs pre code .token.builtin { color: #ec4899; }
+  .code-tabs pre code .token.function,
+  .code-tabs pre code .token.function-definition { color: #3b82f6; }
+  .code-tabs pre code .token.class-name { color: #f59e0b; }
+  .code-tabs pre code .token.number,
+  .code-tabs pre code .token.boolean { color: #f97316; }
+  .code-tabs pre code .token.decorator,
+  .code-tabs pre code .token.decorator-name,
+  .code-tabs pre code .token.decorator-annotation,
+  .code-tabs pre code .token.atrule { color: #a855f7; }
+  .code-tabs pre code .token.operator { color: color-mix(in oklab, var(--muted-color) 80%, var(--text-color)); }
+  .code-tabs pre code .token.punctuation { color: color-mix(in oklab, var(--muted-color) 70%, var(--text-color)); }
+</style>
+<script>
+  (() => {
+    // Lazy-load Prism (core + python) from CDN once per page.
+    const ensurePrism = (cb) => {
+      if (window.Prism && window.Prism.languages && window.Prism.languages.python) return cb();
+      const loadPython = () => {
+        if (window.Prism.languages.python) return cb();
+        let p = document.getElementById('prism-python-cdn');
+        if (!p) {
+          p = document.createElement('script');
+          p.id = 'prism-python-cdn';
+          p.src = 'https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js';
+          p.addEventListener('load', cb, { once: true });
+          p.addEventListener('error', cb, { once: true });
+          document.head.appendChild(p);
+        } else {
+          p.addEventListener('load', cb, { once: true });
+        }
+      };
+      let s = document.getElementById('prism-core-cdn');
+      if (!s) {
+        s = document.createElement('script');
+        s.id = 'prism-core-cdn';
+        s.src = 'https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js';
+        s.addEventListener('load', loadPython, { once: true });
+        s.addEventListener('error', cb, { once: true });
+        document.head.appendChild(s);
+      } else if (window.Prism) {
+        loadPython();
+      } else {
+        s.addEventListener('load', loadPython, { once: true });
+      }
+    };
+
+    const bootstrap = () => {
+      const scriptEl = document.currentScript;
+      let container = scriptEl ? scriptEl.previousElementSibling : null;
+      if (!(container && container.classList && container.classList.contains('code-tabs'))) {
+        const cands = Array.from(document.querySelectorAll('.code-tabs'))
+          .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+        container = cands[cands.length - 1] || null;
+      }
+      if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+      container.dataset.mounted = 'true';
+
+      // Same accent palette as the rest of the article.
+      const TABS = [
+        {
+          name: 'OpenEnv',   color: '#3b82f6',
+          tagline: 'MCP tools registered inside an MCPEnvironment',
+          code:
+`class MyEnv(MCPEnvironment):
+    def __init__(self):
+        mcp = FastMCP("my_env")
+
+        @mcp.tool
+        def do_action(input: str) -> str:
+            """Execute an action. Returns observation."""
+            return execute(input)
+
+        super().__init__(mcp)
+
+    def reset(self, **kwargs) -> Observation:
+        self._state = fresh_state()
+        return Observation(done=False, reward=None, metadata={"status": "ready"})`
+        },
+        {
+          name: 'ORS',       color: '#a855f7',
+          tagline: '@tool on an Environment subclass; ToolOutput carries inline reward',
+          code:
+`class MyORS(Environment):
+    def __init__(self, task_spec=None, secrets=None, **kwargs):
+        super().__init__(task_spec=task_spec or {}, secrets=secrets or {})
+
+    def setup(self):
+        self._state = fresh_state()
+
+    @tool
+    def do_action(self, params: ActionInput) -> ToolOutput:
+        """Execute an action."""
+        result = execute(self._state, params.input)
+        return ToolOutput(
+            blocks=[TextBlock(text=result)],
+            reward=score(result),
+            finished=is_done(),
+        )
+
+    @classmethod
+    def list_splits(cls):  return [Split(name="train", type="train")]
+    @classmethod
+    def list_tasks(cls, split):  return TASKS
+    def get_prompt(self):  return [TextBlock(text=self.task_spec["description"])]`
+        },
+        {
+          name: 'NeMo Gym',  color: '#22c55e',
+          tagline: 'FastAPI POST endpoints with per-session state',
+          code:
+`class MyServer(SimpleResourcesServer):
+    sessions: Dict[str, Any] = Field(default_factory=dict)
+
+    def setup_webserver(self):
+        app = super().setup_webserver()
+        app.post("/do_action")(self.do_action)
+        return app
+
+    def _get_session(self, request):
+        sid = request.session[SESSION_ID_KEY]
+        if sid not in self.sessions:
+            self.sessions[sid] = {"state": fresh_state()}
+        return self.sessions[sid]
+
+    async def do_action(self, body: ActionRequest, request: Request):
+        sess = self._get_session(request)
+        return ToolResponse(output=execute(sess["state"], body.input))
+
+    async def verify(self, body: BaseVerifyRequest) -> BaseVerifyResponse:
+        reward = check_trajectory(body.response.output)
+        return BaseVerifyResponse(**body.model_dump(), reward=reward)`
+        },
+        {
+          name: 'Verifiers', color: '#ec4899',
+          tagline: 'Plain Python functions plus a Rubric',
+          code:
+`def do_action(input: str) -> str:
+    """Execute an action. Returns observation."""
+    return execute(input)
+
+async def correctness(completion, answer, **kwargs) -> float:
+    return 1.0 if answer in completion[-1]["content"] else 0.0
+
+env = vf.ToolEnv(
+    tools=[do_action],
+    rubric=vf.Rubric(funcs=[correctness]),
+    dataset=my_dataset,
+)`
+        },
+        {
+          name: 'SkyRL Gym', color: '#f59e0b',
+          tagline: 'BaseTextEnv with init() and step()',
+          code:
+`class MySkyRL(BaseTextEnv):
+    def init(self, prompt) -> Tuple[Any, Dict]:
+        self._state = fresh_state()
+        return prompt, {"max_turns": self.max_turns}
+
+    def step(self, action: str) -> BaseTextEnvStepOutput:
+        parsed = parse_action(action)  # env parses raw LLM text
+        result = execute(self._state, parsed)
+        return BaseTextEnvStepOutput(
+            observations=[{"role": "user", "content": result}],
+            reward=score(result),
+            done=is_done(),
+        )`
+        },
+        {
+          name: 'GEM',       color: '#14b8a6',
+          tagline: 'gem.Env with Gymnasium reset()/step() and spawn()',
+          code:
+`class MyGEM(gem.Env):
+    def reset(self, seed=None):
+        super().reset(seed)
+        self._state = fresh_state()
+        return "Your task: ...", {"suffix": "Begin."}
+
+    def step(self, action):
+        parsed = parse_action(action)
+        result = execute(self._state, parsed)
+        terminated = is_done()
+        return result, score(result), terminated, False, {"suffix": "Continue."}
+
+    def spawn(self, same_state=False, **kwargs):
+        return MyGEM(...)  # fork for parallel GRPO rollouts`
+        }
+      ];
+
+      // Build DOM
+      const escapeHtml = (s) => s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      const tabsHtml = TABS.map((t, i) => `
+        <button type="button" class="code-tabs__tab${i === 0 ? ' active' : ''}" data-tab="${i}" style="--c:${t.color};" role="tab" aria-selected="${i === 0 ? 'true' : 'false'}">
+          <span class="swatch"></span><span>${t.name}</span>
+        </button>
+      `).join('');
+
+      const panelsHtml = TABS.map((t, i) => `
+        <div class="code-tabs__panel${i === 0 ? ' active' : ''}" data-panel="${i}" style="--c:${t.color};" role="tabpanel">
+          <div class="code-tabs__panel-meta">
+            <strong>${t.name}</strong>
+            <span>· ${t.tagline}</span>
+            <span class="lang">python</span>
+            <button type="button" class="code-tabs__copy" data-copy>Copy</button>
+          </div>
+          <pre class="language-python"><code class="language-python">${escapeHtml(t.code)}</code></pre>
+        </div>
+      `).join('');
+
+      container.innerHTML = `
+        <div class="code-tabs__bar" role="tablist" aria-label="Framework">
+          ${tabsHtml}
+          <span class="code-tabs__title">Same env, six APIs</span>
+        </div>
+        <div class="code-tabs__body">
+          ${panelsHtml}
+        </div>
+      `;
+
+      // Trigger syntax highlighting once Prism is available.
+      ensurePrism(() => {
+        if (window.Prism && typeof window.Prism.highlightAllUnder === 'function') {
+          window.Prism.highlightAllUnder(container);
+        }
+      });
+
+      // Tab switching
+      const tabs = container.querySelectorAll('.code-tabs__tab');
+      const panels = container.querySelectorAll('.code-tabs__panel');
+      tabs.forEach(t => {
+        t.addEventListener('click', () => {
+          const i = t.getAttribute('data-tab');
+          tabs.forEach(x => {
+            const a = x.getAttribute('data-tab') === i;
+            x.classList.toggle('active', a);
+            x.setAttribute('aria-selected', a ? 'true' : 'false');
+          });
+          panels.forEach(p => {
+            p.classList.toggle('active', p.getAttribute('data-panel') === i);
+          });
+        });
+      });
+
+      // Copy buttons
+      container.querySelectorAll('[data-copy]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const panel = btn.closest('.code-tabs__panel');
+          const codeEl = panel && panel.querySelector('pre code');
+          if (!codeEl) return;
+          const text = codeEl.textContent;
+          const flashOk = () => {
+            btn.classList.add('copied');
+            const orig = btn.textContent;
+            btn.textContent = 'Copied';
+            setTimeout(() => { btn.classList.remove('copied'); btn.textContent = orig; }, 1100);
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(flashOk).catch(() => {});
+          } else {
+            const ta = document.createElement('textarea');
+            ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy'); flashOk(); } catch(_) {}
+            document.body.removeChild(ta);
+          }
+        });
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+    } else {
+      bootstrap();
+    }
+  })();
+</script>

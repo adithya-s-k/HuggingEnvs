@@ -1,0 +1,449 @@
+<div class="pick-fw" style="width:100%;margin:14px 0;"></div>
+<style>
+  .pick-fw {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-bg);
+    overflow: hidden;
+    color: var(--text-color);
+  }
+  .pick-fw__head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 4%, transparent);
+    flex-wrap: wrap;
+  }
+  .pick-fw__title {
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    margin-right: auto;
+  }
+  .pick-fw__reset {
+    border: 1px dashed var(--border-color);
+    background: transparent;
+    color: var(--muted-color);
+    padding: 4px 11px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .pick-fw__reset:hover { color: var(--text-color); border-color: var(--text-color); }
+
+  /* breadcrumb */
+  .pick-fw__crumbs {
+    display: flex; align-items: center; gap: 6px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 2%, transparent);
+    flex-wrap: wrap;
+    font-size: 11px;
+    color: var(--muted-color);
+    min-height: 18px;
+  }
+  .pick-fw__crumb {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--text-color) 8%, transparent);
+    color: var(--text-color);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s ease;
+  }
+  .pick-fw__crumb:hover {
+    background: color-mix(in oklab, var(--text-color) 14%, transparent);
+  }
+  .pick-fw__crumb .answer {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10px;
+    color: var(--muted-color);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .pick-fw__crumbs .arrow { color: var(--muted-color); }
+
+  /* body */
+  .pick-fw__body {
+    padding: 22px 18px 18px 18px;
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+    min-height: 200px;
+  }
+  .pick-fw__step-tag {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    margin-bottom: 6px;
+  }
+  .pick-fw__question {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-color);
+    line-height: 1.3;
+    margin-bottom: 4px;
+    letter-spacing: -0.01em;
+  }
+  .pick-fw__hint {
+    font-size: 12px;
+    color: var(--muted-color);
+    line-height: 1.5;
+    margin-bottom: 16px;
+  }
+  .pick-fw__choices {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+  }
+  .pick-fw__choice {
+    border: 1px solid var(--border-color);
+    background: var(--surface-bg);
+    color: var(--text-color);
+    padding: 14px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .pick-fw__choice:hover {
+    border-color: var(--primary-color);
+    background: color-mix(in oklab, var(--primary-color) 6%, var(--surface-bg));
+    transform: translateY(-1px);
+  }
+  .pick-fw__choice .answer {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-color);
+  }
+  .pick-fw__choice .why {
+    font-size: 11.5px;
+    color: var(--muted-color);
+    line-height: 1.45;
+  }
+
+  /* candidate preview chips */
+  .pick-fw__candidates {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px;
+    border-top: 1px solid var(--border-color);
+    background: var(--surface-bg);
+    flex-wrap: wrap;
+    font-size: 10.5px;
+    color: var(--muted-color);
+  }
+  .pick-fw__candidates .label {
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    margin-right: 4px;
+  }
+  .pick-fw__chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in oklab, var(--cc, var(--border-color)) 35%, var(--border-color));
+    background: color-mix(in oklab, var(--cc, transparent) 8%, transparent);
+    color: var(--text-color);
+    font-size: 11px;
+    font-weight: 600;
+    transition: opacity 0.2s ease, filter 0.2s ease;
+  }
+  .pick-fw__chip .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--cc, var(--muted-color));
+    flex-shrink: 0;
+  }
+  .pick-fw__chip.eliminated {
+    opacity: 0.3;
+    filter: grayscale(0.7);
+  }
+
+  /* result */
+  .pick-fw__result {
+    padding: 24px 18px 20px 18px;
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+    text-align: center;
+  }
+  .pick-fw__result .head {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    margin-bottom: 8px;
+  }
+  .pick-fw__result .winners {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .pick-fw__result .winner {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 16px;
+    border-radius: 12px;
+    border: 2px solid color-mix(in oklab, var(--cc) 55%, var(--border-color));
+    background: color-mix(in oklab, var(--cc) 14%, var(--surface-bg));
+    color: var(--text-color);
+    font-size: 16px;
+    font-weight: 800;
+  }
+  .pick-fw__result .winner .dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--cc);
+  }
+  .pick-fw__result .winner .creator {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--muted-color);
+    margin-left: 2px;
+  }
+  .pick-fw__result .reason {
+    font-size: 12.5px;
+    color: var(--muted-color);
+    line-height: 1.55;
+    max-width: 520px;
+    margin: 0 auto;
+    font-style: italic;
+  }
+  .pick-fw__result .none {
+    font-size: 13px;
+    color: var(--muted-color);
+    margin: 12px 0;
+  }
+</style>
+<script>
+(() => {
+  const bootstrap = () => {
+    const scriptEl = document.currentScript;
+    let container = scriptEl ? scriptEl.previousElementSibling : null;
+    if (!(container && container.classList && container.classList.contains('pick-fw'))) {
+      const cands = Array.from(document.querySelectorAll('.pick-fw'))
+        .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+      container = cands[cands.length - 1] || null;
+    }
+    if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+    container.dataset.mounted = 'true';
+
+    const FRAMEWORKS = [
+      { key: 'openenv', name: 'OpenEnv',   creator: 'Meta PyTorch',                color: '#3b82f6',
+        transport: 'http',   bundledTrainer: false, catalog: 'large',  gymStyle: false },
+      { key: 'ors',     name: 'ORS',       creator: 'General Reasoning',   color: '#a855f7',
+        transport: 'http',   bundledTrainer: false, catalog: 'large',  gymStyle: false },
+      { key: 'nemo',    name: 'NeMo Gym',  creator: 'NVIDIA',              color: '#22c55e',
+        transport: 'http',   bundledTrainer: true,  catalog: 'large',  gymStyle: false },
+      { key: 'verifs',  name: 'Verifiers', creator: 'PrimeIntellect',      color: '#ec4899',
+        transport: 'inproc', bundledTrainer: true,  catalog: 'medium', gymStyle: false },
+      { key: 'skyrl',   name: 'SkyRL Gym', creator: 'NovaSky · Berkeley',  color: '#f59e0b',
+        transport: 'inproc', bundledTrainer: true,  catalog: 'small',  gymStyle: false },
+      { key: 'gem',     name: 'GEM',       creator: 'Axon-RL',             color: '#14b8a6',
+        transport: 'inproc', bundledTrainer: true,  catalog: 'medium', gymStyle: true  },
+    ];
+
+    // Decision tree — each step has a question, two choices, and a filter.
+    const STEPS = [
+      {
+        id: 'transport',
+        tag: 'Step 1 of 4',
+        question: 'Where should the env run?',
+        hint: 'HTTP frameworks deploy as separate services (CPU box, HF Space) and scale on their own. In-process frameworks live in the training venv, simpler but coupled to the trainer node.',
+        choices: [
+          { label: 'On its own server (HTTP)', why: 'Separate machine, scales by adding replicas.', filter: f => f.transport === 'http' },
+          { label: 'Inside the trainer (in-process)', why: 'Same Python process, no network hop.', filter: f => f.transport === 'inproc' },
+        ],
+      },
+      {
+        id: 'trainer',
+        tag: 'Step 2 of 4',
+        question: 'Do you want a bundled trainer?',
+        hint: 'A bundled trainer ships GRPO (or similar) so you do not write the training loop yourself. The alternative is wiring the env to your existing trainer (TRL, custom).',
+        choices: [
+          { label: 'Yes, give me a trainer', why: 'NeMo RL, Prime RL, or SkyRL training stack.', filter: f => f.bundledTrainer },
+          { label: 'No, I will plug in my own', why: 'Plain env, you bring TRL or custom.',     filter: f => !f.bundledTrainer },
+        ],
+      },
+      {
+        id: 'catalog',
+        tag: 'Step 3 of 4',
+        question: 'How big a catalog of pre-built envs do you need?',
+        hint: 'A larger built-in catalog gets you running on real tasks faster. A smaller catalog means more authoring work but a smaller surface to learn.',
+        choices: [
+          { label: 'A large catalog matters', why: 'Hub-shipped or vendor-shipped catalogs (50+ envs).', filter: f => f.catalog === 'large' || f.catalog === 'medium' },
+          { label: 'I will build my own envs',  why: 'Minimal built-ins, BYO env logic.',                  filter: f => true },
+        ],
+      },
+      {
+        id: 'gym',
+        tag: 'Step 4 of 4',
+        question: 'Need a strict Gymnasium-style API?',
+        hint: 'Gymnasium API means <code>(obs, reward, terminated, truncated, info)</code> 5-tuple from <code>step()</code>, drop-in for classical RL code.',
+        choices: [
+          { label: 'Yes, strict Gymnasium',         why: 'Gymnasium-faithful 5-tuple step(), AsyncVectorEnv.', filter: f => f.gymStyle },
+          { label: 'Either is fine',                why: 'Open to whatever the framework prefers.',           filter: f => true },
+        ],
+      },
+    ];
+
+    let stepIdx = 0;
+    const path = [];      // [{ stepId, choiceIdx, label, candidatesAfter: [...] }]
+    let candidates = FRAMEWORKS.slice();
+
+    const renderHeader = () => {
+      const head = container.querySelector('[data-head]');
+      head.innerHTML = `
+        <span class="pick-fw__title">Pick a framework · interactive decision tree</span>
+        <button type="button" class="pick-fw__reset" data-reset>Reset</button>
+      `;
+      head.querySelector('[data-reset]').addEventListener('click', () => {
+        stepIdx = 0;
+        path.length = 0;
+        candidates = FRAMEWORKS.slice();
+        renderAll();
+      });
+    };
+
+    const renderCrumbs = () => {
+      const crumbs = container.querySelector('[data-crumbs]');
+      if (path.length === 0) {
+        crumbs.innerHTML = `<span>Pick an answer to begin. Click a step to backtrack.</span>`;
+        return;
+      }
+      const parts = path.map((p, i) => `
+        <span class="pick-fw__crumb" data-crumb-step="${i}">
+          <span>${p.stepLabel}</span>
+          <span class="answer">${p.answer}</span>
+        </span>
+      `);
+      crumbs.innerHTML = parts.join('<span class="arrow">›</span>');
+      crumbs.querySelectorAll('[data-crumb-step]').forEach(el => {
+        el.addEventListener('click', () => {
+          const idx = parseInt(el.getAttribute('data-crumb-step'), 10);
+          // truncate path back to this step (re-run from that step)
+          path.length = idx;
+          stepIdx = idx;
+          // rebuild candidates from scratch by re-applying earlier path
+          candidates = FRAMEWORKS.slice();
+          path.forEach(p => {
+            const step = STEPS.find(s => s.id === p.stepId);
+            const choice = step.choices[p.choiceIdx];
+            candidates = candidates.filter(choice.filter);
+          });
+          renderAll();
+        });
+      });
+    };
+
+    const renderCandidates = () => {
+      const cnd = container.querySelector('[data-candidates]');
+      const chips = FRAMEWORKS.map(f => {
+        const live = candidates.find(c => c.key === f.key);
+        return `<span class="pick-fw__chip ${live ? '' : 'eliminated'}" style="--cc:${f.color};">
+          <span class="dot"></span>${f.name}
+        </span>`;
+      }).join('');
+      cnd.innerHTML = `
+        <span class="label">Still in the running</span>
+        <strong style="color: var(--text-color); margin-right: 6px;">${candidates.length}/6</strong>
+        ${chips}
+      `;
+    };
+
+    const renderStep = () => {
+      const body = container.querySelector('[data-body]');
+      // if we've answered all steps OR candidates are empty/single, show result
+      if (stepIdx >= STEPS.length || candidates.length <= 1) {
+        renderResult();
+        return;
+      }
+      const step = STEPS[stepIdx];
+      body.innerHTML = `
+        <div class="pick-fw__step-tag">${step.tag}</div>
+        <div class="pick-fw__question">${step.question}</div>
+        <div class="pick-fw__hint">${step.hint}</div>
+        <div class="pick-fw__choices">
+          ${step.choices.map((c, i) => `
+            <button type="button" class="pick-fw__choice" data-choice="${i}">
+              <span class="answer">${c.label}</span>
+              <span class="why">${c.why}</span>
+            </button>
+          `).join('')}
+        </div>
+      `;
+      body.querySelectorAll('[data-choice]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = parseInt(btn.getAttribute('data-choice'), 10);
+          const choice = step.choices[idx];
+          candidates = candidates.filter(choice.filter);
+          path.push({
+            stepId: step.id,
+            choiceIdx: idx,
+            stepLabel: step.question.replace('?', ''),
+            answer: choice.label,
+          });
+          stepIdx++;
+          renderAll();
+        });
+      });
+    };
+
+    const renderResult = () => {
+      const body = container.querySelector('[data-body]');
+      let html;
+      if (candidates.length === 0) {
+        html = `
+          <div class="pick-fw__result">
+            <div class="head">No exact match</div>
+            <div class="none">No framework satisfies all of those constraints. Try relaxing one of the steps above.</div>
+          </div>
+        `;
+      } else {
+        const winners = candidates.map(f => `
+          <div class="winner" style="--cc:${f.color};">
+            <span class="dot"></span>
+            ${f.name}<span class="creator">${f.creator}</span>
+          </div>
+        `).join('');
+        const reasonBits = path.map(p => p.answer.toLowerCase()).join(' · ');
+        html = `
+          <div class="pick-fw__result">
+            <div class="head">${candidates.length === 1 ? 'Your match' : `${candidates.length} matches`}</div>
+            <div class="winners">${winners}</div>
+            <div class="reason">Based on: ${reasonBits || 'no filters yet'}.</div>
+          </div>
+        `;
+      }
+      body.innerHTML = html;
+    };
+
+    const renderAll = () => {
+      renderCrumbs();
+      renderCandidates();
+      renderStep();
+    };
+
+    container.innerHTML = `
+      <div class="pick-fw__head" data-head></div>
+      <div class="pick-fw__crumbs" data-crumbs></div>
+      <div class="pick-fw__body" data-body></div>
+      <div class="pick-fw__candidates" data-candidates></div>
+    `;
+
+    renderHeader();
+    renderAll();
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+  } else {
+    bootstrap();
+  }
+})();
+</script>

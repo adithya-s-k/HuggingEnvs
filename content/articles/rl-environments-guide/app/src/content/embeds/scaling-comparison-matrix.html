@@ -1,0 +1,221 @@
+<div class="scaling-matrix" style="width:100%;margin:14px 0;"></div>
+<style>
+  .scaling-matrix {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-bg);
+    overflow: hidden;
+    color: var(--text-color);
+  }
+  .scaling-matrix__head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 4%, transparent);
+    flex-wrap: wrap;
+  }
+  .scaling-matrix__title {
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    margin-right: auto;
+  }
+  .scaling-matrix__legend {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 10.5px; color: var(--muted-color);
+    flex-wrap: wrap;
+  }
+  .sm-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 9px;
+    font-size: 10.5px;
+    font-weight: 700;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .sm-pill.kind-http   { background: color-mix(in oklab, #3b82f6 12%, transparent); color: color-mix(in oklab, #3b82f6 80%, var(--text-color)); border: 1px solid color-mix(in oklab, #3b82f6 30%, transparent); }
+  .sm-pill.kind-inproc { background: color-mix(in oklab, #ec4899 10%, transparent); color: color-mix(in oklab, #ec4899 80%, var(--text-color)); border: 1px solid color-mix(in oklab, #ec4899 28%, transparent); }
+  .sm-pill.yes         { background: color-mix(in oklab, #22c55e 14%, transparent); color: #16a34a; border: 1px solid color-mix(in oklab, #22c55e 35%, transparent); }
+
+  .scaling-matrix__wrap { overflow-x: auto; }
+  .scaling-matrix table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    min-width: 800px;
+  }
+  .scaling-matrix table thead th {
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted-color);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+    white-space: nowrap;
+  }
+  .scaling-matrix table thead th .swatch {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--c, var(--muted-color));
+    display: inline-block;
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+  /* group banding — first 3 cols are HTTP, last 3 in-process */
+  .scaling-matrix .grp-http   { background: color-mix(in oklab, #3b82f6 4%, transparent); }
+  .scaling-matrix .grp-inproc { background: color-mix(in oklab, #ec4899 4%, transparent); }
+  .scaling-matrix table thead .group-band th {
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.7px;
+    padding: 4px 12px;
+    text-align: center;
+    color: var(--muted-color);
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+    border-bottom: 1px solid var(--border-color);
+  }
+  .scaling-matrix table thead .group-band th.grp-http   { color: color-mix(in oklab, #3b82f6 80%, var(--text-color)); background: color-mix(in oklab, #3b82f6 7%, transparent); }
+  .scaling-matrix table thead .group-band th.grp-inproc { color: color-mix(in oklab, #ec4899 80%, var(--text-color)); background: color-mix(in oklab, #ec4899 7%, transparent); }
+  .scaling-matrix table tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid color-mix(in oklab, var(--border-color) 60%, transparent);
+    vertical-align: middle;
+    color: var(--text-color);
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+  .scaling-matrix table tbody tr:last-child td { border-bottom: 0; }
+  .scaling-matrix table tbody td.row-name {
+    font-weight: 600;
+    color: var(--text-color);
+    white-space: nowrap;
+  }
+  .scaling-matrix code {
+    background: color-mix(in oklab, var(--muted-color) 10%, transparent);
+    border-radius: 3px;
+    padding: 0 5px;
+    font-size: 11px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .scaling-matrix .muted { color: var(--muted-color); font-size: 10.5px; }
+</style>
+<script>
+(() => {
+  const bootstrap = () => {
+    const scriptEl = document.currentScript;
+    let container = scriptEl ? scriptEl.previousElementSibling : null;
+    if (!(container && container.classList && container.classList.contains('scaling-matrix'))) {
+      const cands = Array.from(document.querySelectorAll('.scaling-matrix'))
+        .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+      container = cands[cands.length - 1] || null;
+    }
+    if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+    container.dataset.mounted = 'true';
+
+    const FRAMEWORKS = [
+      { key: 'openenv', name: 'OpenEnv',   color: '#3b82f6', kind: 'http' },
+      { key: 'ors',     name: 'ORS',       color: '#a855f7', kind: 'http' },
+      { key: 'nemo',    name: 'NeMo Gym',  color: '#22c55e', kind: 'http' },
+      { key: 'verifs',  name: 'Verifiers', color: '#ec4899', kind: 'inproc' },
+      { key: 'skyrl',   name: 'SkyRL Gym', color: '#f59e0b', kind: 'inproc' },
+      { key: 'gem',     name: 'GEM',       color: '#14b8a6', kind: 'inproc' },
+    ];
+
+    const yes = '<span class="sm-pill yes">✓</span>';
+
+    const ROWS = [
+      { name: 'Scaling model', cells: {
+        openenv: 'Multi-session WS server',
+        ors:     'Multi-session SSE/HTTP server',
+        nemo:    'Multi-session server + Ray',
+        verifs:  'Per-worker instances',
+        skyrl:   'Per-worker instances',
+        gem:     'Per-worker instances',
+      }},
+      { name: 'Per-env overhead', cells: {
+        openenv: '<code>&lt;1ms</code> <span class="muted">WS session</span>',
+        ors:     '<code>&lt;1ms</code> <span class="muted">HTTP/SSE session</span>',
+        nemo:    '<code>&lt;1ms</code> <span class="muted">HTTP session</span>',
+        verifs:  '<code>&lt;1ms</code> <span class="muted">Python object</span>',
+        skyrl:   '<code>&lt;1ms</code> <span class="muted">Python object</span>',
+        gem:     '<code>&lt;1ms</code> <span class="muted">Python object</span>',
+      }},
+      { name: 'Horizontal scale', cells: {
+        openenv: 'Envoy + more nodes',
+        ors:     'Envoy + more nodes',
+        nemo:    'Ray autoscaling',
+        verifs:  'More GPU workers',
+        skyrl:   'More GPU workers',
+        gem:     '<code>AsyncVectorEnv</code>',
+      }},
+      { name: 'State isolation', cells: {
+        openenv: 'Per-session dict',
+        ors:     'Per-session (<code>X-Session-ID</code>)',
+        nemo:    'Per-session (cookies)',
+        verifs:  'Per-instance',
+        skyrl:   'Per-instance',
+        gem:     'Per-instance',
+      }},
+      { name: '512 concurrent', cells: {
+        openenv: yes + ' <span class="muted">laptop</span>',
+        ors:     yes + ' <span class="muted">laptop</span>',
+        nemo:    yes + ' <span class="muted">laptop</span>',
+        verifs:  yes,
+        skyrl:   yes,
+        gem:     yes,
+      }},
+      { name: '16K concurrent', cells: {
+        openenv: yes + ' <span class="muted">multi-node</span>',
+        ors:     yes + ' <span class="muted">multi-node</span>',
+        nemo:    yes + ' <span class="muted">multi-node</span>',
+        verifs:  yes,
+        skyrl:   yes,
+        gem:     yes,
+      }},
+    ];
+
+    const headerCells = FRAMEWORKS.map(f =>
+      `<th class="grp-${f.kind === 'http' ? 'http' : 'inproc'}"><span class="swatch" style="--c:${f.color};"></span>${f.name}</th>`
+    ).join('');
+
+    const bodyHtml = ROWS.map(r => {
+      const cells = FRAMEWORKS.map(f => `<td class="grp-${f.kind === 'http' ? 'http' : 'inproc'}">${r.cells[f.key]}</td>`).join('');
+      return `<tr><td class="row-name">${r.name}</td>${cells}</tr>`;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="scaling-matrix__head">
+        <span class="scaling-matrix__title">Scaling shapes · 6 frameworks</span>
+        <span class="scaling-matrix__legend">
+          <span class="sm-pill kind-http">HTTP</span>
+          <span class="sm-pill kind-inproc">In-process</span>
+        </span>
+      </div>
+      <div class="scaling-matrix__wrap">
+        <table>
+          <thead>
+            <tr class="group-band">
+              <th></th>
+              <th colspan="3" class="grp-http">HTTP frameworks</th>
+              <th colspan="3" class="grp-inproc">In-process frameworks</th>
+            </tr>
+            <tr><th>Capability</th>${headerCells}</tr>
+          </thead>
+          <tbody>${bodyHtml}</tbody>
+        </table>
+      </div>
+    `;
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+  } else {
+    bootstrap();
+  }
+})();
+</script>

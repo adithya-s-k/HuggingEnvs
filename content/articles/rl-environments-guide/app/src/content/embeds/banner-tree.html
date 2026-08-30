@@ -1,0 +1,535 @@
+<div class="d3-tree" style="width:100%;margin:10px 0;aspect-ratio:3/1;min-height:260px;"></div>
+<style>
+  .d3-tree { position: relative; }
+  .d3-tree canvas { display: block; width: 100%; height: 100%; }
+</style>
+<script>
+  (() => {
+    const ensureD3 = (cb) => {
+      if (window.d3 && typeof window.d3.select === 'function') return cb();
+      let s = document.getElementById('d3-cdn-script');
+      if (!s) {
+        s = document.createElement('script');
+        s.id = 'd3-cdn-script';
+        s.src = 'https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js';
+        document.head.appendChild(s);
+      }
+      const onReady = () => { if (window.d3 && typeof window.d3.select === 'function') cb(); };
+      s.addEventListener('load', onReady, { once: true });
+      if (window.d3) onReady();
+    };
+
+    const bootstrap = () => {
+      const scriptEl = document.currentScript;
+      let container = scriptEl ? scriptEl.previousElementSibling : null;
+      if (!(container && container.classList && container.classList.contains('d3-tree'))) {
+        const candidates = Array.from(document.querySelectorAll('.d3-tree'))
+          .filter((el) => !(el.dataset && el.dataset.mounted === 'true'));
+        container = candidates[candidates.length - 1] || null;
+      }
+      if (!container) return;
+      if (container.dataset) {
+        if (container.dataset.mounted === 'true') return;
+        container.dataset.mounted = 'true';
+      }
+      container.style.position = container.style.position || 'relative';
+
+      // Tooltip (mirror existing banner style)
+      let tip = container.querySelector('.d3-tooltip');
+      let tipInner;
+      if (!tip) {
+        tip = document.createElement('div');
+        tip.className = 'd3-tooltip';
+        Object.assign(tip.style, {
+          position: 'absolute', top: '0px', left: '0px',
+          transform: 'translate(-9999px, -9999px)',
+          pointerEvents: 'none', padding: '10px 12px', borderRadius: '12px',
+          fontSize: '12px', lineHeight: '1.35',
+          border: '1px solid var(--border-color)',
+          background: 'var(--surface-bg)', color: 'var(--text-color)',
+          boxShadow: '0 8px 32px rgba(0,0,0,.28), 0 2px 8px rgba(0,0,0,.12)',
+          opacity: '0', transition: 'opacity .12s ease',
+          backdropFilter: 'saturate(1.12) blur(8px)', zIndex: '20'
+        });
+        tipInner = document.createElement('div');
+        tipInner.className = 'd3-tooltip__inner';
+        Object.assign(tipInner.style, {
+          textAlign: 'left', display: 'flex', flexDirection: 'column',
+          gap: '6px', minWidth: '200px'
+        });
+        tip.appendChild(tipInner);
+        container.appendChild(tip);
+      } else {
+        tipInner = tip.querySelector('.d3-tooltip__inner') || tip;
+      }
+
+      // Canvas
+      const canvas = document.createElement('canvas');
+      canvas.style.display = 'block';
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
+      canvas.style.cursor = 'crosshair';
+      container.appendChild(canvas);
+      const ctx = canvas.getContext('2d');
+
+      // Color palette — match the existing galaxy
+      const c0 = d3.rgb(78, 165, 183);   // cyan
+      const c1 = d3.rgb(206, 192, 250);  // lavender
+      const c2 = d3.rgb(232, 137, 171);  // pink
+      const interp01 = d3.interpolateRgb(c0, c1);
+      const interp12 = d3.interpolateRgb(c1, c2);
+      const colorFor = (v) => {
+        const t = Math.max(0, Math.min(1, v));
+        return t <= 0.5 ? interp01(t / 0.5) : interp12((t - 0.5) / 0.5);
+      };
+      const PINK = c2.formatRgb();
+
+      // Geometry
+      let W = 800, H = 280, dpr = Math.max(1, window.devicePixelRatio || 1);
+      let rootX = W / 2, rootY = H / 2;
+      let prevW = W, prevH = H;
+
+      // Branch state
+      // A branch: { id, parent, points:[{x,y}], angle, depth, maxDepth,
+      //             stepEvery, stepCounter, spawnProb, treeId, alive,
+      //             leaf, leafFrames, fading, fadeAlpha, segLen, lineWidth, dead }
+      const trees = []; // { id, branches:[], age }
+      const TARGET_TREES = 8;
+      let nextTreeId = 1;
+      let nextBranchId = 1;
+
+      // Tunables
+      const SEG_LEN_BASE = 6;       // pixels per growth step
+      const STEP_EVERY = 5;          // frames per growth step (trunk)
+      const ANGLE_JITTER = 0.18;     // radians stddev per step
+      const SPAWN_PROB = 0.18;       // prob of spawning a child per step
+      const FADE_RATE = 0.018;       // per frame
+      const LEAF_HOLD = 28;          // frames to hold leaf bright
+      const TRUNK_MAX_DEPTH = [10, 14];   // [min, max]
+      const MAX_DEPTH_FALLOFF = 0.85;     // child max ~ parent max * falloff
+
+      const rng = (a, b) => a + Math.random() * (b - a);
+      const randn = d3.randomNormal.source(Math.random)(0, 1);
+
+      function spawnTree(initial) {
+        const tree = { id: nextTreeId++, branches: [], age: 0, dying: false };
+        // Trunk seed angle: random direction
+        const angle = Math.random() * Math.PI * 2;
+        const maxDepth = Math.floor(rng(TRUNK_MAX_DEPTH[0], TRUNK_MAX_DEPTH[1]));
+        const trunk = makeBranch({
+          parent: null,
+          treeId: tree.id,
+          startX: rootX, startY: rootY,
+          angle, depth: 0, maxDepth,
+          segLen: SEG_LEN_BASE * rng(0.95, 1.15),
+          stepEvery: STEP_EVERY,
+          spawnProb: SPAWN_PROB
+        });
+        tree.branches.push(trunk);
+        // If `initial`, fast-forward the tree by a random number of frames
+        if (initial) {
+          const skip = Math.floor(rng(20, 220));
+          for (let i = 0; i < skip; i++) stepTree(tree);
+        }
+        trees.push(tree);
+        return tree;
+      }
+
+      function makeBranch(opts) {
+        return {
+          id: nextBranchId++,
+          parent: opts.parent,
+          parentId: opts.parent ? opts.parent.id : null,
+          treeId: opts.treeId,
+          points: [{ x: opts.startX, y: opts.startY }],
+          angle: opts.angle,
+          depth: opts.depth,
+          maxDepth: opts.maxDepth,
+          segLen: opts.segLen,
+          stepEvery: opts.stepEvery,
+          stepCounter: Math.floor(Math.random() * opts.stepEvery),
+          spawnProb: opts.spawnProb,
+          alive: true,
+          leaf: false,
+          leafFrames: 0,
+          fading: false,
+          fadeAlpha: 1.0,
+          dead: false,
+          // For UI: aspect bias — ellipse stretch in x
+          biasX: 1.6, biasY: 1.0
+        };
+      }
+
+      function stepTree(tree) {
+        tree.age++;
+        const newBranches = [];
+        for (const b of tree.branches) {
+          if (b.dead) continue;
+          if (b.fading) {
+            b.fadeAlpha -= FADE_RATE;
+            if (b.fadeAlpha <= 0) { b.fadeAlpha = 0; b.dead = true; }
+            continue;
+          }
+          if (b.leaf) {
+            b.leafFrames--;
+            if (b.leafFrames <= 0) {
+              // start fading whole subtree
+              fadeSubtree(tree, b.id);
+            }
+            continue;
+          }
+          // grow if it's time
+          b.stepCounter++;
+          if (b.stepCounter < b.stepEvery) continue;
+          b.stepCounter = 0;
+          // perturb angle, biased to fill wide canvas
+          const dAng = randn() * ANGLE_JITTER;
+          b.angle += dAng;
+          const last = b.points[b.points.length - 1];
+          const dx = Math.cos(b.angle) * b.segLen * b.biasX;
+          const dy = Math.sin(b.angle) * b.segLen * b.biasY;
+          const nx = last.x + dx;
+          const ny = last.y + dy;
+          b.points.push({ x: nx, y: ny });
+          b.depth++;
+          if (b.depth >= b.maxDepth) {
+            b.leaf = true;
+            b.leafFrames = LEAF_HOLD;
+            continue;
+          }
+          // possibly spawn child(ren)
+          if (Math.random() < b.spawnProb) {
+            const numChildren = Math.random() < 0.15 ? 2 : 1;
+            for (let k = 0; k < numChildren; k++) {
+              const sign = Math.random() < 0.5 ? -1 : 1;
+              const branchAng = b.angle + sign * rng(0.4, 1.0);
+              const childMax = Math.max(2, Math.floor(b.maxDepth * MAX_DEPTH_FALLOFF));
+              const child = makeBranch({
+                parent: b,
+                treeId: b.treeId,
+                startX: nx, startY: ny,
+                angle: branchAng,
+                depth: b.depth,
+                maxDepth: childMax,
+                segLen: b.segLen * rng(0.85, 0.95),
+                stepEvery: Math.max(3, b.stepEvery + Math.floor(rng(0, 2))),
+                spawnProb: b.spawnProb * 0.85
+              });
+              newBranches.push(child);
+            }
+          }
+        }
+        if (newBranches.length) {
+          for (const nb of newBranches) tree.branches.push(nb);
+        }
+      }
+
+      function fadeSubtree(tree, rootBranchId) {
+        // mark all branches whose parent chain hits rootBranchId as fading
+        const idToBranch = new Map(tree.branches.map(b => [b.id, b]));
+        for (const b of tree.branches) {
+          if (b.dead || b.fading) continue;
+          let cur = b;
+          let isDescendant = false;
+          while (cur) {
+            if (cur.id === rootBranchId) { isDescendant = true; break; }
+            cur = cur.parentId ? idToBranch.get(cur.parentId) : null;
+          }
+          if (isDescendant) {
+            b.fading = true;
+            b.leaf = false;
+          }
+        }
+      }
+
+      function isTreeFullyDead(tree) {
+        for (const b of tree.branches) if (!b.dead) return false;
+        return true;
+      }
+
+      // Theme helpers
+      function isDark() {
+        return document.documentElement.getAttribute('data-theme') === 'dark';
+      }
+      function fadeFill() {
+        return isDark() ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
+      }
+      function rootDotColor() {
+        return PINK;
+      }
+      function labelColor() {
+        return isDark() ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.45)';
+      }
+
+      // Drawing
+      function draw() {
+        // Fade trail
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = fadeFill();
+        ctx.fillRect(0, 0, W, H);
+
+        ctx.globalCompositeOperation = isDark() ? 'lighter' : 'source-over';
+
+        // Draw all branch segments
+        for (const tree of trees) {
+          for (const b of tree.branches) {
+            if (b.dead) continue;
+            const pts = b.points;
+            if (pts.length < 2) continue;
+            const denom = b.maxDepth || 1;
+            // Stroke each segment with depth-based color
+            for (let i = 1; i < pts.length; i++) {
+              const segDepth = (b.depth - (pts.length - 1 - i));
+              const t = Math.max(0, Math.min(1, segDepth / denom));
+              const col = colorFor(t);
+              const lw = 1.5 - 0.7 * t; // 1.5 -> 0.8
+              ctx.strokeStyle = withAlpha(col, b.fadeAlpha);
+              ctx.lineWidth = Math.max(0.6, lw);
+              ctx.lineCap = 'round';
+              ctx.beginPath();
+              ctx.moveTo(pts[i - 1].x, pts[i - 1].y);
+              ctx.lineTo(pts[i].x, pts[i].y);
+              ctx.stroke();
+            }
+            // Leaf dot
+            if (b.leaf || (b.fading && b.fadeAlpha > 0.4)) {
+              const tip = pts[pts.length - 1];
+              const t = Math.max(0, Math.min(1, b.depth / denom));
+              const col = colorFor(Math.max(0.85, t));
+              ctx.fillStyle = withAlpha(col, b.fadeAlpha);
+              ctx.beginPath();
+              ctx.arc(tip.x, tip.y, b.leaf ? 2.0 : 1.4, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+        }
+
+        // Highlight branch under hover
+        if (hoverBranch && !hoverBranch.dead) {
+          drawHighlight(hoverBranch);
+        }
+
+        ctx.globalCompositeOperation = 'source-over';
+
+        // Central root dot + glow + label
+        const dotR = 3.5;
+        const grad = ctx.createRadialGradient(rootX, rootY, 0, rootX, rootY, 14);
+        grad.addColorStop(0, withAlpha(c2, 0.75));
+        grad.addColorStop(1, withAlpha(c2, 0));
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(rootX, rootY, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = rootDotColor();
+        ctx.beginPath();
+        ctx.arc(rootX, rootY, dotR, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Label "PROMPT" subtle
+        ctx.fillStyle = labelColor();
+        ctx.font = '600 10px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        const label = 'P R O M P T';
+        ctx.fillText(label, rootX + 10, rootY + 0.5);
+      }
+
+      function drawHighlight(branch) {
+        // Walk back to root, gather chain
+        const idToBranch = new Map();
+        const tree = trees.find(t => t.id === branch.treeId);
+        if (!tree) return;
+        for (const b of tree.branches) idToBranch.set(b.id, b);
+        const chain = [];
+        let cur = branch;
+        while (cur) {
+          chain.push(cur);
+          cur = cur.parentId ? idToBranch.get(cur.parentId) : null;
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        const hl = isDark() ? 'rgba(255,255,255,0.95)' : 'rgba(20,20,30,0.85)';
+        for (const b of chain) {
+          const pts = b.points;
+          if (pts.length < 2) continue;
+          ctx.strokeStyle = hl;
+          ctx.lineWidth = 1.8;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(pts[0].x, pts[0].y);
+          for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+          ctx.stroke();
+        }
+        // Leaf marker
+        const tip = branch.points[branch.points.length - 1];
+        ctx.fillStyle = hl;
+        ctx.beginPath();
+        ctx.arc(tip.x, tip.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function withAlpha(rgbLike, a) {
+        // d3.rgb or string "rgb(r,g,b)"
+        let r, g, b;
+        if (typeof rgbLike === 'string') {
+          const m = rgbLike.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+          if (m) { r = +m[1]; g = +m[2]; b = +m[3]; } else { return rgbLike; }
+        } else {
+          r = rgbLike.r; g = rgbLike.g; b = rgbLike.b;
+        }
+        return `rgba(${r|0},${g|0},${b|0},${a.toFixed(3)})`;
+      }
+
+      // Step + draw loop
+      function tick() {
+        // Step every tree
+        for (const tree of trees) stepTree(tree);
+        // Cull fully-dead trees
+        for (let i = trees.length - 1; i >= 0; i--) {
+          if (isTreeFullyDead(trees[i])) trees.splice(i, 1);
+        }
+        // Maintain target count
+        while (trees.length < TARGET_TREES) spawnTree(false);
+        draw();
+      }
+
+      // Hover: pick nearest active leaf within ~12px
+      let hoverBranch = null;
+      let mouseX = -1, mouseY = -1;
+
+      function findHoverBranch(mx, my) {
+        const R = 14;
+        let best = null;
+        let bestD = R * R;
+        for (const tree of trees) {
+          for (const b of tree.branches) {
+            if (b.dead || b.fading) continue;
+            const tip = b.points[b.points.length - 1];
+            const dx = tip.x - mx, dy = tip.y - my;
+            const d2 = dx * dx + dy * dy;
+            if (d2 < bestD) { bestD = d2; best = b; }
+          }
+        }
+        return best;
+      }
+
+      function siblingsAtDepth(tree, depth, excludeId) {
+        let n = 0;
+        for (const b of tree.branches) {
+          if (b.dead) continue;
+          if (b.id === excludeId) continue;
+          if (b.depth === depth) n++;
+        }
+        return n;
+      }
+
+      canvas.addEventListener('mousemove', (ev) => {
+        const rect = canvas.getBoundingClientRect();
+        mouseX = ev.clientX - rect.left;
+        mouseY = ev.clientY - rect.top;
+        const b = findHoverBranch(mouseX, mouseY);
+        hoverBranch = b;
+        if (b) {
+          const tree = trees.find(t => t.id === b.treeId);
+          const sib = tree ? siblingsAtDepth(tree, b.depth, b.id) : 0;
+          tipInner.innerHTML =
+            `<div style="font-weight:800;letter-spacing:.1px;"><strong>Rollout</strong> (branch)</div>` +
+            `<div style="font-size:11px;color:var(--muted-color);margin-top:-4px;letter-spacing:.1px;"><strong>Tree</strong> #${b.treeId}</div>` +
+            `<div style="padding-top:6px;border-top:1px solid var(--border-color);"><strong>Depth</strong> ${b.depth} / ${b.maxDepth}</div>` +
+            `<div><strong>Siblings</strong> ${sib}</div>`;
+          tip.style.opacity = '1';
+          tip.style.transform = `translate(${Math.round(mouseX + 12)}px, ${Math.round(mouseY + 14)}px)`;
+        } else {
+          tip.style.opacity = '0';
+          tip.style.transform = 'translate(-9999px, -9999px)';
+        }
+      });
+      canvas.addEventListener('mouseleave', () => {
+        hoverBranch = null;
+        tip.style.opacity = '0';
+        tip.style.transform = 'translate(-9999px, -9999px)';
+      });
+
+      // Resize
+      function resize() {
+        const newW = container.clientWidth || 800;
+        const newH = Math.max(260, Math.round(newW / 3));
+        dpr = Math.max(1, window.devicePixelRatio || 1);
+
+        // Backing store
+        canvas.width = Math.floor(newW * dpr);
+        canvas.height = Math.floor(newH * dpr);
+        canvas.style.width = newW + 'px';
+        canvas.style.height = newH + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        // Rescale existing branch coordinates so the tree doesn't pop
+        const sx = newW / prevW;
+        const sy = newH / prevH;
+        const newRootX = newW / 2;
+        const newRootY = newH / 2;
+        if (trees.length && (sx !== 1 || sy !== 1 || prevW !== newW || prevH !== newH)) {
+          for (const tree of trees) {
+            for (const b of tree.branches) {
+              for (const p of b.points) {
+                // scale around the previous root
+                p.x = newRootX + (p.x - rootX) * sx;
+                p.y = newRootY + (p.y - rootY) * sy;
+              }
+            }
+          }
+        }
+        rootX = newRootX;
+        rootY = newRootY;
+        W = newW; H = newH;
+        prevW = W; prevH = H;
+
+        // Clear once on resize so the fade trail starts clean at new dims
+        ctx.clearRect(0, 0, W, H);
+      }
+
+      // Reduced motion: fast-forward to a static fully-grown tree
+      const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // Init
+      resize();
+      // Seed initial trees with staggered maturity
+      for (let i = 0; i < TARGET_TREES; i++) spawnTree(true);
+
+      if (reducedMotion) {
+        // Simulate further so things look mature, then draw once
+        for (let i = 0; i < 200; i++) {
+          for (const tree of trees) stepTree(tree);
+          for (let j = trees.length - 1; j >= 0; j--) {
+            if (isTreeFullyDead(trees[j])) trees.splice(j, 1);
+          }
+          while (trees.length < TARGET_TREES) spawnTree(true);
+        }
+        draw();
+      } else {
+        let rafId = null;
+        const loop = () => {
+          tick();
+          rafId = requestAnimationFrame(loop);
+        };
+        rafId = requestAnimationFrame(loop);
+      }
+
+      if (window.ResizeObserver) {
+        const ro = new ResizeObserver(() => {
+          resize();
+          if (reducedMotion) draw();
+        });
+        ro.observe(container);
+      } else {
+        window.addEventListener('resize', () => {
+          resize();
+          if (reducedMotion) draw();
+        });
+      }
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => ensureD3(bootstrap), { once: true });
+    } else { ensureD3(bootstrap); }
+  })();
+</script>

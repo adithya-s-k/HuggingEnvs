@@ -1,0 +1,187 @@
+<div class="effort-matrix" style="width:100%;margin:14px 0;"></div>
+<style>
+  .effort-matrix {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-bg);
+    overflow: hidden;
+    color: var(--text-color);
+  }
+  .effort-matrix__head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 4%, transparent);
+    flex-wrap: wrap;
+  }
+  .effort-matrix__title {
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    margin-right: auto;
+  }
+
+  .ef-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 9px;
+    font-size: 10.5px;
+    font-weight: 700;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .ef-pill.yes  { background: color-mix(in oklab, #22c55e 14%, transparent); color: #16a34a; border: 1px solid color-mix(in oklab, #22c55e 35%, transparent); }
+  .ef-pill.no   { color: var(--muted-color); border: 1px dashed color-mix(in oklab, var(--muted-color) 50%, transparent); background: transparent; }
+  .ef-pill.fast { background: color-mix(in oklab, #22c55e 14%, transparent); color: #16a34a; border: 1px solid color-mix(in oklab, #22c55e 35%, transparent); }
+  .ef-pill.med  { background: color-mix(in oklab, #f59e0b 14%, transparent); color: #b45309; border: 1px solid color-mix(in oklab, #f59e0b 35%, transparent); }
+  .ef-pill.slow { background: color-mix(in oklab, #ef4444 12%, transparent); color: #dc2626; border: 1px solid color-mix(in oklab, #ef4444 35%, transparent); }
+
+  .effort-matrix__wrap { overflow-x: auto; }
+  .effort-matrix table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    min-width: 760px;
+  }
+  .effort-matrix table thead th {
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted-color);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+    white-space: nowrap;
+  }
+  .effort-matrix table thead th .swatch {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--c, var(--muted-color));
+    display: inline-block;
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+  .effort-matrix table tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid color-mix(in oklab, var(--border-color) 60%, transparent);
+    vertical-align: middle;
+    color: var(--text-color);
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+  .effort-matrix table tbody tr:last-child td { border-bottom: 0; }
+  .effort-matrix table tbody tr:hover td {
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+  }
+  .effort-matrix table tbody td.row-name {
+    font-weight: 600;
+    color: var(--text-color);
+    white-space: nowrap;
+  }
+  .effort-matrix code {
+    background: color-mix(in oklab, var(--muted-color) 10%, transparent);
+    border-radius: 3px;
+    padding: 0 5px;
+    font-size: 11px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+</style>
+<script>
+(() => {
+  const bootstrap = () => {
+    const scriptEl = document.currentScript;
+    let container = scriptEl ? scriptEl.previousElementSibling : null;
+    if (!(container && container.classList && container.classList.contains('effort-matrix'))) {
+      const cands = Array.from(document.querySelectorAll('.effort-matrix'))
+        .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+      container = cands[cands.length - 1] || null;
+    }
+    if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+    container.dataset.mounted = 'true';
+
+    const FRAMEWORKS = [
+      { key: 'openenv', name: 'OpenEnv',   color: '#3b82f6' },
+      { key: 'ors',     name: 'ORS',       color: '#a855f7' },
+      { key: 'nemo',    name: 'NeMo Gym',  color: '#22c55e' },
+      { key: 'verifs',  name: 'Verifiers', color: '#ec4899' },
+      { key: 'skyrl',   name: 'SkyRL Gym', color: '#f59e0b' },
+      { key: 'gem',     name: 'GEM',       color: '#14b8a6' },
+    ];
+
+    const yes = '<span class="ef-pill yes">✓</span>';
+    const no  = '<span class="ef-pill no">—</span>';
+
+    const ROWS = [
+      { name: 'Files to create', cells: {
+        openenv: '4-6 <span style="color:var(--muted-color);">env, app, models, Dockerfile, pyproject</span>',
+        ors:     '3-4 <span style="color:var(--muted-color);">server, Dockerfile, pyproject</span>',
+        nemo:    '4-5 <span style="color:var(--muted-color);">server, config YAML, Dockerfile</span>',
+        verifs:  '1-2 <span style="color:var(--muted-color);">toolkit + reward</span>',
+        skyrl:   '1-2 <span style="color:var(--muted-color);">env + reward</span>',
+        gem:     '1-2 <span style="color:var(--muted-color);">env + reward</span>',
+      }},
+      { name: 'Concepts to learn', cells: {
+        openenv: '<code>MCPEnvironment</code>, <code>create_app</code>, <code>Observation</code>, <code>Rubric</code>, FastMCP',
+        ors:     '<code>Environment</code>, <code>@tool</code>, <code>ToolOutput</code>, <code>Server</code>, <code>Split</code>',
+        nemo:    '<code>SimpleResourcesServer</code>, <code>setup_webserver</code>, <code>verify</code>, sessions',
+        verifs:  '<code>ToolEnv</code>, <code>Rubric</code>, DI reward fns',
+        skyrl:   '<code>BaseTextEnv</code>, init/step/close',
+        gem:     '<code>gem.Env</code>, reset/step 5-tuple, spawn',
+      }},
+      { name: 'CLI scaffold', cells: {
+        openenv: yes + ' <code>openenv init</code>',
+        ors:     yes + ' <code>orwd init</code>',
+        nemo:    no,
+        verifs:  yes + ' <code>prime env init</code>',
+        skyrl:   no,
+        gem:     no,
+      }},
+      { name: 'Time to first test', cells: {
+        openenv: '<span class="ef-pill slow">~30 min</span> Docker / server',
+        ors:     '<span class="ef-pill med">~20 min</span> server + curl',
+        nemo:    '<span class="ef-pill slow">~30 min</span> server + config',
+        verifs:  '<span class="ef-pill fast">~5 min</span> pure Python · pytest',
+        skyrl:   '<span class="ef-pill fast">~5 min</span> pure Python · pytest',
+        gem:     '<span class="ef-pill fast">~5 min</span> pure Python · pytest',
+      }},
+      { name: 'Test without training', cells: {
+        openenv: yes + ' curl',
+        ors:     yes + ' curl',
+        nemo:    yes + ' curl',
+        verifs:  yes + ' pytest',
+        skyrl:   yes + ' pytest',
+        gem:     yes + ' pytest',
+      }},
+    ];
+
+    const headerCells = FRAMEWORKS.map(f =>
+      `<th><span class="swatch" style="--c:${f.color};"></span>${f.name}</th>`
+    ).join('');
+    const bodyHtml = ROWS.map(r => {
+      const cells = FRAMEWORKS.map(f => `<td>${r.cells[f.key]}</td>`).join('');
+      return `<tr><td class="row-name">${r.name}</td>${cells}</tr>`;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="effort-matrix__head">
+        <span class="effort-matrix__title">Effort to author · 6 frameworks</span>
+      </div>
+      <div class="effort-matrix__wrap">
+        <table>
+          <thead><tr><th>Capability</th>${headerCells}</tr></thead>
+          <tbody>${bodyHtml}</tbody>
+        </table>
+      </div>
+    `;
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+  } else {
+    bootstrap();
+  }
+})();
+</script>

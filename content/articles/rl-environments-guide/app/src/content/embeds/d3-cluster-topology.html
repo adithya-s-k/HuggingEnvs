@@ -1,0 +1,453 @@
+<div class="d3-cluster-topo" style="width:100%;margin:14px 0;"></div>
+<style>
+  .d3-cluster-topo {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-bg);
+    overflow: hidden;
+    color: var(--text-color);
+    --c-trainer: #3b82f6;
+    --c-env: #22c55e;
+    --c-shared: #ec4899;
+    --c-orch: #f59e0b;
+  }
+  .d3-cluster-topo__header {
+    display: flex; flex-wrap: wrap; align-items: center;
+    gap: 12px; padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .d3-cluster-topo__title {
+    font-size: 11px; font-weight: 800; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--muted-color);
+    margin-right: auto;
+  }
+  .d3-cluster-topo__btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 7px;
+    border: 1px solid var(--border-color);
+    background: var(--surface-bg); color: var(--text-color);
+    font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .d3-cluster-topo__btn.primary {
+    border-color: var(--primary-color);
+    background: color-mix(in oklab, var(--primary-color) 12%, var(--surface-bg));
+  }
+  .d3-cluster-topo__btn svg { width: 12px; height: 12px; }
+
+  .d3-cluster-topo__body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+  }
+  .d3-cluster-topo__panel {
+    padding: 14px 16px 16px 16px;
+    display: flex; flex-direction: column; gap: 10px;
+    min-width: 0;
+  }
+  .d3-cluster-topo__panel + .d3-cluster-topo__panel {
+    border-left: 1px solid var(--border-color);
+  }
+  @media (max-width: 720px) {
+    .d3-cluster-topo__body { grid-template-columns: 1fr; }
+    .d3-cluster-topo__panel + .d3-cluster-topo__panel {
+      border-left: 0;
+      border-top: 1px solid var(--border-color);
+    }
+  }
+
+  .d3-cluster-topo__panel-head {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.6px; text-transform: uppercase;
+    color: var(--text-color);
+  }
+  .d3-cluster-topo__panel-head .swatch {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--c, var(--muted-color));
+    flex-shrink: 0;
+  }
+  .d3-cluster-topo__panel-head .tag {
+    margin-left: auto;
+    font-size: 10px; font-weight: 700;
+    color: var(--muted-color);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  .ct-stage {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--surface-bg);
+    overflow: hidden;
+    aspect-ratio: 16 / 11;
+    min-height: 260px;
+  }
+  .ct-stage svg {
+    width: 100%; height: 100%; display: block;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .ct-stage .node {
+    fill: color-mix(in oklab, var(--c, var(--muted-color)) 8%, var(--surface-bg));
+    stroke: color-mix(in oklab, var(--c, var(--muted-color)) 35%, var(--border-color));
+    stroke-width: 1.4;
+  }
+  .ct-stage .node.outer {
+    fill: color-mix(in oklab, var(--muted-color) 3%, transparent);
+    stroke-dasharray: 5 4;
+  }
+  .ct-stage .node.ghost {
+    fill: color-mix(in oklab, var(--c, var(--muted-color)) 4%, var(--surface-bg));
+    stroke: color-mix(in oklab, var(--c, var(--muted-color)) 22%, var(--border-color));
+    stroke-dasharray: 4 3;
+    opacity: 0.7;
+  }
+  .ct-stage .ingress {
+    fill: color-mix(in oklab, var(--c-orch) 12%, var(--surface-bg));
+    stroke: color-mix(in oklab, var(--c-orch) 50%, var(--border-color));
+    stroke-width: 1.4;
+  }
+  .ct-stage .label-title {
+    fill: var(--text-color);
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .ct-stage .label-sub {
+    fill: var(--muted-color);
+    font-size: 10.5px;
+    font-weight: 500;
+  }
+  .ct-stage .stage-tag {
+    fill: var(--muted-color);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .ct-stage .arrow {
+    stroke: var(--muted-color);
+    stroke-width: 1.4;
+    fill: none;
+  }
+  .ct-stage .arrow.dashed { stroke-dasharray: 4 3; }
+  .ct-stage .arrow.flow { stroke: color-mix(in oklab, var(--c-orch) 60%, var(--muted-color)); }
+
+  .ct-stage .packet { opacity: 0; }
+  .d3-cluster-topo.playing .packet { animation-play-state: running; }
+  .d3-cluster-topo:not(.playing) .packet { animation-play-state: paused; opacity: 0; }
+
+  /* HTTP packets: trainer → ingress (horizontal) → env server N (diagonal).
+     Each packet "elbows" at the ingress so the path reads as
+     "single endpoint → fan-out", not random diagonal lines. */
+  .ct-stage .packet.h1 { animation: ct-h1 var(--dur, 2.4s) linear infinite; animation-delay: 0s; }
+  .ct-stage .packet.h2 { animation: ct-h2 var(--dur, 2.4s) linear infinite; animation-delay: calc(var(--dur, 2.4s) * 0.33); }
+  .ct-stage .packet.h3 { animation: ct-h3 var(--dur, 2.4s) linear infinite; animation-delay: calc(var(--dur, 2.4s) * 0.66); }
+  @keyframes ct-h1 {
+    0%   { transform: translate(0, 0); opacity: 0; }
+    5%   { opacity: 1; }
+    /* phase 1: trainer → ingress (62px right) */
+    32%  { transform: translate(62px, 0); opacity: 1; }
+    /* phase 2: ingress → env server 1 (top) */
+    62%  { transform: translate(184px, -74px); opacity: 1; }
+    72%  { opacity: 0; }
+    100% { opacity: 0; }
+  }
+  @keyframes ct-h2 {
+    0%   { transform: translate(0, 0); opacity: 0; }
+    5%   { opacity: 1; }
+    32%  { transform: translate(62px, 0); opacity: 1; }
+    62%  { transform: translate(184px, 0); opacity: 1; }
+    72%  { opacity: 0; }
+    100% { opacity: 0; }
+  }
+  @keyframes ct-h3 {
+    0%   { transform: translate(0, 0); opacity: 0; }
+    5%   { opacity: 1; }
+    32%  { transform: translate(62px, 0); opacity: 1; }
+    62%  { transform: translate(184px, 74px); opacity: 1; }
+    72%  { opacity: 0; }
+    100% { opacity: 0; }
+  }
+
+  /* In-process: short bounce trainer → env in same node */
+  .ct-stage .packet.p {
+    animation: ct-inproc var(--dur, 2.4s) linear infinite;
+  }
+  @keyframes ct-inproc {
+    0%   { transform: translate(0, 0); opacity: 0; }
+    8%   { opacity: 1; }
+    44%  { transform: translate(70px, 0); opacity: 1; }
+    50%  { opacity: 0; }
+    52%  { transform: translate(70px, 0); opacity: 1; }
+    92%  { transform: translate(0, 0); opacity: 1; }
+    100% { transform: translate(0, 0); opacity: 0; }
+  }
+
+  .ct-chips {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .ct-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 9px;
+    font-size: 11px; font-weight: 600;
+    border-radius: 999px;
+    border: 1px solid color-mix(in oklab, var(--cc, var(--border-color)) 35%, var(--border-color));
+    background: color-mix(in oklab, var(--cc, transparent) 8%, transparent);
+    color: var(--text-color);
+  }
+  .ct-chip .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--cc, var(--muted-color));
+    flex-shrink: 0;
+  }
+  .ct-note {
+    font-size: 11.5px;
+    color: var(--muted-color);
+    line-height: 1.5;
+  }
+  .ct-note code {
+    background: color-mix(in oklab, var(--muted-color) 10%, transparent);
+    border-radius: 3px;
+    padding: 0 5px;
+    font-size: 10.5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .ct-orch-list {
+    list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; gap: 4px;
+    font-size: 11px;
+    color: var(--muted-color);
+  }
+  .ct-orch-list li {
+    display: flex; align-items: flex-start; gap: 7px;
+    line-height: 1.45;
+  }
+  .ct-orch-list li .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--cc, var(--muted-color));
+    margin-top: 6px;
+    flex-shrink: 0;
+  }
+  .ct-orch-list li strong {
+    color: var(--text-color);
+    font-weight: 600;
+  }
+  .ct-orch-list li code {
+    background: color-mix(in oklab, var(--muted-color) 10%, transparent);
+    border-radius: 3px;
+    padding: 0 4px;
+    font-size: 10.5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--text-color);
+  }
+
+  .d3-cluster-topo__caption {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border-color);
+    font-size: 11.5px;
+    color: var(--muted-color);
+    font-style: italic;
+    line-height: 1.55;
+  }
+</style>
+<script>
+(() => {
+  const bootstrap = () => {
+    const scriptEl = document.currentScript;
+    let container = scriptEl ? scriptEl.previousElementSibling : null;
+    if (!(container && container.classList && container.classList.contains('d3-cluster-topo'))) {
+      const cands = Array.from(document.querySelectorAll('.d3-cluster-topo'))
+        .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+      container = cands[cands.length - 1] || null;
+    }
+    if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+    container.dataset.mounted = 'true';
+
+    container.innerHTML = `
+      <div class="d3-cluster-topo__header">
+        <div class="d3-cluster-topo__title">Cluster topology · two deployment shapes</div>
+        <button type="button" class="d3-cluster-topo__btn primary" data-act="play">
+          <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>
+          <span data-label>Play</span>
+        </button>
+      </div>
+
+      <div class="d3-cluster-topo__body">
+
+        <!-- HTTP / Docker deploy -->
+        <section class="d3-cluster-topo__panel">
+          <header class="d3-cluster-topo__panel-head" style="--c: var(--c-trainer);">
+            <span class="swatch"></span>
+            HTTP / Docker deploy
+            <span class="tag">env scales horizontally</span>
+          </header>
+
+          <div class="ct-stage">
+            <svg viewBox="0 0 400 260" preserveAspectRatio="xMidYMid meet">
+              <defs>
+                <marker id="ct-arr-http" viewBox="0 0 10 10" refX="9" refY="5"
+                  markerWidth="6" markerHeight="6" orient="auto" markerUnits="userSpaceOnUse">
+                  <path d="M0,0 L10,5 L0,10 Z" fill="currentColor"/>
+                </marker>
+              </defs>
+
+              <!-- Trainer (left, single GPU node) -->
+              <rect class="node" x="14" y="100" width="126" height="60" rx="10" style="--c: var(--c-trainer);"/>
+              <text class="label-title" x="77" y="128" text-anchor="middle">Trainer</text>
+              <text class="label-sub" x="77" y="144" text-anchor="middle">GPU · vLLM · GRPO</text>
+              <text class="stage-tag" x="77" y="92" text-anchor="middle">1 gpu node</text>
+
+              <!-- Ingress / load balancer (single point) -->
+              <rect class="ingress" x="170" y="110" width="64" height="40" rx="8"/>
+              <text class="label-title" x="202" y="128" text-anchor="middle" style="font-size: 11px;">ingress</text>
+              <text class="label-sub" x="202" y="142" text-anchor="middle" style="font-size: 9.5px;">load balancer</text>
+              <text class="stage-tag" x="202" y="100" text-anchor="middle">single point</text>
+
+              <!-- Env server replicas (stacked on right) -->
+              <rect class="node" x="262" y="32" width="124" height="48" rx="9" style="--c: var(--c-env);"/>
+              <text class="label-title" x="324" y="56" text-anchor="middle">Env server · 1</text>
+              <text class="label-sub" x="324" y="71" text-anchor="middle">CPU · FastAPI</text>
+
+              <rect class="node" x="262" y="102" width="124" height="56" rx="9" style="--c: var(--c-env);"/>
+              <text class="label-title" x="324" y="124" text-anchor="middle">Env server · 2</text>
+              <text class="label-sub" x="324" y="140" text-anchor="middle">CPU · FastAPI</text>
+
+              <rect class="node" x="262" y="180" width="124" height="48" rx="9" style="--c: var(--c-env);"/>
+              <text class="label-title" x="324" y="204" text-anchor="middle">Env server · N</text>
+              <text class="label-sub" x="324" y="219" text-anchor="middle">add docker replicas</text>
+              <text class="stage-tag" x="324" y="22" text-anchor="middle">scaling pool</text>
+
+              <!-- Trainer → ingress -->
+              <g style="color: var(--muted-color);">
+                <path class="arrow flow" d="M140,130 L170,130" marker-end="url(#ct-arr-http)"/>
+                <!-- ingress → env replicas -->
+                <path class="arrow" d="M234,118 L262,56" marker-end="url(#ct-arr-http)"/>
+                <path class="arrow" d="M234,130 L262,130" marker-end="url(#ct-arr-http)"/>
+                <path class="arrow" d="M234,142 L262,204" marker-end="url(#ct-arr-http)"/>
+              </g>
+
+              <!-- packets travel from trainer through ingress to each env server -->
+              <circle class="packet h1" cx="140" cy="130" r="3.5" fill="${'#3b82f6'}"/>
+              <circle class="packet h2" cx="140" cy="130" r="3.5" fill="${'#3b82f6'}"/>
+              <circle class="packet h3" cx="140" cy="130" r="3.5" fill="${'#3b82f6'}"/>
+            </svg>
+          </div>
+
+          <div class="ct-chips">
+            <span class="ct-chip" style="--cc:#3b82f6;"><span class="dot"></span>OpenEnv</span>
+            <span class="ct-chip" style="--cc:#a855f7;"><span class="dot"></span>ORS</span>
+            <span class="ct-chip" style="--cc:#22c55e;"><span class="dot"></span>NeMo Gym</span>
+          </div>
+          <div class="ct-note">
+            One trainer, one ingress, many env servers. To add capacity you add Docker replicas behind the load balancer; the trainer sees a single endpoint.
+          </div>
+        </section>
+
+        <!-- In-process deploy -->
+        <section class="d3-cluster-topo__panel">
+          <header class="d3-cluster-topo__panel-head" style="--c: var(--c-shared);">
+            <span class="swatch"></span>
+            In-process deploy
+            <span class="tag">scaling = orchestration</span>
+          </header>
+
+          <div class="ct-stage">
+            <svg viewBox="0 0 400 260" preserveAspectRatio="xMidYMid meet">
+              <defs>
+                <marker id="ct-arr-ip" viewBox="0 0 10 10" refX="9" refY="5"
+                  markerWidth="6" markerHeight="6" orient="auto" markerUnits="userSpaceOnUse">
+                  <path d="M0,0 L10,5 L0,10 Z" fill="currentColor"/>
+                </marker>
+              </defs>
+
+              <!-- Primary GPU node (top) -->
+              <rect class="node outer" x="14" y="22" width="372" height="100" rx="12" style="--c: var(--c-trainer);"/>
+              <text class="stage-tag" x="28" y="42" style="font-size: 9px;">1 gpu node · single venv · single process</text>
+
+              <!-- Trainer (left inside) -->
+              <rect class="node" x="34" y="58" width="138" height="50" rx="9" style="--c: var(--c-trainer);"/>
+              <text class="label-title" x="103" y="80" text-anchor="middle">Trainer</text>
+              <text class="label-sub" x="103" y="96" text-anchor="middle">GRPO · vLLM</text>
+
+              <!-- Env (right inside) -->
+              <rect class="node" x="228" y="58" width="138" height="50" rx="9" style="--c: var(--c-shared);"/>
+              <text class="label-title" x="297" y="80" text-anchor="middle">Env (Py obj)</text>
+              <text class="label-sub" x="297" y="96" text-anchor="middle">step() · reset()</text>
+
+              <!-- inline call -->
+              <g style="color: var(--muted-color);">
+                <path class="arrow" d="M172,83 L228,83" marker-end="url(#ct-arr-ip)"/>
+              </g>
+
+              <!-- Ghost identical worker nodes below (faded) -->
+              <rect class="node ghost" x="14" y="138" width="372" height="34" rx="10" style="--c: var(--c-trainer);"/>
+              <text class="label-sub" x="200" y="160" text-anchor="middle">+ identical gpu node · trainer + env</text>
+
+              <rect class="node ghost" x="14" y="184" width="372" height="34" rx="10" style="--c: var(--c-trainer);"/>
+              <text class="label-sub" x="200" y="206" text-anchor="middle">+ identical gpu node · trainer + env</text>
+
+              <text class="stage-tag" x="200" y="240" text-anchor="middle">scale by cloning whole nodes</text>
+
+              <!-- packet bouncing between trainer and env -->
+              <circle class="packet p" cx="172" cy="83" r="3.5" fill="${'#ec4899'}"/>
+            </svg>
+          </div>
+
+          <div class="ct-chips">
+            <span class="ct-chip" style="--cc:#ec4899;"><span class="dot"></span>Verifiers</span>
+            <span class="ct-chip" style="--cc:#f59e0b;"><span class="dot"></span>SkyRL Gym</span>
+            <span class="ct-chip" style="--cc:#14b8a6;"><span class="dot"></span>GEM</span>
+          </div>
+          <div class="ct-note">
+            One process, no network, the call is a Python invocation. There is no shared "env service" to grow, so scaling falls to whatever orchestration the trainer already runs.
+          </div>
+        </section>
+      </div>
+
+      <div class="d3-cluster-topo__caption">
+        Same RL loop, two scaling stories. HTTP frameworks scale by cloning the env behind a single endpoint, training stays put. In-process frameworks rely on the orchestration layer you already have, more workers, or a remote sandbox.
+      </div>
+
+      <div class="d3-cluster-topo__footnote">
+        <span class="ft-label">Orchestration patterns ·</span>
+        <span class="ft-item"><span class="ft-dot" style="--cc:#14b8a6;"></span><strong>GEM</strong> uses <code>AsyncVectorEnv</code> per worker.</span>
+        <span class="ft-item"><span class="ft-dot" style="--cc:#ec4899;"></span><strong>Verifiers</strong> and <span class="ft-dot" style="--cc:#f59e0b;"></span><strong>SkyRL Gym</strong> use per-worker instances.</span>
+        <span class="ft-item"><span class="ft-dot" style="--cc:#9ca3af;"></span>Any of them can delegate compute to a remote sandbox (E2B, Modal) for true horizontal scale.</span>
+      </div>
+    `;
+
+    const playBtn = container.querySelector('[data-act="play"]');
+    const playLbl = container.querySelector('[data-label]');
+
+    let playing = false;
+    const setPlaying = (next) => {
+      playing = next;
+      container.classList.toggle('playing', playing);
+      playLbl.textContent = playing ? 'Pause' : 'Play';
+      const icon = playBtn.querySelector('svg');
+      icon.innerHTML = playing
+        ? '<rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/>'
+        : '<polygon points="6,4 20,12 6,20" fill="currentColor"/>';
+    };
+    playBtn.addEventListener('click', () => setPlaying(!playing));
+    container.style.setProperty('--dur', '2.4s');
+
+    const io = ('IntersectionObserver' in window) ? new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting && !playing) {
+          setPlaying(true);
+          io.disconnect();
+        }
+      });
+    }, { threshold: 0.3 }) : null;
+    if (io) io.observe(container); else setPlaying(true);
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+  } else {
+    bootstrap();
+  }
+})();
+</script>

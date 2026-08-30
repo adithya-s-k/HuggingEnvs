@@ -1,0 +1,428 @@
+<div class="d3-env-grid" style="width:100%;margin:10px 0;aspect-ratio:3/1;min-height:260px;"></div>
+<style>
+    .d3-env-grid {
+        position: relative;
+    }
+    .d3-env-grid canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        cursor: crosshair;
+    }
+    .d3-env-grid .d3-tooltip {
+        position: absolute;
+        top: 0;
+        left: 0;
+        transform: translate(-9999px, -9999px);
+        pointer-events: none;
+        padding: 10px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        line-height: 1.35;
+        border: 1px solid var(--border-color);
+        background: var(--surface-bg);
+        color: var(--text-color);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.12);
+        opacity: 0;
+        transition: opacity 0.12s ease;
+        backdrop-filter: saturate(1.12) blur(8px);
+        z-index: 20;
+        min-width: 160px;
+    }
+    .d3-env-grid .d3-tooltip__inner {
+        text-align: left;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+</style>
+<script>
+    (() => {
+        const ensureD3 = (cb) => {
+            if (window.d3 && typeof window.d3.select === 'function') return cb();
+            let s = document.getElementById('d3-cdn-script');
+            if (!s) {
+                s = document.createElement('script');
+                s.id = 'd3-cdn-script';
+                s.src = 'https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js';
+                document.head.appendChild(s);
+            }
+            const onReady = () => { if (window.d3 && typeof window.d3.select === 'function') cb(); };
+            s.addEventListener('load', onReady, { once: true });
+            if (window.d3) onReady();
+        };
+
+        const bootstrap = () => {
+            const scriptEl = document.currentScript;
+            let container = scriptEl ? scriptEl.previousElementSibling : null;
+            if (!(container && container.classList && container.classList.contains('d3-env-grid'))) {
+                const candidates = Array.from(document.querySelectorAll('.d3-env-grid'))
+                    .filter((el) => !(el.dataset && el.dataset.mounted === 'true'));
+                container = candidates[candidates.length - 1] || null;
+            }
+            if (!container) return;
+            if (container.dataset) {
+                if (container.dataset.mounted === 'true') return;
+                container.dataset.mounted = 'true';
+            }
+
+            // Color gradient (matches galaxy banner exactly)
+            const c0 = d3.rgb(78, 165, 183);
+            const c1 = d3.rgb(206, 192, 250);
+            const c2 = d3.rgb(232, 137, 171);
+            const interp01 = d3.interpolateRgb(c0, c1);
+            const interp12 = d3.interpolateRgb(c1, c2);
+            const colorFor = (v) => {
+                const t = Math.max(0, Math.min(1, v));
+                return t <= 0.5 ? interp01(t / 0.5) : interp12((t - 0.5) / 0.5);
+            };
+
+            // Canvas setup
+            container.style.position = container.style.position || 'relative';
+            const canvas = document.createElement('canvas');
+            container.appendChild(canvas);
+            const ctx = canvas.getContext('2d');
+
+            // Tooltip
+            let tip = container.querySelector('.d3-tooltip');
+            let tipInner;
+            if (!tip) {
+                tip = document.createElement('div');
+                tip.className = 'd3-tooltip';
+                tipInner = document.createElement('div');
+                tipInner.className = 'd3-tooltip__inner';
+                tip.appendChild(tipInner);
+                container.appendChild(tip);
+            } else {
+                tipInner = tip.querySelector('.d3-tooltip__inner') || tip;
+            }
+
+            // State
+            let cells = [];
+            let cols = 0, rows = 0;
+            let cellW = 0, cellH = 0;
+            let widthPx = 0, heightPx = 0;
+            let dpr = Math.max(1, window.devicePixelRatio || 1);
+            let hoverCell = -1;
+            let rafId = null;
+            const TRAIL_LEN = 6;
+
+            const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            const randStepMax = () => 80 + Math.floor(Math.random() * 121); // 80–200
+
+            const makeAgent = () => ({
+                x: 0.15 + Math.random() * 0.7,
+                y: 0.15 + Math.random() * 0.7,
+                trail: [],
+            });
+
+            const initCell = (i, staggered) => {
+                const max = randStepMax();
+                const startStep = staggered ? Math.floor(Math.random() * max) : 0;
+                const numAgents = Math.random() < 0.18 ? 2 : 1;
+                const agents = [];
+                for (let a = 0; a < numAgents; a++) agents.push(makeAgent());
+                return {
+                    id: i,
+                    step: startStep,
+                    max,
+                    phase: 'exploring',
+                    flashTimer: 0,
+                    flashColor: null,
+                    agents,
+                    sigma: 0.012 + Math.random() * 0.014,
+                };
+            };
+
+            const respawn = (cell) => {
+                cell.step = 0;
+                cell.max = randStepMax();
+                cell.phase = 'exploring';
+                cell.flashTimer = 0;
+                cell.flashColor = null;
+                const numAgents = Math.random() < 0.18 ? 2 : 1;
+                cell.agents = [];
+                for (let a = 0; a < numAgents; a++) cell.agents.push(makeAgent());
+                cell.sigma = 0.012 + Math.random() * 0.014;
+            };
+
+            const computeLayout = () => {
+                const rect = container.getBoundingClientRect();
+                widthPx = Math.max(1, Math.round(rect.width));
+                heightPx = Math.max(1, Math.round(rect.height));
+                dpr = Math.max(1, window.devicePixelRatio || 1);
+
+                canvas.style.width = widthPx + 'px';
+                canvas.style.height = heightPx + 'px';
+                canvas.width = Math.round(widthPx * dpr);
+                canvas.height = Math.round(heightPx * dpr);
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+                const targetCellSize = Math.max(20, widthPx / 24);
+                const newCols = Math.max(8, Math.round(widthPx / targetCellSize));
+                cellW = widthPx / newCols;
+                const newRows = Math.max(4, Math.round(heightPx / cellW));
+                cellH = heightPx / newRows;
+
+                if (newCols !== cols || newRows !== rows) {
+                    const oldCells = cells;
+                    cols = newCols;
+                    rows = newRows;
+                    cells = new Array(cols * rows);
+                    for (let i = 0; i < cells.length; i++) {
+                        if (oldCells[i]) {
+                            // preserve agent state but allow next render to fit new cell size
+                            cells[i] = oldCells[i];
+                        } else {
+                            cells[i] = initCell(i, true);
+                        }
+                    }
+                }
+            };
+
+            const getThemeColors = () => {
+                const styles = getComputedStyle(document.documentElement);
+                let border = styles.getPropertyValue('--border-color').trim() || 'rgba(0,0,0,0.12)';
+                let surface = styles.getPropertyValue('--surface-bg').trim() || '#ffffff';
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                return { border, surface, isDark };
+            };
+
+            // Convert any CSS color to rgba with given alpha (uses canvas context as parser)
+            const toRgba = (color, alpha) => {
+                ctx.save();
+                ctx.fillStyle = '#000';
+                ctx.fillStyle = color;
+                const parsed = ctx.fillStyle; // normalised to #rrggbb or rgba()
+                ctx.restore();
+                if (parsed.startsWith('#')) {
+                    const r = parseInt(parsed.slice(1, 3), 16);
+                    const g = parseInt(parsed.slice(3, 5), 16);
+                    const b = parseInt(parsed.slice(5, 7), 16);
+                    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                }
+                // rgba(r, g, b, a) — replace alpha
+                const m = parsed.match(/rgba?\(([^)]+)\)/);
+                if (m) {
+                    const parts = m[1].split(',').map((s) => s.trim());
+                    return `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, ${alpha})`;
+                }
+                return parsed;
+            };
+
+            const tickPhysics = () => {
+                for (let i = 0; i < cells.length; i++) {
+                    const c = cells[i];
+                    if (c.phase === 'flashing') {
+                        c.flashTimer -= 1;
+                        if (c.flashTimer <= 0) {
+                            respawn(c);
+                        }
+                        continue;
+                    }
+                    // Random walk for each agent
+                    for (let a = 0; a < c.agents.length; a++) {
+                        const ag = c.agents[a];
+                        // Box-Muller-ish quick gaussian (sum of uniforms)
+                        const dx = (Math.random() + Math.random() + Math.random() - 1.5) * c.sigma;
+                        const dy = (Math.random() + Math.random() + Math.random() - 1.5) * c.sigma;
+                        ag.x = Math.max(0.06, Math.min(0.94, ag.x + dx));
+                        ag.y = Math.max(0.06, Math.min(0.94, ag.y + dy));
+                        ag.trail.push([ag.x, ag.y]);
+                        if (ag.trail.length > TRAIL_LEN) ag.trail.shift();
+                    }
+                    c.step += 1;
+                    if (c.step >= c.max) {
+                        c.phase = 'flashing';
+                        c.flashTimer = 10;
+                        c.flashColor = colorFor(Math.min(1, c.step / 200));
+                    }
+                }
+            };
+
+            const draw = () => {
+                const { border, isDark } = getThemeColors();
+                const borderRgba = toRgba(border, 0.25);
+                const hoverBorderRgba = toRgba(border, 0.85);
+
+                ctx.clearRect(0, 0, widthPx, heightPx);
+
+                // Pass 1: cell backgrounds (only if flashing)
+                for (let r = 0; r < rows; r++) {
+                    for (let cIdx = 0; cIdx < cols; cIdx++) {
+                        const i = r * cols + cIdx;
+                        const c = cells[i];
+                        if (!c) continue;
+                        const x0 = cIdx * cellW;
+                        const y0 = r * cellH;
+                        if (c.phase === 'flashing' && c.flashColor) {
+                            const alpha = 0.18 + 0.45 * (c.flashTimer / 10);
+                            ctx.fillStyle = toRgba(c.flashColor, alpha);
+                            ctx.fillRect(x0, y0, cellW, cellH);
+                        }
+                    }
+                }
+
+                // Pass 2: borders (single path)
+                ctx.beginPath();
+                for (let cIdx = 0; cIdx <= cols; cIdx++) {
+                    const x = Math.round(cIdx * cellW) + 0.5;
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, heightPx);
+                }
+                for (let r = 0; r <= rows; r++) {
+                    const y = Math.round(r * cellH) + 0.5;
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(widthPx, y);
+                }
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = borderRgba;
+                ctx.stroke();
+
+                // Pass 3: hovered cell highlight
+                if (hoverCell >= 0 && hoverCell < cells.length) {
+                    const r = Math.floor(hoverCell / cols);
+                    const cIdx = hoverCell % cols;
+                    const x0 = cIdx * cellW;
+                    const y0 = r * cellH;
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeStyle = hoverBorderRgba;
+                    ctx.strokeRect(x0 + 0.5, y0 + 0.5, cellW - 1, cellH - 1);
+                    ctx.save();
+                    ctx.shadowColor = isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.25)';
+                    ctx.shadowBlur = 8;
+                    ctx.strokeRect(x0 + 0.5, y0 + 0.5, cellW - 1, cellH - 1);
+                    ctx.restore();
+                }
+
+                // Pass 4: agents + trails
+                const dotR = Math.max(1.5, Math.min(3.2, cellW * 0.09));
+                for (let i = 0; i < cells.length; i++) {
+                    const c = cells[i];
+                    if (!c) continue;
+                    const r = Math.floor(i / cols);
+                    const cIdx = i % cols;
+                    const x0 = cIdx * cellW;
+                    const y0 = r * cellH;
+                    const progress = Math.min(1, c.step / c.max);
+                    const col = colorFor(progress);
+
+                    // Trails
+                    for (let a = 0; a < c.agents.length; a++) {
+                        const ag = c.agents[a];
+                        const trail = ag.trail;
+                        for (let t = 0; t < trail.length - 1; t++) {
+                            const alpha = 0.08 + 0.5 * (t / Math.max(1, trail.length - 1));
+                            const px = x0 + trail[t][0] * cellW;
+                            const py = y0 + trail[t][1] * cellH;
+                            ctx.fillStyle = toRgba(col, alpha * 0.5);
+                            ctx.beginPath();
+                            ctx.arc(px, py, dotR * 0.55, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        // Agent dot
+                        const ax = x0 + ag.x * cellW;
+                        const ay = y0 + ag.y * cellH;
+                        ctx.fillStyle = col;
+                        ctx.beginPath();
+                        ctx.arc(ax, ay, dotR, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            };
+
+            const frame = () => {
+                tickPhysics();
+                draw();
+                rafId = requestAnimationFrame(frame);
+            };
+
+            const startLoop = () => {
+                if (rafId !== null) return;
+                rafId = requestAnimationFrame(frame);
+            };
+            const stopLoop = () => {
+                if (rafId !== null) {
+                    cancelAnimationFrame(rafId);
+                    rafId = null;
+                }
+            };
+
+            // Hover handling
+            const onMouseMove = (ev) => {
+                const rect = canvas.getBoundingClientRect();
+                const mx = ev.clientX - rect.left;
+                const my = ev.clientY - rect.top;
+                if (mx < 0 || my < 0 || mx >= widthPx || my >= heightPx) {
+                    hoverCell = -1;
+                    tip.style.opacity = '0';
+                    tip.style.transform = 'translate(-9999px, -9999px)';
+                    return;
+                }
+                const cIdx = Math.min(cols - 1, Math.floor(mx / cellW));
+                const r = Math.min(rows - 1, Math.floor(my / cellH));
+                hoverCell = r * cols + cIdx;
+                const c = cells[hoverCell];
+                if (c) {
+                    tipInner.innerHTML =
+                        `<div style="font-weight:800;letter-spacing:.1px;"><strong>Env #${hoverCell}</strong></div>` +
+                        `<div style="font-size:11px;color:var(--muted-color);margin-top:-2px;letter-spacing:.1px;">step <strong>${c.step}</strong> / ${c.max}</div>` +
+                        `<div style="padding-top:6px;border-top:1px solid var(--border-color);"><strong>Phase</strong> ${c.phase}</div>` +
+                        `<div><strong>Agents</strong> ${c.agents.length}</div>`;
+                    tip.style.opacity = '1';
+                    const offX = 12, offY = 14;
+                    let tx = mx + offX;
+                    let ty = my + offY;
+                    // Keep tooltip inside container
+                    const tipW = tip.offsetWidth || 180;
+                    const tipH = tip.offsetHeight || 80;
+                    if (tx + tipW > widthPx) tx = mx - tipW - offX;
+                    if (ty + tipH > heightPx) ty = my - tipH - offY;
+                    tip.style.transform = `translate(${Math.round(tx)}px, ${Math.round(ty)}px)`;
+                }
+            };
+            const onMouseLeave = () => {
+                hoverCell = -1;
+                tip.style.opacity = '0';
+                tip.style.transform = 'translate(-9999px, -9999px)';
+            };
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseleave', onMouseLeave);
+
+            // Resize
+            const onResize = () => {
+                computeLayout();
+                draw();
+            };
+            if (window.ResizeObserver) {
+                const ro = new ResizeObserver(onResize);
+                ro.observe(container);
+            } else {
+                window.addEventListener('resize', onResize);
+            }
+
+            // Initial setup
+            computeLayout();
+
+            if (reducedMotion) {
+                // Static frame: agents at their initial positions
+                draw();
+            } else {
+                startLoop();
+            }
+
+            // Pause when tab hidden
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) stopLoop();
+                else if (!reducedMotion) startLoop();
+            });
+        };
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => ensureD3(bootstrap), { once: true });
+        } else {
+            ensureD3(bootstrap);
+        }
+    })();
+</script>

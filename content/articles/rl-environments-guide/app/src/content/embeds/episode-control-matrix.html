@@ -1,0 +1,176 @@
+<div class="episode-control-matrix" style="width:100%;margin:14px 0;"></div>
+<style>
+  .episode-control-matrix {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-bg);
+    overflow: hidden;
+    color: var(--text-color);
+  }
+  .episode-control-matrix__head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 4%, transparent);
+    flex-wrap: wrap;
+  }
+  .episode-control-matrix__title {
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    margin-right: auto;
+  }
+  .ecm-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 9px;
+    font-size: 10.5px;
+    font-weight: 700;
+    border-radius: 999px;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+  .ecm-pill.per-call    { background: color-mix(in oklab, #f59e0b 14%, transparent); color: #b45309; border: 1px solid color-mix(in oklab, #f59e0b 35%, transparent); }
+  .ecm-pill.per-step    { background: color-mix(in oklab, #3b82f6 14%, transparent); color: #1d4ed8; border: 1px solid color-mix(in oklab, #3b82f6 35%, transparent); }
+  .ecm-pill.post-ep     { background: color-mix(in oklab, #a855f7 12%, transparent); color: #7c3aed; border: 1px solid color-mix(in oklab, #a855f7 35%, transparent); }
+  .ecm-pill.dual        { background: color-mix(in oklab, #14b8a6 12%, transparent); color: #0d9488; border: 1px solid color-mix(in oklab, #14b8a6 35%, transparent); }
+  .ecm-pill.fallback    { background: color-mix(in oklab, var(--muted-color) 8%, transparent); color: var(--muted-color); border: 1px solid var(--border-color); font-weight: 600; }
+
+  .ecm-driver-trainer { background: color-mix(in oklab, #3b82f6 12%, transparent); color: color-mix(in oklab, #3b82f6 80%, var(--text-color)); border: 1px solid color-mix(in oklab, #3b82f6 30%, transparent); }
+  .ecm-driver-env     { background: color-mix(in oklab, #ec4899 10%, transparent); color: color-mix(in oklab, #ec4899 80%, var(--text-color)); border: 1px solid color-mix(in oklab, #ec4899 28%, transparent); }
+  .ecm-driver-mixed   { background: color-mix(in oklab, #14b8a6 10%, transparent); color: color-mix(in oklab, #14b8a6 80%, var(--text-color)); border: 1px solid color-mix(in oklab, #14b8a6 28%, transparent); }
+
+  .episode-control-matrix__wrap { overflow-x: auto; }
+  .episode-control-matrix table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    min-width: 720px;
+  }
+  .episode-control-matrix table thead th {
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted-color);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+    white-space: nowrap;
+  }
+  .episode-control-matrix table tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid color-mix(in oklab, var(--border-color) 60%, transparent);
+    vertical-align: middle;
+    color: var(--text-color);
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+  .episode-control-matrix table tbody tr:last-child td { border-bottom: 0; }
+  .episode-control-matrix table tbody tr:hover td {
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+  }
+  .episode-control-matrix table tbody td.fw {
+    font-weight: 700;
+    color: var(--text-color);
+    white-space: nowrap;
+  }
+  .episode-control-matrix table tbody td.fw .swatch {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--c, var(--muted-color));
+    display: inline-block;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .episode-control-matrix code {
+    background: color-mix(in oklab, var(--muted-color) 10%, transparent);
+    border-radius: 3px;
+    padding: 0 5px;
+    font-size: 11px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+</style>
+<script>
+(() => {
+  const bootstrap = () => {
+    const scriptEl = document.currentScript;
+    let container = scriptEl ? scriptEl.previousElementSibling : null;
+    if (!(container && container.classList && container.classList.contains('episode-control-matrix'))) {
+      const cands = Array.from(document.querySelectorAll('.episode-control-matrix'))
+        .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+      container = cands[cands.length - 1] || null;
+    }
+    if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+    container.dataset.mounted = 'true';
+
+    const ROWS = [
+      { fw: 'OpenEnv',  c: '#3b82f6',
+        signal:  '<code>Observation.done</code> · <code>final_answer</code> tool',
+        gran:    '<span class="ecm-pill per-step">per step</span> <span class="ecm-pill fallback">+ trainer max-len</span>',
+        driver:  '<span class="ecm-pill ecm-driver-trainer">Trainer</span>',
+      },
+      { fw: 'ORS',      c: '#a855f7',
+        signal:  '<code>ToolOutput.finished</code>',
+        gran:    '<span class="ecm-pill per-call">per call</span>',
+        driver:  '<span class="ecm-pill ecm-driver-trainer">Trainer</span>',
+      },
+      { fw: 'NeMo Gym', c: '#22c55e',
+        signal:  '<code>verify()</code> after rollout',
+        gran:    '<span class="ecm-pill post-ep">post-episode</span>',
+        driver:  '<span class="ecm-pill ecm-driver-trainer">Trainer</span>',
+      },
+      { fw: 'Verifiers', c: '#ec4899',
+        signal:  '<code>@vf.stop</code> · <code>is_completed()</code>',
+        gran:    '<span class="ecm-pill per-step">per step</span>',
+        driver:  '<span class="ecm-pill ecm-driver-mixed">Trainer or env</span>',
+      },
+      { fw: 'SkyRL Gym', c: '#f59e0b',
+        signal:  '<code>step().done</code>',
+        gran:    '<span class="ecm-pill per-step">per step</span>',
+        driver:  '<span class="ecm-pill ecm-driver-trainer">Trainer</span>',
+      },
+      { fw: 'GEM',      c: '#14b8a6',
+        signal:  '<code>terminated</code> · <code>truncated</code>',
+        gran:    '<span class="ecm-pill dual">terminated / truncated</span>',
+        driver:  '<span class="ecm-pill ecm-driver-trainer">Trainer</span>',
+      },
+    ];
+
+    const body = ROWS.map(r => `
+      <tr>
+        <td class="fw" style="--c:${r.c};"><span class="swatch"></span>${r.fw}</td>
+        <td>${r.signal}</td>
+        <td>${r.gran}</td>
+        <td>${r.driver}</td>
+      </tr>
+    `).join('');
+
+    container.innerHTML = `
+      <div class="episode-control-matrix__head">
+        <span class="episode-control-matrix__title">Termination & loop driver · 6 frameworks</span>
+      </div>
+      <div class="episode-control-matrix__wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Framework</th>
+              <th>Termination signal</th>
+              <th>Granularity</th>
+              <th>Loop driver</th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>
+    `;
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+  } else {
+    bootstrap();
+  }
+})();
+</script>

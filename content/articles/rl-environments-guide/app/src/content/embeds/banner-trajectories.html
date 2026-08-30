@@ -1,0 +1,410 @@
+<div class="d3-trajectories" style="width:100%;margin:10px 0;aspect-ratio:3/1;min-height:260px;"></div>
+<style>
+  .d3-trajectories { position: relative; }
+  .d3-trajectories canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+</style>
+<script>
+    (() => {
+        const ensureD3 = (cb) => {
+            if (window.d3 && typeof window.d3.select === 'function') return cb();
+            let s = document.getElementById('d3-cdn-script');
+            if (!s) {
+                s = document.createElement('script');
+                s.id = 'd3-cdn-script';
+                s.src = 'https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js';
+                document.head.appendChild(s);
+            }
+            const onReady = () => { if (window.d3 && typeof window.d3.select === 'function') cb(); };
+            s.addEventListener('load', onReady, { once: true });
+            if (window.d3) onReady();
+        };
+
+        const bootstrap = () => {
+            const scriptEl = document.currentScript;
+            let container = scriptEl ? scriptEl.previousElementSibling : null;
+            if (!(container && container.classList && container.classList.contains('d3-trajectories'))) {
+                const candidates = Array.from(document.querySelectorAll('.d3-trajectories'))
+                    .filter((el) => !(el.dataset && el.dataset.mounted === 'true'));
+                container = candidates[candidates.length - 1] || null;
+            }
+            if (!container) return;
+            if (container.dataset) {
+                if (container.dataset.mounted === 'true') return;
+                container.dataset.mounted = 'true';
+            }
+            container.style.position = container.style.position || 'relative';
+
+            // Canvas
+            const canvas = document.createElement('canvas');
+            canvas.style.display = 'block';
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+            container.appendChild(canvas);
+            const ctx = canvas.getContext('2d');
+
+            // Tooltip (HTML overlay) — same look as banner.html
+            let tip = container.querySelector('.d3-tooltip');
+            let tipInner;
+            if (!tip) {
+                tip = document.createElement('div');
+                tip.className = 'd3-tooltip';
+                Object.assign(tip.style, {
+                    position: 'absolute',
+                    top: '0px',
+                    left: '0px',
+                    transform: 'translate(-9999px, -9999px)',
+                    pointerEvents: 'none',
+                    padding: '10px 12px',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    lineHeight: '1.35',
+                    border: '1px solid var(--border-color)',
+                    background: 'var(--surface-bg)',
+                    color: 'var(--text-color)',
+                    boxShadow: '0 8px 32px rgba(0,0,0,.28), 0 2px 8px rgba(0,0,0,.12)',
+                    opacity: '0',
+                    transition: 'opacity .12s ease',
+                    backdropFilter: 'saturate(1.12) blur(8px)',
+                    zIndex: '20'
+                });
+                tipInner = document.createElement('div');
+                tipInner.className = 'd3-tooltip__inner';
+                Object.assign(tipInner.style, {
+                    textAlign: 'left',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                    minWidth: '200px'
+                });
+                tip.appendChild(tipInner);
+                container.appendChild(tip);
+            } else {
+                tipInner = tip.querySelector('.d3-tooltip__inner') || tip;
+            }
+
+            // Palette — match galaxy banner exactly
+            const c0 = d3.rgb(78, 165, 183);
+            const c1 = d3.rgb(206, 192, 250);
+            const c2 = d3.rgb(232, 137, 171);
+            const interp01 = d3.interpolateRgb(c0, c1);
+            const interp12 = d3.interpolateRgb(c1, c2);
+            const colorFor = (v) => {
+                const t = Math.max(0, Math.min(1, v));
+                return t <= 0.5 ? interp01(t / 0.5) : interp12((t - 0.5) / 0.5);
+            };
+
+            // Pre-compute a 64-stop color LUT (rgb strings) for fast per-segment lookup
+            const LUT_N = 64;
+            const colorLUT = new Array(LUT_N);
+            for (let i = 0; i < LUT_N; i++) {
+                colorLUT[i] = colorFor(i / (LUT_N - 1)) + ''; // d3.rgb -> "rgb(r, g, b)"
+            }
+            const lutColor = (t) => colorLUT[Math.max(0, Math.min(LUT_N - 1, Math.round(t * (LUT_N - 1))))];
+
+            // Trajectory state
+            const NUM = 200;
+            const HISTORY = 50;
+            const MAX_SPEED = 2.6;
+            const NOISE = 0.18;
+            const DRIFT = 0.0008; // gentle pull toward centre
+            const trajectories = [];
+
+            // Logical (CSS) size; updated on resize
+            let W = 800, H = 280;
+            let dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+
+            const gauss = d3.randomNormal.source(Math.random)(0, 1);
+
+            const spawnEdge = (t) => {
+                // Spawn near the edges so trajectories "sweep inward"
+                const side = Math.floor(Math.random() * 4);
+                const pad = 20;
+                let x, y, vx, vy;
+                if (side === 0) { // top
+                    x = Math.random() * W;
+                    y = -pad;
+                    vx = gauss() * 0.6;
+                    vy = 0.6 + Math.random() * 1.2;
+                } else if (side === 1) { // right
+                    x = W + pad;
+                    y = Math.random() * H;
+                    vx = -(0.6 + Math.random() * 1.2);
+                    vy = gauss() * 0.6;
+                } else if (side === 2) { // bottom
+                    x = Math.random() * W;
+                    y = H + pad;
+                    vx = gauss() * 0.6;
+                    vy = -(0.6 + Math.random() * 1.2);
+                } else { // left
+                    x = -pad;
+                    y = Math.random() * H;
+                    vx = 0.6 + Math.random() * 1.2;
+                    vy = gauss() * 0.6;
+                }
+                t.x = x; t.y = y;
+                t.vx = vx; t.vy = vy;
+                t.age = 0;
+                t.maxAge = 40 + Math.floor(Math.random() * 41); // 40..80
+                t.fading = 0;
+                t.history.length = 0;
+                t.history.push({ x, y });
+                // Stable hue offset per trajectory so the whole braid isn't monochromatic
+                t.hueOffset = Math.random() * 0.35 - 0.15;
+            };
+
+            for (let i = 0; i < NUM; i++) {
+                const t = { id: i, x: 0, y: 0, vx: 0, vy: 0, age: 0, maxAge: 60, fading: 0, history: [], hueOffset: 0 };
+                spawnEdge(t);
+                // Stagger initial ages so the field isn't synchronised
+                t.age = Math.floor(Math.random() * t.maxAge);
+                trajectories.push(t);
+            }
+
+            // Hover state
+            let hoverId = -1;
+            let mouseX = -1, mouseY = -1;
+
+            const setCanvasSize = () => {
+                const rect = container.getBoundingClientRect();
+                W = Math.max(1, Math.round(rect.width));
+                H = Math.max(1, Math.round(rect.height));
+                dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+                canvas.width = Math.round(W * dpr);
+                canvas.height = Math.round(H * dpr);
+                canvas.style.width = W + 'px';
+                canvas.style.height = H + 'px';
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            };
+
+            const stepTrajectory = (t) => {
+                if (t.fading > 0) {
+                    t.fading -= 1;
+                    if (t.fading <= 0) spawnEdge(t);
+                    return;
+                }
+                // Drift toward centre
+                const dx = (W * 0.5 - t.x);
+                const dy = (H * 0.5 - t.y);
+                t.vx += dx * DRIFT + gauss() * NOISE;
+                t.vy += dy * DRIFT + gauss() * NOISE;
+                // Clamp velocity
+                const sp = Math.hypot(t.vx, t.vy);
+                if (sp > MAX_SPEED) {
+                    t.vx = (t.vx / sp) * MAX_SPEED;
+                    t.vy = (t.vy / sp) * MAX_SPEED;
+                }
+                t.x += t.vx;
+                t.y += t.vy;
+                t.history.push({ x: t.x, y: t.y });
+                if (t.history.length > HISTORY) t.history.shift();
+                t.age += 1;
+
+                // Off-screen far enough? respawn
+                const margin = 60;
+                if (t.x < -margin || t.x > W + margin || t.y < -margin || t.y > H + margin) {
+                    t.fading = 10;
+                }
+                if (t.age >= t.maxAge) {
+                    t.fading = 10;
+                }
+            };
+
+            const drawTrajectory = (t, isDark, highlight) => {
+                const hist = t.history;
+                if (hist.length < 2) return;
+
+                // Per-trajectory fade alpha during respawn
+                let lifeAlpha = 1;
+                if (t.fading > 0) lifeAlpha = t.fading / 10;
+
+                const baseWidth = highlight ? 2.4 : 1.2;
+                const wMax = highlight ? 3.0 : 1.6;
+
+                // Draw segments individually so colour can vary along the path
+                for (let i = 1; i < hist.length; i++) {
+                    const a = hist[i - 1];
+                    const b = hist[i];
+                    // segment age fraction: tail (early) -> head (latest)
+                    const f = i / (hist.length - 1);
+                    // colour drifts cyan -> lavender -> pink along the path; small per-trajectory hue offset
+                    const tCol = Math.max(0, Math.min(1, f + t.hueOffset));
+                    const col = lutColor(tCol);
+                    // taper: thicker near head
+                    const lw = baseWidth + (wMax - baseWidth) * f;
+                    // segment alpha: faint at tail, bright at head
+                    const segAlpha = (0.15 + 0.85 * f) * lifeAlpha * (highlight ? 1 : 0.9);
+
+                    ctx.globalAlpha = segAlpha;
+                    ctx.strokeStyle = col;
+                    ctx.lineWidth = lw;
+                    ctx.beginPath();
+                    ctx.moveTo(a.x, a.y);
+                    ctx.lineTo(b.x, b.y);
+                    ctx.stroke();
+                }
+
+                // Bright head dot
+                const head = hist[hist.length - 1];
+                ctx.globalAlpha = (highlight ? 1 : 0.85) * lifeAlpha;
+                ctx.fillStyle = lutColor(Math.min(1, 1 + t.hueOffset));
+                ctx.beginPath();
+                ctx.arc(head.x, head.y, highlight ? 3.4 : 1.8, 0, Math.PI * 2);
+                ctx.fill();
+            };
+
+            const drawFrame = () => {
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                // Translucent fill for trail/fade effect
+                ctx.globalAlpha = 1;
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.fillStyle = isDark ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)';
+                ctx.fillRect(0, 0, W, H);
+
+                // Glow on dark, normal on light for legibility on white
+                ctx.globalCompositeOperation = isDark ? 'lighter' : 'source-over';
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                // Determine hover target (nearest head within 12px)
+                hoverId = -1;
+                if (mouseX >= 0 && mouseY >= 0) {
+                    let bestD2 = 12 * 12;
+                    for (let i = 0; i < trajectories.length; i++) {
+                        const t = trajectories[i];
+                        if (t.fading > 0) continue;
+                        const head = t.history[t.history.length - 1];
+                        if (!head) continue;
+                        const dx = head.x - mouseX, dy = head.y - mouseY;
+                        const d2 = dx * dx + dy * dy;
+                        if (d2 < bestD2) { bestD2 = d2; hoverId = i; }
+                    }
+                }
+
+                for (let i = 0; i < trajectories.length; i++) {
+                    const t = trajectories[i];
+                    if (i === hoverId) continue; // draw highlighted last
+                    drawTrajectory(t, isDark, false);
+                }
+                if (hoverId >= 0) {
+                    drawTrajectory(trajectories[hoverId], isDark, true);
+                }
+
+                ctx.globalAlpha = 1;
+                ctx.globalCompositeOperation = 'source-over';
+            };
+
+            const updateTooltip = () => {
+                if (hoverId < 0) {
+                    tip.style.opacity = '0';
+                    tip.style.transform = 'translate(-9999px, -9999px)';
+                    return;
+                }
+                const t = trajectories[hoverId];
+                tipInner.innerHTML =
+                    `<div style="font-weight:800;letter-spacing:.1px;"><strong>Rollout #${String(t.id).padStart(3, '0')}</strong></div>` +
+                    `<div style="font-size:11px;color:var(--muted-color);margin-top:-4px;margin-bottom:2px;letter-spacing:.1px;"><strong>Status</strong> in flight</div>` +
+                    `<div style="padding-top:6px;border-top:1px solid var(--border-color);"><strong>Step</strong> ${t.age} / ${t.maxAge}</div>` +
+                    `<div><strong>Position</strong> X ${t.x.toFixed(1)} · Y ${t.y.toFixed(1)}</div>` +
+                    `<div><strong>Velocity</strong> ${Math.hypot(t.vx, t.vy).toFixed(2)} px/step</div>`;
+                tip.style.opacity = '1';
+                const offsetX = 12, offsetY = 14;
+                tip.style.transform = `translate(${Math.round(mouseX + offsetX)}px, ${Math.round(mouseY + offsetY)}px)`;
+            };
+
+            // Mouse handling
+            canvas.addEventListener('mousemove', (ev) => {
+                const rect = canvas.getBoundingClientRect();
+                mouseX = ev.clientX - rect.left;
+                mouseY = ev.clientY - rect.top;
+            });
+            canvas.addEventListener('mouseleave', () => {
+                mouseX = -1; mouseY = -1;
+                tip.style.opacity = '0';
+                tip.style.transform = 'translate(-9999px, -9999px)';
+            });
+
+            // Reduced motion: single static frame
+            const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            const seedStaticField = () => {
+                // For reduced-motion: fast-forward enough steps so paths are populated
+                for (let s = 0; s < HISTORY; s++) {
+                    for (let i = 0; i < trajectories.length; i++) stepTrajectory(trajectories[i]);
+                }
+            };
+
+            const drawStatic = () => {
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.fillStyle = isDark ? 'rgba(0,0,0,1)' : 'rgba(255,255,255,1)';
+                ctx.fillRect(0, 0, W, H);
+                ctx.globalCompositeOperation = isDark ? 'lighter' : 'source-over';
+                ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+                for (let i = 0; i < trajectories.length; i++) drawTrajectory(trajectories[i], isDark, false);
+                ctx.globalAlpha = 1;
+                ctx.globalCompositeOperation = 'source-over';
+            };
+
+            let rafId = 0;
+            let running = false;
+            const loop = () => {
+                for (let i = 0; i < trajectories.length; i++) stepTrajectory(trajectories[i]);
+                drawFrame();
+                updateTooltip();
+                rafId = requestAnimationFrame(loop);
+            };
+
+            const start = () => {
+                if (running) return;
+                running = true;
+                if (reduced) {
+                    seedStaticField();
+                    drawStatic();
+                    return;
+                }
+                rafId = requestAnimationFrame(loop);
+            };
+            const stop = () => {
+                running = false;
+                if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+            };
+
+            // Resize handling: keep trajectories in flight, just rescale canvas + clamp positions
+            const handleResize = () => {
+                const oldW = W, oldH = H;
+                setCanvasSize();
+                if (oldW > 0 && oldH > 0 && (oldW !== W || oldH !== H)) {
+                    const sx = W / oldW, sy = H / oldH;
+                    for (let i = 0; i < trajectories.length; i++) {
+                        const t = trajectories[i];
+                        t.x *= sx; t.y *= sy;
+                        for (let j = 0; j < t.history.length; j++) {
+                            t.history[j].x *= sx;
+                            t.history[j].y *= sy;
+                        }
+                    }
+                }
+            };
+
+            setCanvasSize();
+            if (window.ResizeObserver) {
+                const ro = new ResizeObserver(() => handleResize());
+                ro.observe(container);
+            } else {
+                window.addEventListener('resize', handleResize);
+            }
+
+            // Pause when tab hidden to save CPU
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) stop();
+                else if (!reduced) start();
+            });
+
+            start();
+        };
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => ensureD3(bootstrap), { once: true });
+        } else { ensureD3(bootstrap); }
+    })();
+</script>

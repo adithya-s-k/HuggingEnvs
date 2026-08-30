@@ -1,0 +1,185 @@
+<div class="ecosystem-matrix" style="width:100%;margin:14px 0;"></div>
+<style>
+  .ecosystem-matrix {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-bg);
+    overflow: hidden;
+    color: var(--text-color);
+  }
+  .ecosystem-matrix__head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 4%, transparent);
+    flex-wrap: wrap;
+  }
+  .ecosystem-matrix__title {
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    margin-right: auto;
+  }
+  .em-prod-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 9px;
+    font-size: 10.5px;
+    font-weight: 700;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .em-prod-pill.deployed { background: color-mix(in oklab, #22c55e 14%, transparent); color: #16a34a; border: 1px solid color-mix(in oklab, #22c55e 35%, transparent); }
+  .em-prod-pill.platform { background: color-mix(in oklab, #3b82f6 12%, transparent); color: #2563eb; border: 1px solid color-mix(in oklab, #3b82f6 35%, transparent); }
+  .em-prod-pill.research { color: var(--muted-color); border: 1px dashed color-mix(in oklab, var(--muted-color) 50%, transparent); background: transparent; }
+
+  .ecosystem-matrix__wrap { overflow-x: auto; }
+  .ecosystem-matrix table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    min-width: 760px;
+  }
+  .ecosystem-matrix table thead th {
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted-color);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+    white-space: nowrap;
+  }
+  .ecosystem-matrix table thead th .swatch {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--c, var(--muted-color));
+    display: inline-block;
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+  .ecosystem-matrix table tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid color-mix(in oklab, var(--border-color) 60%, transparent);
+    vertical-align: middle;
+    color: var(--text-color);
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+  .ecosystem-matrix table tbody tr:last-child td { border-bottom: 0; }
+  .ecosystem-matrix table tbody tr:hover td {
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+  }
+  .ecosystem-matrix table tbody td.row-name {
+    font-weight: 600;
+    color: var(--text-color);
+    white-space: nowrap;
+  }
+  .ecosystem-matrix code {
+    background: color-mix(in oklab, var(--muted-color) 10%, transparent);
+    border-radius: 3px;
+    padding: 0 5px;
+    font-size: 11px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+</style>
+<script>
+(() => {
+  const bootstrap = () => {
+    const scriptEl = document.currentScript;
+    let container = scriptEl ? scriptEl.previousElementSibling : null;
+    if (!(container && container.classList && container.classList.contains('ecosystem-matrix'))) {
+      const cands = Array.from(document.querySelectorAll('.ecosystem-matrix'))
+        .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+      container = cands[cands.length - 1] || null;
+    }
+    if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+    container.dataset.mounted = 'true';
+
+    const FRAMEWORKS = [
+      { key: 'openenv', name: 'OpenEnv',   color: '#3b82f6' },
+      { key: 'ors',     name: 'ORS',       color: '#a855f7' },
+      { key: 'nemo',    name: 'NeMo Gym',  color: '#22c55e' },
+      { key: 'verifs',  name: 'Verifiers', color: '#ec4899' },
+      { key: 'skyrl',   name: 'SkyRL Gym', color: '#f59e0b' },
+      { key: 'gem',     name: 'GEM',       color: '#14b8a6' },
+    ];
+
+    const ROWS = [
+      { name: 'Creator', cells: {
+        openenv: 'Meta PyTorch',
+        ors:     'General Reasoning (GR Inc)',
+        nemo:    'NVIDIA',
+        verifs:  'PrimeIntellect',
+        skyrl:   'NovaSky-AI · Berkeley',
+        gem:     'Axon-RL · ICLR 2026',
+      }},
+      { name: 'PyPI', cells: {
+        openenv: '<code>openenv-core</code>',
+        ors:     '<code>ors-sdk</code>',
+        nemo:    'Git only',
+        verifs:  '<code>verifiers</code>',
+        skyrl:   '<code>skyrl-gym</code>',
+        gem:     '<code>gem-llm</code>',
+      }},
+      { name: 'Python', cells: {
+        openenv: '≥3.11', ors: '≥3.10', nemo: '≥3.12',
+        verifs: '≥3.11', skyrl: '≥3.10', gem: '≥3.10',
+      }},
+      { name: 'Built-in envs', cells: {
+        openenv: 'Example in repo',
+        ors:     'Example in repo',
+        nemo:    '50+ (NVIDIA)',
+        verifs:  'Example in repo',
+        skyrl:   'Few (search, SQL)',
+        gem:     '24+ (games, math, code)',
+      }},
+      { name: 'Community hub', cells: {
+        openenv: '4k+ on HF Spaces',
+        ors:     '330+ on <a href="http://openreward.ai" target="_blank" rel="noopener">openreward.ai</a>',
+        nemo:    '—',
+        verifs:  '~1k on Environments Hub',
+        skyrl:   '—',
+        gem:     '—',
+      }},
+      { name: 'Production usage', cells: {
+        openenv: '<span class="em-prod-pill deployed">Meta</span>',
+        ors:     '<span class="em-prod-pill platform">OpenReward</span>',
+        nemo:    '<span class="em-prod-pill deployed">NVIDIA · Nemotron</span>',
+        verifs:  '<span class="em-prod-pill deployed">PrimeIntellect · INTELLECT-3</span>',
+        skyrl:   '<span class="em-prod-pill deployed">SkyRL-Agent · SWE-Bench</span>',
+        gem:     '<span class="em-prod-pill research">ICLR 2026</span>',
+      }},
+    ];
+
+    const headerCells = FRAMEWORKS.map(f =>
+      `<th><span class="swatch" style="--c:${f.color};"></span>${f.name}</th>`
+    ).join('');
+    const bodyHtml = ROWS.map(r => {
+      const cells = FRAMEWORKS.map(f => `<td>${r.cells[f.key]}</td>`).join('');
+      return `<tr><td class="row-name">${r.name}</td>${cells}</tr>`;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="ecosystem-matrix__head">
+        <span class="ecosystem-matrix__title">Ecosystem & maturity · 6 frameworks</span>
+      </div>
+      <div class="ecosystem-matrix__wrap">
+        <table>
+          <thead><tr><th>Capability</th>${headerCells}</tr></thead>
+          <tbody>${bodyHtml}</tbody>
+        </table>
+      </div>
+    `;
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+  } else {
+    bootstrap();
+  }
+})();
+</script>

@@ -1,0 +1,477 @@
+<div class="d3-comm-deploy" style="width:100%;margin:14px 0;"></div>
+<style>
+  .d3-comm-deploy {
+    position: relative;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-bg);
+    overflow: hidden;
+    color: var(--text-color);
+    --c-http: #3b82f6;
+    --c-inproc: #ec4899;
+    --c-flow: var(--primary-color, #6366f1);
+  }
+
+  /* ── Header ── */
+  .d3-comm-deploy__header {
+    display: flex; flex-wrap: wrap; align-items: center;
+    gap: 12px 16px; padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .d3-comm-deploy__title {
+    font-size: 11px; font-weight: 800; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--muted-color);
+    margin-right: auto;
+  }
+  .d3-comm-deploy__btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 7px;
+    border: 1px solid var(--border-color);
+    background: var(--surface-bg); color: var(--text-color);
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: border-color .12s ease, background .12s ease;
+  }
+  .d3-comm-deploy__btn:hover { border-color: var(--primary-color); }
+  .d3-comm-deploy__btn.primary {
+    border-color: var(--primary-color);
+    background: color-mix(in oklab, var(--primary-color) 12%, var(--surface-bg));
+  }
+  .d3-comm-deploy__btn svg { width: 12px; height: 12px; }
+  .d3-comm-deploy__speed {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; color: var(--muted-color);
+  }
+  .d3-comm-deploy__speed input[type=range] {
+    width: 100px;
+    accent-color: var(--primary-color);
+  }
+  .d3-comm-deploy__speed-val {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--text-color); font-size: 11px;
+    min-width: 36px; text-align: right;
+  }
+
+  /* ── Body grid: two panels side by side ── */
+  .d3-comm-deploy__body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+  }
+  .d3-comm-deploy__panel {
+    padding: 14px 16px 16px 16px;
+    display: flex; flex-direction: column; gap: 10px;
+    min-width: 0;
+  }
+  .d3-comm-deploy__panel + .d3-comm-deploy__panel {
+    border-left: 1px solid var(--border-color);
+  }
+  @media (max-width: 720px) {
+    .d3-comm-deploy__body { grid-template-columns: 1fr; }
+    .d3-comm-deploy__panel + .d3-comm-deploy__panel {
+      border-left: 0;
+      border-top: 1px solid var(--border-color);
+    }
+  }
+
+  .d3-comm-deploy__panel-head {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.6px; text-transform: uppercase;
+    color: var(--text-color);
+  }
+  .d3-comm-deploy__panel-head .swatch {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--c, var(--muted-color));
+    flex-shrink: 0;
+  }
+  .d3-comm-deploy__panel-head .tag {
+    margin-left: auto;
+    font-size: 10px; font-weight: 700;
+    color: var(--muted-color);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  /* ── SVG stage ── */
+  .d3-comm-deploy__stage {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    border-radius: 10px;
+    background: var(--surface-bg);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    min-height: 200px;
+  }
+  .d3-comm-deploy__stage svg {
+    width: 100%; height: 100%; display: block;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .d3-comm-deploy__stage .box {
+    fill: color-mix(in oklab, var(--muted-color) 5%, var(--surface-bg));
+    stroke: var(--border-color);
+    stroke-width: 1.2;
+  }
+  .d3-comm-deploy__stage .box.outer {
+    fill: color-mix(in oklab, var(--muted-color) 3%, transparent);
+    stroke-dasharray: 0;
+  }
+  .d3-comm-deploy__stage .box.tinted-http {
+    fill: color-mix(in oklab, var(--c-http) 8%, var(--surface-bg));
+    stroke: color-mix(in oklab, var(--c-http) 35%, var(--border-color));
+  }
+  .d3-comm-deploy__stage .box.tinted-env {
+    fill: color-mix(in oklab, #22c55e 8%, var(--surface-bg));
+    stroke: color-mix(in oklab, #22c55e 35%, var(--border-color));
+  }
+  .d3-comm-deploy__stage .box.tinted-inproc {
+    fill: color-mix(in oklab, var(--c-inproc) 8%, var(--surface-bg));
+    stroke: color-mix(in oklab, var(--c-inproc) 35%, var(--border-color));
+  }
+  .d3-comm-deploy__stage .box.backend {
+    fill: color-mix(in oklab, var(--muted-color) 4%, transparent);
+    stroke: var(--border-color);
+    stroke-dasharray: 4 3;
+  }
+  .d3-comm-deploy__stage .label-title {
+    fill: var(--text-color);
+    font-size: 11px; font-weight: 700;
+  }
+  .d3-comm-deploy__stage .label-sub {
+    fill: var(--muted-color);
+    font-size: 9px; font-weight: 500;
+  }
+  .d3-comm-deploy__stage .arrow {
+    stroke: var(--muted-color);
+    stroke-width: 1.4;
+    fill: none;
+  }
+  .d3-comm-deploy__stage .arrow.dashed {
+    stroke-dasharray: 4 3;
+  }
+  .d3-comm-deploy__stage .arrow-label {
+    fill: var(--muted-color);
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }
+  /* travelling packets */
+  .d3-comm-deploy__stage .packet {
+    fill: var(--c, var(--c-flow));
+    opacity: 0;
+  }
+  .d3-comm-deploy.playing .packet {
+    animation-play-state: running;
+  }
+  .d3-comm-deploy:not(.playing) .packet {
+    animation-play-state: paused;
+    opacity: 0;
+  }
+  /* HTTP panel: long-distance packets */
+  .d3-comm-deploy .packet.http-out {
+    animation: dcd-http-out var(--dur, 1.6s) linear infinite;
+  }
+  .d3-comm-deploy .packet.http-in {
+    animation: dcd-http-in var(--dur, 1.6s) linear infinite;
+    animation-delay: calc(var(--dur, 1.6s) * 0.5);
+  }
+  @keyframes dcd-http-out {
+    0%   { transform: translate(0, 0); opacity: 0; }
+    8%   { opacity: 1; }
+    92%  { opacity: 1; }
+    100% { transform: translate(120px, 0); opacity: 0; }
+  }
+  @keyframes dcd-http-in {
+    0%   { transform: translate(0, 0); opacity: 0; }
+    8%   { opacity: 1; }
+    92%  { opacity: 1; }
+    100% { transform: translate(-120px, 0); opacity: 0; }
+  }
+  .d3-comm-deploy .packet.http-back {
+    animation: dcd-http-back var(--dur, 1.6s) linear infinite;
+    animation-delay: calc(var(--dur, 1.6s) * 0.25);
+  }
+  @keyframes dcd-http-back {
+    0%   { transform: translate(0, 0); opacity: 0; }
+    8%   { opacity: 0.85; }
+    92%  { opacity: 0.85; }
+    100% { transform: translate(0, 56px); opacity: 0; }
+  }
+
+  /* In-process panel: short hop packets */
+  .d3-comm-deploy .packet.ip-out {
+    animation: dcd-ip-out var(--dur, 1.6s) linear infinite;
+  }
+  .d3-comm-deploy .packet.ip-in {
+    animation: dcd-ip-in var(--dur, 1.6s) linear infinite;
+    animation-delay: calc(var(--dur, 1.6s) * 0.5);
+  }
+  @keyframes dcd-ip-out {
+    0%   { transform: translate(0, 0); opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { transform: translate(40px, 0); opacity: 0; }
+  }
+  @keyframes dcd-ip-in {
+    0%   { transform: translate(0, 0); opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { transform: translate(-40px, 0); opacity: 0; }
+  }
+  .d3-comm-deploy .packet.ip-back {
+    animation: dcd-ip-back var(--dur, 1.6s) linear infinite;
+    animation-delay: calc(var(--dur, 1.6s) * 0.25);
+  }
+  @keyframes dcd-ip-back {
+    0%   { transform: translate(0, 0); opacity: 0; }
+    10%  { opacity: 0.85; }
+    90%  { opacity: 0.85; }
+    100% { transform: translate(0, 32px); opacity: 0; }
+  }
+
+  /* ── Framework chips ── */
+  .d3-comm-deploy__chips {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .d3-comm-deploy__chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 9px;
+    font-size: 11px; font-weight: 600;
+    border-radius: 999px;
+    border: 1px solid color-mix(in oklab, var(--c, var(--border-color)) 35%, var(--border-color));
+    background: color-mix(in oklab, var(--c, transparent) 8%, transparent);
+    color: var(--text-color);
+  }
+  .d3-comm-deploy__chip .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--c, var(--muted-color));
+    flex-shrink: 0;
+  }
+  .d3-comm-deploy__note {
+    font-size: 11.5px;
+    color: var(--muted-color);
+    line-height: 1.5;
+  }
+
+  /* ── Caption ── */
+  .d3-comm-deploy__caption {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border-color);
+    font-size: 11.5px;
+    color: var(--muted-color);
+    font-style: italic;
+    line-height: 1.55;
+  }
+</style>
+<script>
+(() => {
+  const bootstrap = () => {
+    const scriptEl = document.currentScript;
+    let container = scriptEl ? scriptEl.previousElementSibling : null;
+    if (!(container && container.classList && container.classList.contains('d3-comm-deploy'))) {
+      const cands = Array.from(document.querySelectorAll('.d3-comm-deploy'))
+        .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+      container = cands[cands.length - 1] || null;
+    }
+    if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+    container.dataset.mounted = 'true';
+
+    container.innerHTML = `
+      <div class="d3-comm-deploy__header">
+        <div class="d3-comm-deploy__title">Two architectures · same RL loop</div>
+        <button type="button" class="d3-comm-deploy__btn primary" data-act="play">
+          <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>
+          <span data-label>Play</span>
+        </button>
+        <label class="d3-comm-deploy__speed">
+          Speed
+          <input type="range" min="0.4" max="2" step="0.1" value="1" data-act="speed">
+          <span class="d3-comm-deploy__speed-val" data-speed-val>1.0×</span>
+        </label>
+      </div>
+
+      <div class="d3-comm-deploy__body">
+
+        <!-- HTTP PANEL -->
+        <section class="d3-comm-deploy__panel">
+          <header class="d3-comm-deploy__panel-head" style="--c: var(--c-http);">
+            <span class="swatch"></span>
+            HTTP frameworks
+            <span class="tag">trainer ↔ server</span>
+          </header>
+
+          <div class="d3-comm-deploy__stage">
+            <svg viewBox="0 0 400 220" preserveAspectRatio="xMidYMid meet">
+              <defs>
+                <marker id="dcd-arr-http" viewBox="0 0 10 10" refX="9" refY="5"
+                  markerWidth="6" markerHeight="6" orient="auto" markerUnits="userSpaceOnUse">
+                  <path d="M0,0 L10,5 L0,10 Z" fill="currentColor"/>
+                </marker>
+              </defs>
+
+              <!-- training process box -->
+              <rect class="box tinted-http" x="14" y="50" width="130" height="80" rx="10"/>
+              <text class="label-title" x="79" y="80" text-anchor="middle">Training process</text>
+              <text class="label-sub" x="79" y="96" text-anchor="middle">GPU node</text>
+              <text class="label-sub" x="79" y="108" text-anchor="middle">trainer + vLLM</text>
+
+              <!-- env server box -->
+              <rect class="box tinted-env" x="256" y="50" width="130" height="80" rx="10"/>
+              <text class="label-title" x="321" y="80" text-anchor="middle">Environment server</text>
+              <text class="label-sub" x="321" y="96" text-anchor="middle">CPU · FastAPI</text>
+              <text class="label-sub" x="321" y="108" text-anchor="middle">per-session state</text>
+
+              <!-- arrows between (action up, response down) -->
+              <g style="color: var(--muted-color);">
+                <path class="arrow" d="M144,75 L256,75" marker-end="url(#dcd-arr-http)"/>
+                <text class="arrow-label" x="200" y="68" text-anchor="middle">action / tool call</text>
+                <path class="arrow" d="M256,105 L144,105" marker-end="url(#dcd-arr-http)"/>
+                <text class="arrow-label" x="200" y="120" text-anchor="middle">obs · reward</text>
+              </g>
+
+              <!-- backend dashed -->
+              <rect class="box backend" x="261" y="160" width="120" height="44" rx="8"/>
+              <text class="label-title" x="321" y="184" text-anchor="middle">Backend</text>
+              <text class="label-sub" x="321" y="196" text-anchor="middle">E2B · Modal · custom</text>
+              <g style="color: var(--muted-color);">
+                <path class="arrow dashed" d="M321,130 L321,160" marker-end="url(#dcd-arr-http)"/>
+              </g>
+
+              <!-- packets -->
+              <circle class="packet http-out" cx="144" cy="75" r="3.5" style="fill: var(--c-http);"/>
+              <circle class="packet http-in"  cx="256" cy="105" r="3.5" style="fill: #22c55e;"/>
+              <circle class="packet http-back" cx="321" cy="130" r="3" style="fill: var(--muted-color); opacity:0;"/>
+            </svg>
+          </div>
+
+          <div class="d3-comm-deploy__chips">
+            <span class="d3-comm-deploy__chip" style="--c:#3b82f6;"><span class="dot"></span>OpenEnv</span>
+            <span class="d3-comm-deploy__chip" style="--c:#a855f7;"><span class="dot"></span>ORS</span>
+            <span class="d3-comm-deploy__chip" style="--c:#22c55e;"><span class="dot"></span>NeMo Gym</span>
+          </div>
+          <div class="d3-comm-deploy__note">
+            Two processes, one network hop on every tool call. Env can run on a CPU box or HF Space and scale by adding replicas.
+          </div>
+        </section>
+
+        <!-- IN-PROCESS PANEL -->
+        <section class="d3-comm-deploy__panel">
+          <header class="d3-comm-deploy__panel-head" style="--c: var(--c-inproc);">
+            <span class="swatch"></span>
+            In-process frameworks
+            <span class="tag">single python process</span>
+          </header>
+
+          <div class="d3-comm-deploy__stage">
+            <svg viewBox="0 0 400 220" preserveAspectRatio="xMidYMid meet">
+              <defs>
+                <marker id="dcd-arr-ip" viewBox="0 0 10 10" refX="9" refY="5"
+                  markerWidth="6" markerHeight="6" orient="auto" markerUnits="userSpaceOnUse">
+                  <path d="M0,0 L10,5 L0,10 Z" fill="currentColor"/>
+                </marker>
+              </defs>
+
+              <!-- outer training process box -->
+              <rect class="box outer" x="14" y="32" width="372" height="118" rx="12"/>
+              <text class="label-title" x="28" y="50" text-anchor="start" style="fill: var(--muted-color); font-size:9px; letter-spacing:0.5px; text-transform:uppercase;">Training process</text>
+
+              <!-- inner trainer box -->
+              <rect class="box tinted-http" x="32" y="62" width="140" height="76" rx="9"/>
+              <text class="label-title" x="102" y="92" text-anchor="middle">Trainer</text>
+              <text class="label-sub" x="102" y="108" text-anchor="middle">GRPO · vLLM</text>
+              <text class="label-sub" x="102" y="120" text-anchor="middle">GPU node</text>
+
+              <!-- inner env box -->
+              <rect class="box tinted-inproc" x="228" y="62" width="140" height="76" rx="9"/>
+              <text class="label-title" x="298" y="92" text-anchor="middle">Env (Python obj)</text>
+              <text class="label-sub" x="298" y="108" text-anchor="middle">step() · reset()</text>
+              <text class="label-sub" x="298" y="120" text-anchor="middle">same venv</text>
+
+              <!-- arrows between -->
+              <g style="color: var(--muted-color);">
+                <path class="arrow" d="M172,84 L228,84" marker-end="url(#dcd-arr-ip)"/>
+                <text class="arrow-label" x="200" y="78" text-anchor="middle">call</text>
+                <path class="arrow" d="M228,116 L172,116" marker-end="url(#dcd-arr-ip)"/>
+                <text class="arrow-label" x="200" y="130" text-anchor="middle">return</text>
+              </g>
+
+              <!-- backend dashed (sits directly below the env, vertical drop) -->
+              <rect class="box backend" x="238" y="170" width="120" height="38" rx="8"/>
+              <text class="label-title" x="298" y="190" text-anchor="middle">Backend</text>
+              <text class="label-sub" x="298" y="202" text-anchor="middle">optional · E2B / sandbox</text>
+              <g style="color: var(--muted-color);">
+                <path class="arrow dashed" d="M298,138 L298,170" marker-end="url(#dcd-arr-ip)"/>
+              </g>
+
+              <!-- packets -->
+              <circle class="packet ip-out" cx="172" cy="84" r="3.5" style="fill: var(--c-inproc);"/>
+              <circle class="packet ip-in"  cx="228" cy="116" r="3.5" style="fill: #22c55e;"/>
+              <circle class="packet ip-back" cx="298" cy="138" r="3" style="fill: var(--muted-color); opacity:0;"/>
+            </svg>
+          </div>
+
+          <div class="d3-comm-deploy__chips">
+            <span class="d3-comm-deploy__chip" style="--c:#ec4899;"><span class="dot"></span>Verifiers</span>
+            <span class="d3-comm-deploy__chip" style="--c:#f59e0b;"><span class="dot"></span>SkyRL Gym</span>
+            <span class="d3-comm-deploy__chip" style="--c:#14b8a6;"><span class="dot"></span>GEM</span>
+          </div>
+          <div class="d3-comm-deploy__note">
+            One process. Direct Python call. Fewer moving parts, but env shares the GPU node's CPU and dependency tree.
+          </div>
+        </section>
+      </div>
+
+      <div class="d3-comm-deploy__caption">
+        Same loop, two shapes. HTTP frameworks separate trainer and env so each can scale on its own machine class. In-process frameworks fold the env into the trainer for simpler local runs at the cost of resource isolation.
+      </div>
+    `;
+
+    // ── Controls ──
+    const playBtn = container.querySelector('[data-act="play"]');
+    const playLbl = container.querySelector('[data-label]');
+    const speedInput = container.querySelector('[data-act="speed"]');
+    const speedVal = container.querySelector('[data-speed-val]');
+
+    let playing = false;
+    const setPlaying = (next) => {
+      playing = next;
+      container.classList.toggle('playing', playing);
+      playLbl.textContent = playing ? 'Pause' : 'Play';
+      const icon = playBtn.querySelector('svg');
+      if (playing) {
+        icon.innerHTML = '<rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/>';
+      } else {
+        icon.innerHTML = '<polygon points="6,4 20,12 6,20" fill="currentColor"/>';
+      }
+    };
+    playBtn.addEventListener('click', () => setPlaying(!playing));
+
+    const updateSpeed = () => {
+      const s = parseFloat(speedInput.value);
+      const dur = (1.6 / s).toFixed(2) + 's';
+      container.style.setProperty('--dur', dur);
+      speedVal.textContent = s.toFixed(1) + '×';
+    };
+    speedInput.addEventListener('input', updateSpeed);
+    updateSpeed();
+
+    // start playing on first scroll-into-view, like the other embeds
+    const io = ('IntersectionObserver' in window) ? new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting && !playing) {
+          setPlaying(true);
+          io.disconnect();
+        }
+      });
+    }, { threshold: 0.4 }) : null;
+    if (io) io.observe(container); else setPlaying(true);
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+  } else {
+    bootstrap();
+  }
+})();
+</script>

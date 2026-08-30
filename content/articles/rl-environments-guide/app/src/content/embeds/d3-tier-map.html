@@ -1,0 +1,394 @@
+<div class="d3-tier-map" style="width:100%;margin:14px 0;min-height:520px;"></div>
+<style>
+  .d3-tier-map {
+    position: relative;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-bg);
+    padding: 18px 22px 16px 22px;
+    box-sizing: border-box;
+  }
+  .d3-tier-map svg { display: block; width: 100%; }
+
+  .d3-tier-map .tier-band {
+    fill: color-mix(in oklab, var(--muted-color) 4%, var(--surface-bg));
+    stroke: var(--border-color);
+    stroke-width: 1;
+  }
+  .d3-tier-map .tier-num {
+    fill: var(--muted-color);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.6px;
+    pointer-events: none;
+  }
+  .d3-tier-map .tier-title {
+    fill: var(--text-color);
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+    pointer-events: none;
+  }
+  .d3-tier-map .tier-desc {
+    fill: var(--muted-color);
+    font-size: 11px;
+    font-weight: 500;
+    pointer-events: none;
+  }
+  .d3-tier-map .compared-flag {
+    fill: var(--muted-color);
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+
+  .d3-tier-map .node { cursor: default; transition: filter .15s ease; }
+  .d3-tier-map .node:hover { filter: brightness(1.15) drop-shadow(0 3px 8px rgba(0,0,0,0.22)); }
+  .d3-tier-map .node text {
+    font-size: 11px;
+    font-weight: 700;
+    fill: #fff;
+    text-anchor: middle;
+    dominant-baseline: middle;
+    pointer-events: none;
+    letter-spacing: 0.1px;
+  }
+  .d3-tier-map .node.excluded text { fill: var(--muted-color); }
+
+  .d3-tier-map .legend {
+    display: flex; flex-wrap: wrap; gap: 10px 16px;
+    margin-top: 14px;
+    font-size: 11px;
+    color: var(--text-color);
+  }
+  .d3-tier-map .legend .item { display: inline-flex; align-items: center; gap: 6px; }
+  .d3-tier-map .legend .swatch {
+    width: 14px; height: 14px; border-radius: 50%;
+  }
+  .d3-tier-map .legend .swatch.dashed {
+    background: var(--surface-bg) !important;
+    border: 1.5px dashed var(--text-color);
+  }
+
+  .d3-tier-map .d3-tooltip {
+    position: absolute; top: 0; left: 0;
+    transform: translate(-9999px, -9999px);
+    pointer-events: none;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 11px; line-height: 1.4;
+    border: 1px solid var(--border-color);
+    background: var(--surface-bg);
+    color: var(--text-color);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    opacity: 0; transition: opacity .12s ease;
+    z-index: 10;
+    max-width: 260px;
+    min-width: 200px;
+  }
+  .d3-tier-map .d3-tooltip strong { color: var(--text-color); }
+  .d3-tier-map .d3-tooltip .row { display: flex; justify-content: space-between; gap: 12px; }
+  .d3-tier-map .d3-tooltip .row span:first-child { color: var(--muted-color); }
+  .d3-tier-map .d3-tooltip .reason {
+    font-style: italic; color: var(--muted-color); font-size: 10.5px;
+    margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border-color);
+  }
+</style>
+<script>
+  (() => {
+    const ensureD3 = (cb) => {
+      if (window.d3 && typeof window.d3.select === 'function') return cb();
+      let s = document.getElementById('d3-cdn-script');
+      if (!s) {
+        s = document.createElement('script');
+        s.id = 'd3-cdn-script';
+        s.src = 'https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js';
+        document.head.appendChild(s);
+      }
+      const onReady = () => { if (window.d3 && typeof window.d3.select === 'function') cb(); };
+      s.addEventListener('load', onReady, { once: true });
+      if (window.d3) onReady();
+    };
+
+    const bootstrap = () => {
+      const scriptEl = document.currentScript;
+      let container = scriptEl ? scriptEl.previousElementSibling : null;
+      if (!(container && container.classList && container.classList.contains('d3-tier-map'))) {
+        const cands = Array.from(document.querySelectorAll('.d3-tier-map'))
+          .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+        container = cands[cands.length - 1] || null;
+      }
+      if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+      container.dataset.mounted = 'true';
+
+      const TIERS = [
+        { id: 1, title: 'Pure Task Libraries',                desc: 'Just problems + verifiers — no transport, no tools, no state.' },
+        { id: 2, title: 'Environment Frameworks',             desc: 'Define how to build an env — bring your own trainer.' },
+        { id: 3, title: 'Environment + Training Bundled',     desc: 'Env definition + rollout + training in one package.' }
+      ];
+
+      // Two-letter chip codes for the 6 included frameworks (mirror the orientation strip).
+      const SHORT = {
+        'OpenEnv':       'OE',
+        'ORS':           'OR',
+        'NeMo Gym':      'NG',
+        'Verifiers':     'VF',
+        'SkyRL Gym':     'SK',
+        'GEM':           'GM',
+        'Atropos':       'AT',
+        'Harbor':        'HR',
+        'RLVE':          'RV',
+        'Reasoning Gym': 'RG',
+        'RAGEN':         'RN',
+        'rLLM':          'RL',
+        'RL-Factory':    'RF',
+        'Open-Instruct': 'OI',
+        'TextArena':     'TA',
+        'LlamaGym':      'LG'
+      };
+
+      const PATHS = [
+        '/data/landscape.json',
+        './assets/data/landscape.json',
+        '../assets/data/landscape.json',
+        '../../assets/data/landscape.json'
+      ];
+      const fetchFirst = async (paths) => {
+        for (const p of paths) {
+          try { const r = await fetch(p, { cache: 'no-cache' }); if (r.ok) return await r.json(); } catch(_){}
+        }
+        throw new Error('landscape.json not found');
+      };
+
+      // Tooltip
+      const tip = document.createElement('div'); tip.className = 'd3-tooltip';
+      container.appendChild(tip);
+      const showTip = (e, html) => {
+        tip.innerHTML = html;
+        const r = container.getBoundingClientRect();
+        tip.style.transform = `translate(${e.clientX - r.left + 14}px, ${e.clientY - r.top + 14}px)`;
+        tip.style.opacity = '1';
+      };
+      const hideTip = () => { tip.style.opacity = '0'; };
+
+      const svg = d3.select(container).append('svg').attr('preserveAspectRatio', 'xMidYMid meet');
+
+      // Legend
+      const legendEl = document.createElement('div'); legendEl.className = 'legend';
+      legendEl.innerHTML = `
+        <span class="item"><span class="swatch" style="background:#3b82f6"></span><span>HTTP transport</span></span>
+        <span class="item"><span class="swatch" style="background:#22c55e"></span><span>In-process</span></span>
+        <span class="item"><span class="swatch" style="opacity:0.45;background:var(--muted-color)"></span><span>Excluded — not in this comparison</span></span>
+        <span class="item" style="opacity:0.7;font-style:italic;">Click any chip to follow its repo →</span>
+      `;
+      container.appendChild(legendEl);
+
+      let frameworks = [];
+      let mounted = false;
+
+      const transportColor = (transport, included) => {
+        if (!included) return null; // excluded nodes use neutral palette + reduced opacity
+        return transport === 'http' ? '#3b82f6' : '#22c55e';
+      };
+
+      function render() {
+        if (!frameworks.length) return;
+        const W = Math.max(280, container.clientWidth - 44);
+        const isNarrow = W < 540;
+
+        svg.selectAll('*').remove();
+
+        const padX = 8;
+        const headerH = isNarrow ? 56 : 50;
+        const headerBottomGap = 12;
+        const chipH = 30;
+        const chipPadX = 12;
+        const chipGapX = 8;
+        const chipGapY = 10;
+        const bandPadBottom = 14;
+        const bandGap = 8;          // vertical gap between tier bands
+
+        // Helper: estimate text width
+        const estimateW = (text, fontPx = 11) => Math.ceil(text.length * fontPx * 0.62 + chipPadX * 2);
+
+        // ── Pass 1: lay out chips per tier and compute each tier's height ──
+        const tierLayouts = TIERS.map((tier) => {
+          const tierFws = frameworks.filter(f => f.tier === tier.id);
+          const innerLeft = padX + 18;
+          const innerRight = W - padX - 18;
+          const innerW = innerRight - innerLeft;
+
+          // Cap chip width on narrow screens so very long names wrap to their own row
+          const maxChipW = Math.min(innerW, isNarrow ? innerW : 360);
+
+          const sized = tierFws.map(fw => ({
+            ...fw,
+            chipW: Math.min(estimateW(fw.name), maxChipW),
+          }));
+
+          const rows = [];
+          let currentRow = [];
+          let currentW = 0;
+          sized.forEach(fw => {
+            const needed = (currentRow.length === 0 ? 0 : chipGapX) + fw.chipW;
+            if (currentW + needed > innerW && currentRow.length > 0) {
+              rows.push(currentRow);
+              currentRow = [fw];
+              currentW = fw.chipW;
+            } else {
+              currentRow.push(fw);
+              currentW += needed;
+            }
+          });
+          if (currentRow.length > 0) rows.push(currentRow);
+
+          const rowsTotalH = rows.length === 0 ? 0
+            : rows.length * chipH + (rows.length - 1) * chipGapY;
+          // dynamic tier height = header + gap + rows + bottom padding
+          const tierH = headerH + headerBottomGap + rowsTotalH + bandPadBottom;
+          return { tier, tierFws, rows, tierH, innerLeft, innerRight, innerW };
+        });
+
+        // Total height = sum of dynamic tier heights + gaps
+        const H = tierLayouts.reduce((s, t) => s + t.tierH, 0)
+                  + (tierLayouts.length - 1) * bandGap + 8;
+
+        svg.attr('viewBox', `0 0 ${W} ${H}`).attr('width', W).attr('height', H);
+
+        // ── Pass 2: render each tier band at its computed height ──
+        let cursorY = 4;
+        tierLayouts.forEach(({ tier, tierFws, rows, tierH, innerLeft, innerRight, innerW }) => {
+          const bandY = cursorY;
+          const bandH = tierH - 4;
+          const g = svg.append('g').attr('class', 'tier').attr('transform', `translate(0, ${bandY})`);
+
+          // Band
+          g.append('rect').attr('class', 'tier-band')
+            .attr('x', padX).attr('y', 0)
+            .attr('width', W - padX * 2).attr('height', bandH)
+            .attr('rx', 12).attr('ry', 12);
+
+          // Tier header
+          g.append('text').attr('class', 'tier-num')
+            .attr('x', padX + 18).attr('y', 22).text(`TIER ${tier.id}`);
+          g.append('text').attr('class', 'tier-title')
+            .attr('x', isNarrow ? padX + 18 : padX + 80)
+            .attr('y', isNarrow ? 38 : 22).text(tier.title);
+          g.append('text').attr('class', 'tier-desc')
+            .attr('x', padX + 18).attr('y', isNarrow ? 56 : 40).text(tier.desc);
+
+          const includedCount = tierFws.filter(f => f.included).length;
+          if (includedCount > 0 && !isNarrow) {
+            g.append('text').attr('class', 'compared-flag')
+              .attr('x', W - padX - 18).attr('y', 22).attr('text-anchor', 'end')
+              .text(`${includedCount} compared in this article`);
+          }
+
+          // Place rows directly under the header (no centering — keeps tier height tight)
+          const stackStartY = headerH + headerBottomGap;
+
+          rows.forEach((row, ri) => {
+            const rowW = row.reduce((s, fw, i) => s + fw.chipW + (i > 0 ? chipGapX : 0), 0);
+            let x = innerLeft + (innerW - rowW) / 2;
+            const rowY = stackStartY + ri * (chipH + chipGapY);
+
+            row.forEach((fw) => {
+              const tColor = transportColor(fw.transport, fw.included);
+              const fillColor = tColor || 'var(--muted-color)';
+              const fillOpacity = fw.included ? 0.95 : 0.16;
+              const strokeColor = tColor || 'var(--muted-color)';
+              const strokeOpacity = fw.included ? 1 : 0.55;
+
+              const node = g.append('g').attr('class', 'node' + (fw.included ? '' : ' excluded'))
+                .attr('transform', `translate(${x}, ${rowY})`)
+                .style('cursor', 'pointer')
+                .on('click', () => {
+                  if (fw.repo) window.open(fw.repo, '_blank', 'noopener');
+                })
+                .on('mouseenter', (e) => {
+                  const reasonHtml = fw.included
+                    ? `<div class="reason">In this comparison.</div>`
+                    : `<div class="reason">Excluded — ${fw.reason || 'different paradigm'}</div>`;
+                  const html = `
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                      <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:${tColor || 'var(--muted-color)'};opacity:${fw.included ? 1 : 0.5};color:#fff;font-size:9px;font-weight:800;">${SHORT[fw.name] || fw.name.slice(0, 2).toUpperCase()}</span>
+                      <strong style="font-size:13px;">${fw.name}</strong>
+                    </div>
+                    <div class="row"><span>Creator</span><strong>${fw.creator}</strong></div>
+                    <div class="row"><span>Tier</span><strong>${fw.tier}</strong></div>
+                    <div class="row"><span>Transport</span><strong>${fw.transport === 'http' ? 'HTTP server' : 'In-process'}</strong></div>
+                    ${reasonHtml}
+                  `;
+                  showTip(e, html);
+                })
+                .on('mousemove', (e) => {
+                  const r = container.getBoundingClientRect();
+                  tip.style.transform = `translate(${e.clientX - r.left + 14}px, ${e.clientY - r.top + 14}px)`;
+                })
+                .on('mouseleave', hideTip);
+
+              node.append('rect')
+                .attr('width', fw.chipW).attr('height', chipH)
+                .attr('rx', chipH / 2).attr('ry', chipH / 2)
+                .attr('fill', fillColor)
+                .attr('fill-opacity', fillOpacity)
+                .attr('stroke', strokeColor)
+                .attr('stroke-opacity', strokeOpacity)
+                .attr('stroke-width', fw.included ? 1.5 : 1.2)
+                .attr('stroke-dasharray', fw.included ? null : '3 3');
+              node.append('text')
+                .attr('x', fw.chipW / 2)
+                .attr('y', chipH / 2 + 1)
+                .text(fw.name);
+
+              x += fw.chipW + chipGapX;
+            });
+          });
+
+          cursorY += tierH + bandGap;
+        });
+
+        // ─── Entrance animation: gentle fade-in only (chips have variable widths,
+        // so a scale transform would expand from the top-left and look off) ───
+        if (!mounted) {
+          mounted = true;
+          svg.selectAll('g.tier').style('opacity', 0)
+            .transition().delay((d, i) => i * 120).duration(500)
+            .ease(d3.easeCubicOut)
+            .style('opacity', 1);
+          svg.selectAll('g.node').style('opacity', 0)
+            .transition()
+            .delay((d, i) => 300 + i * 28)
+            .duration(420)
+            .ease(d3.easeCubicOut)
+            .style('opacity', 1);
+        }
+      }
+
+      fetchFirst(PATHS).then(json => {
+        frameworks = json;
+        render();
+      }).catch(err => {
+        const pre = document.createElement('pre');
+        pre.style.color = 'crimson';
+        pre.style.padding = '10px';
+        pre.textContent = String(err.message || err);
+        container.appendChild(pre);
+      });
+
+      const ro = new ResizeObserver(() => {
+        const wasMounted = mounted;
+        mounted = true;
+        render();
+        if (!wasMounted) mounted = false;
+      });
+      ro.observe(container);
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => ensureD3(bootstrap), { once: true });
+    } else { ensureD3(bootstrap); }
+  })();
+</script>

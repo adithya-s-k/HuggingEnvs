@@ -1,0 +1,396 @@
+<div class="d3-orientation-2d" style="width:100%;margin:14px 0;min-height:480px;"></div>
+<style>
+  .d3-orientation-2d {
+    position: relative;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-bg);
+    padding: 18px 22px 18px 22px;
+    box-sizing: border-box;
+  }
+  .d3-orientation-2d svg { display: block; width: 100%; }
+
+  .d3-orientation-2d .axis-line { stroke: var(--border-color); stroke-width: 1; }
+  .d3-orientation-2d .axis-arrow { fill: var(--muted-color); }
+  .d3-orientation-2d .axis-name {
+    fill: var(--text-color); font-size: 12px; font-weight: 700;
+    pointer-events: none;
+  }
+  .d3-orientation-2d .axis-end {
+    fill: var(--muted-color); font-size: 10px; font-weight: 700;
+    letter-spacing: 0.4px; text-transform: uppercase;
+    pointer-events: none;
+  }
+  .d3-orientation-2d .median {
+    stroke: var(--border-color); stroke-width: 1; stroke-dasharray: 3 4; opacity: 0.55;
+  }
+  .d3-orientation-2d .quadrant-label {
+    fill: var(--muted-color); font-size: 10px; font-weight: 600;
+    font-style: italic; pointer-events: none; letter-spacing: 0.2px;
+  }
+  .d3-orientation-2d .chip { cursor: default; transition: filter .15s ease; }
+  .d3-orientation-2d .chip:hover { filter: brightness(1.18) drop-shadow(0 3px 8px rgba(0,0,0,.25)); }
+  .d3-orientation-2d .chip text {
+    font-size: 9px; font-weight: 800; fill: #fff;
+    text-anchor: middle; dominant-baseline: middle;
+    pointer-events: none; letter-spacing: 0.1px;
+  }
+
+  .d3-orientation-2d .legend {
+    display: flex; flex-wrap: wrap; gap: 8px 14px;
+    margin-top: 12px;
+    font-size: 11px;
+  }
+  .d3-orientation-2d .legend .item {
+    display: inline-flex; align-items: center; gap: 5px;
+    color: var(--text-color);
+  }
+  .d3-orientation-2d .legend .swatch {
+    width: 18px; height: 18px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 9px; font-weight: 800; letter-spacing: 0.1px;
+  }
+  .d3-orientation-2d .legend-divider {
+    border-left: 1px solid var(--border-color);
+    height: 18px; align-self: center; margin: 0 4px;
+  }
+  .d3-orientation-2d .deploy-key {
+    font-size: 11px; color: var(--text-color);
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .d3-orientation-2d .deploy-glyph {
+    width: 18px; height: 18px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--surface-bg); color: var(--text-color);
+    border: 1.5px solid var(--text-color);
+    font-size: 10px; font-weight: 800;
+  }
+  .d3-orientation-2d .deploy-glyph.dashed { border-style: dashed; }
+
+  .d3-orientation-2d .methodology {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+    font-size: 11px;
+    line-height: 1.55;
+    color: var(--muted-color);
+  }
+  .d3-orientation-2d .methodology strong { color: var(--text-color); }
+
+  .d3-orientation-2d .d3-tooltip {
+    position: absolute; top: 0; left: 0;
+    transform: translate(-9999px, -9999px);
+    pointer-events: none;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 11px; line-height: 1.4;
+    border: 1px solid var(--border-color);
+    background: var(--surface-bg);
+    color: var(--text-color);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    opacity: 0; transition: opacity .12s ease;
+    z-index: 10;
+    min-width: 200px;
+  }
+  .d3-orientation-2d .d3-tooltip strong { color: var(--text-color); }
+  .d3-orientation-2d .d3-tooltip .row {
+    display: flex; justify-content: space-between; gap: 12px;
+  }
+  .d3-orientation-2d .d3-tooltip .row span:first-child { color: var(--muted-color); }
+</style>
+<script>
+  (() => {
+    const ensureD3 = (cb) => {
+      if (window.d3 && typeof window.d3.select === 'function') return cb();
+      let s = document.getElementById('d3-cdn-script');
+      if (!s) {
+        s = document.createElement('script');
+        s.id = 'd3-cdn-script';
+        s.src = 'https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js';
+        document.head.appendChild(s);
+      }
+      const onReady = () => { if (window.d3 && typeof window.d3.select === 'function') cb(); };
+      s.addEventListener('load', onReady, { once: true });
+      if (window.d3) onReady();
+    };
+
+    const bootstrap = () => {
+      const scriptEl = document.currentScript;
+      let container = scriptEl ? scriptEl.previousElementSibling : null;
+      if (!(container && container.classList && container.classList.contains('d3-orientation-2d'))) {
+        const cands = Array.from(document.querySelectorAll('.d3-orientation-2d'))
+          .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+        container = cands[cands.length - 1] || null;
+      }
+      if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+      container.dataset.mounted = 'true';
+
+      // ─── Data: positions are derived, not hand-waved ───
+      // X — Definition richness
+      //   Score = (full + 0.5 × partial) / 12, counted directly from component_support.csv.
+      //   Frameworks where more components are bundled natively land further right.
+      // Y — Reward timing
+      //   0   = External (training script computes reward post-hoc)
+      //   0.4 = Post-episode verify endpoint
+      //   0.8 = Per-step embedded rubric (env-managed)
+      //   1.0 = Per-tool-call (server-embedded)
+      // Deployment glyph (chip border style) — solid = HTTP server, dashed = in-process.
+      const FRAMEWORKS = [
+        { name: 'OpenEnv',   short: 'OE', x: 0.667, y: 0.80, deploy: 'http',     fullCount: 7,  partialCount: 2,  rewardKind: 'Per-step rubric',    transport: 'HTTP (MCP)' },
+        { name: 'ORS',       short: 'OR', x: 0.833, y: 1.00, deploy: 'http',     fullCount: 9,  partialCount: 2,  rewardKind: 'Per-tool-call',      transport: 'HTTP (REST+SSE)' },
+        { name: 'NeMo Gym',  short: 'NG', x: 0.875, y: 0.40, deploy: 'http',     fullCount: 10, partialCount: 1,  rewardKind: 'Post-episode verify', transport: 'HTTP (REST)' },
+        { name: 'Verifiers', short: 'VF', x: 0.792, y: 0.80, deploy: 'inproc',   fullCount: 8,  partialCount: 3,  rewardKind: 'Per-step rubric',    transport: 'In-process' },
+        { name: 'SkyRL Gym', short: 'SK', x: 0.625, y: 0.05, deploy: 'inproc',   fullCount: 6,  partialCount: 3,  rewardKind: 'External',           transport: 'In-process' },
+        { name: 'GEM',       short: 'GM', x: 0.750, y: 0.05, deploy: 'inproc',   fullCount: 7,  partialCount: 4,  rewardKind: 'External',           transport: 'In-process' }
+      ];
+
+      const palette = () => {
+        try {
+          if (window.ColorPalettes && window.ColorPalettes.getColors) {
+            return window.ColorPalettes.getColors('categorical', FRAMEWORKS.length);
+          }
+        } catch(_) {}
+        return ['#3b82f6','#a855f7','#ec4899','#f97316','#22c55e','#14b8a6'];
+      };
+      const colors = palette();
+      FRAMEWORKS.forEach((f, i) => f.color = colors[i]);
+
+      // Tooltip
+      const tip = document.createElement('div'); tip.className = 'd3-tooltip';
+      container.appendChild(tip);
+      const showTip = (e, html) => {
+        tip.innerHTML = html;
+        const r = container.getBoundingClientRect();
+        let tx = e.clientX - r.left + 14;
+        let ty = e.clientY - r.top + 14;
+        tip.style.transform = `translate(${tx}px, ${ty}px)`;
+        tip.style.opacity = '1';
+      };
+      const hideTip = () => { tip.style.opacity = '0'; };
+
+      const svg = d3.select(container).append('svg').attr('preserveAspectRatio', 'xMidYMid meet');
+
+      // Legend (chip-name mapping + deployment key)
+      const legendEl = document.createElement('div'); legendEl.className = 'legend';
+      FRAMEWORKS.forEach((fw) => {
+        const item = document.createElement('span'); item.className = 'item';
+        item.innerHTML = `<span class="swatch" style="background:${fw.color}">${fw.short}</span><span>${fw.name}</span>`;
+        legendEl.appendChild(item);
+      });
+      const divider = document.createElement('span'); divider.className = 'legend-divider';
+      legendEl.appendChild(divider);
+      const httpKey = document.createElement('span'); httpKey.className = 'deploy-key';
+      httpKey.innerHTML = `<span class="deploy-glyph">●</span><span>HTTP server</span>`;
+      legendEl.appendChild(httpKey);
+      const inprocKey = document.createElement('span'); inprocKey.className = 'deploy-key';
+      inprocKey.innerHTML = `<span class="deploy-glyph dashed">●</span><span>In-process</span>`;
+      legendEl.appendChild(inprocKey);
+      container.appendChild(legendEl);
+
+      // Methodology
+      const methEl = document.createElement('div'); methEl.className = 'methodology';
+      methEl.innerHTML = `
+        <strong>How positions are computed.</strong>
+        The <strong>x-axis</strong> ("Definition richness") is the score
+        <code style="font-family:var(--font-mono,monospace);">(full + 0.5 × partial) / 12</code>
+        derived directly from the component-support matrix later in this article: how many of the 12
+        environment components a framework provides natively versus expects you to bring yourself.
+        The <strong>y-axis</strong> ("Reward timing") is a positional encoding of <em>when in the trajectory</em>
+        the reward signal is computed: 0 = external (training script, post-hoc) → 0.4 = post-episode verify
+        → 0.8 = per-step rubric (env-managed) → 1.0 = per-tool-call (server-embedded).
+        Solid chip border = HTTP-deployed framework, dashed = in-process.
+      `;
+      container.appendChild(methEl);
+
+      let mounted = false;
+
+      function render() {
+        const W = container.clientWidth - 44;
+        const H = Math.min(420, Math.max(340, W * 0.55));
+        svg.attr('viewBox', `0 0 ${W} ${H}`).attr('width', W).attr('height', H);
+        svg.selectAll('*').remove();
+
+        const padL = 84, padR = 28, padT = 28, padB = 56;
+        const innerX0 = padL;
+        const innerY0 = padT;
+        const innerX1 = W - padR;
+        const innerY1 = H - padB;
+
+        // Median guides at 0.5
+        svg.append('line').attr('class', 'median')
+          .attr('x1', innerX0 + (innerX1 - innerX0) / 2).attr('x2', innerX0 + (innerX1 - innerX0) / 2)
+          .attr('y1', innerY0).attr('y2', innerY1);
+        svg.append('line').attr('class', 'median')
+          .attr('x1', innerX0).attr('x2', innerX1)
+          .attr('y1', innerY0 + (innerY1 - innerY0) / 2).attr('y2', innerY0 + (innerY1 - innerY0) / 2);
+
+        // X axis (bottom)
+        svg.append('line').attr('class', 'axis-line')
+          .attr('x1', innerX0 - 6).attr('x2', innerX1 + 6)
+          .attr('y1', innerY1).attr('y2', innerY1);
+        // X axis arrow
+        svg.append('polygon').attr('class', 'axis-arrow')
+          .attr('points', `${innerX1 + 6},${innerY1} ${innerX1},${innerY1 - 4} ${innerX1},${innerY1 + 4}`);
+
+        // Y axis (left)
+        svg.append('line').attr('class', 'axis-line')
+          .attr('x1', innerX0).attr('x2', innerX0)
+          .attr('y1', innerY1 + 6).attr('y2', innerY0 - 6);
+        svg.append('polygon').attr('class', 'axis-arrow')
+          .attr('points', `${innerX0},${innerY0 - 6} ${innerX0 - 4},${innerY0} ${innerX0 + 4},${innerY0}`);
+
+        // Axis names
+        svg.append('text').attr('class', 'axis-name')
+          .attr('x', (innerX0 + innerX1) / 2).attr('y', H - 26)
+          .attr('text-anchor', 'middle')
+          .text('Definition richness');
+        svg.append('text').attr('class', 'axis-name')
+          .attr('transform', `translate(22, ${(innerY0 + innerY1) / 2}) rotate(-90)`)
+          .attr('text-anchor', 'middle')
+          .text('Reward timing');
+
+        // End labels
+        svg.append('text').attr('class', 'axis-end')
+          .attr('x', innerX0).attr('y', H - 8).attr('text-anchor', 'start')
+          .text('Thin (BYO)');
+        svg.append('text').attr('class', 'axis-end')
+          .attr('x', innerX1).attr('y', H - 8).attr('text-anchor', 'end')
+          .text('Rich (bundled)');
+        svg.append('text').attr('class', 'axis-end')
+          .attr('transform', `translate(40, ${innerY1}) rotate(-90)`)
+          .attr('text-anchor', 'start')
+          .text('External');
+        svg.append('text').attr('class', 'axis-end')
+          .attr('transform', `translate(40, ${innerY0}) rotate(-90)`)
+          .attr('text-anchor', 'end')
+          .text('Per-step embedded');
+
+        // Quadrant labels (corners — italic, muted)
+        svg.append('text').attr('class', 'quadrant-label')
+          .attr('x', innerX0 + 8).attr('y', innerY0 + 16).attr('text-anchor', 'start')
+          .text('embedded reward, thin def');
+        svg.append('text').attr('class', 'quadrant-label')
+          .attr('x', innerX1 - 8).attr('y', innerY0 + 16).attr('text-anchor', 'end')
+          .text('embedded reward, rich def');
+        svg.append('text').attr('class', 'quadrant-label')
+          .attr('x', innerX0 + 8).attr('y', innerY1 - 10).attr('text-anchor', 'start')
+          .text('external reward, thin def');
+        svg.append('text').attr('class', 'quadrant-label')
+          .attr('x', innerX1 - 8).attr('y', innerY1 - 10).attr('text-anchor', 'end')
+          .text('external reward, rich def');
+
+        // Scale helpers
+        const xScale = (v) => innerX0 + v * (innerX1 - innerX0);
+        const yScale = (v) => innerY1 - v * (innerY1 - innerY0);
+
+        // Tick marks at 0.25, 0.50, 0.75 on both axes (subtle)
+        [0.25, 0.5, 0.75].forEach(t => {
+          svg.append('line').attr('class', 'axis-line').style('opacity', 0.35)
+            .attr('x1', xScale(t)).attr('x2', xScale(t))
+            .attr('y1', innerY1).attr('y2', innerY1 + 4);
+          svg.append('line').attr('class', 'axis-line').style('opacity', 0.35)
+            .attr('x1', innerX0 - 4).attr('x2', innerX0)
+            .attr('y1', yScale(t)).attr('y2', yScale(t));
+        });
+
+        // ─── Resolve overlapping chips ───
+        // Two chips at the same y (SkyRL & GEM at 0.05; OpenEnv & Verifiers at 0.80) — small Δx
+        // means their circles can collide. Add a little vertical jitter so they nest cleanly.
+        const positioned = FRAMEWORKS.map(fw => ({
+          ...fw,
+          px: xScale(fw.x),
+          py: yScale(fw.y)
+        }));
+        // Group by approximate y, then if Δx too small, offset
+        const byY = d3.group(positioned, p => Math.round(p.y * 100));
+        for (const group of byY.values()) {
+          if (group.length < 2) continue;
+          group.sort((a, b) => a.x - b.x);
+          for (let i = 1; i < group.length; i++) {
+            if (group[i].px - group[i - 1].px < 30) {
+              // bump alternately up/down
+              group[i].py += (i % 2 ? 14 : -14);
+            }
+          }
+        }
+
+        // ─── Render chips ───
+        const chipSel = svg.selectAll('g.chip').data(positioned, d => d.name);
+        const chipEnter = chipSel.enter().append('g').attr('class', 'chip');
+        chipEnter.append('circle').attr('class', 'chip-bg');
+        chipEnter.append('text').attr('class', 'chip-label');
+
+        const chipAll = chipEnter.merge(chipSel);
+        chipAll.attr('transform', d => `translate(${d.px}, ${d.py})`);
+        chipAll.select('circle.chip-bg')
+          .attr('r', 11)
+          .attr('fill', d => d.color)
+          .attr('stroke', d => d.deploy === 'http' ? d.color : 'var(--surface-bg)')
+          .attr('stroke-width', 1.5)
+          .attr('stroke-dasharray', d => d.deploy === 'inproc' ? '2 2.5' : null);
+
+        // For in-process frameworks, draw a second outer dashed ring so the deploy distinction is visible
+        chipAll.filter(d => d.deploy === 'inproc').each(function(d) {
+          const node = d3.select(this);
+          if (node.select('circle.deploy-ring').empty()) {
+            node.insert('circle', 'text').attr('class', 'deploy-ring')
+              .attr('r', 13.5)
+              .attr('fill', 'none')
+              .attr('stroke', d.color)
+              .attr('stroke-width', 1.2)
+              .attr('stroke-dasharray', '3 2.5')
+              .style('opacity', 0.7);
+          }
+        });
+
+        chipAll.select('text.chip-label').text(d => d.short);
+
+        chipAll
+          .on('mouseenter', (e, d) => {
+            const html = `
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:${d.color};color:#fff;font-size:9px;font-weight:800;">${d.short}</span>
+                <strong style="font-size:13px;">${d.name}</strong>
+              </div>
+              <div class="row"><span>Definition richness</span><strong>${(d.x * 100).toFixed(0)}%</strong></div>
+              <div style="font-size:10px;color:var(--muted-color);margin-top:-1px;">${d.fullCount} full + ${d.partialCount} partial / 12 components</div>
+              <div class="row" style="margin-top:6px;"><span>Reward timing</span><strong>${d.rewardKind}</strong></div>
+              <div class="row"><span>Transport</span><strong>${d.transport}</strong></div>
+            `;
+            showTip(e, html);
+          })
+          .on('mousemove', (e, d) => {
+            const r = container.getBoundingClientRect();
+            tip.style.transform = `translate(${e.clientX - r.left + 14}px, ${e.clientY - r.top + 14}px)`;
+          })
+          .on('mouseleave', hideTip);
+
+        // Entrance animation: fade in & gentle scale
+        if (!mounted) {
+          chipAll.style('opacity', 0)
+            .attr('transform', d => `translate(${d.px}, ${d.py}) scale(0.6)`);
+          chipAll.transition()
+            .delay((d, i) => 200 + i * 80)
+            .duration(550)
+            .ease(d3.easeCubicOut)
+            .style('opacity', 1)
+            .attr('transform', d => `translate(${d.px}, ${d.py}) scale(1)`);
+          mounted = true;
+        }
+      }
+
+      render();
+      const ro = new ResizeObserver(() => {
+        const wasMounted = mounted;
+        mounted = true;
+        render();
+        if (!wasMounted) mounted = false;
+      });
+      ro.observe(container);
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => ensureD3(bootstrap), { once: true });
+    } else { ensureD3(bootstrap); }
+  })();
+</script>

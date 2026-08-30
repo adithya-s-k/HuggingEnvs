@@ -1,0 +1,17 @@
+import HtmlEmbed from "../../components/HtmlEmbed.astro";
+
+## Global comparison matrix
+
+The previous chapter walked the ten dimensions one at a time, each with its own visualisation and matrix. This is the same data folded into a single sortable table, useful when you want to scan across frameworks without flipping between sections, or pull out a row for your own notes.
+
+Four groups, **Identity**, **API surface**, **Deployment**, and **Tooling**, sit on top of each other so the table reads as four short tables instead of one long one. Cells are tinted by category. The filter chips along the top hide everything that doesn't match a constraint (e.g. *HTTP only*, *No CLI scaffold*), so you can narrow to the two or three frameworks that actually fit your setup. The copy icon on each row hands you that row as Markdown if you're tracking your own picks.
+
+<HtmlEmbed src="global-comparison-matrix.html" frameless />
+
+A few things worth noticing as you scan:
+
+- **No framework dominates every row.** Each one wins a column or two and loses elsewhere. The picks come down to two or three dimensions you actually care about for your training run, usually deployment shape, episode control, and how strict the task spec is.
+- **The loudest split is still Deployment.** HTTP server (OpenEnv, ORS, NeMo Gym) versus in-process (Verifiers, SkyRL Gym, GEM) cuts cleanly through almost every other row. Pick that axis first and the rest of the table narrows fast.
+- **Tooling maturity is uneven.** CLI scaffolding, dataset registries, and observability are strong in some frameworks and absent in others, even ones that look identical on API surface. Worth checking before you commit.
+
+The next chapter zooms back in, one framework at a time, with a profile card per framework that pulls together its rows from this matrix plus the patterns we noticed while building on it.

@@ -1,0 +1,268 @@
+<div class="comm-deploy-matrix" style="width:100%;margin:14px 0;"></div>
+<style>
+  .comm-deploy-matrix {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-bg);
+    overflow: hidden;
+    color: var(--text-color);
+  }
+  .comm-deploy-matrix__head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 4%, transparent);
+    flex-wrap: wrap;
+  }
+  .comm-deploy-matrix__title {
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    margin-right: auto;
+  }
+  .comm-deploy-matrix__legend {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 10.5px; color: var(--muted-color);
+  }
+  .comm-deploy-matrix__legend .item {
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+
+  /* status pills */
+  .cdm-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 9px;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 999px;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+  .cdm-pill.yes {
+    background: color-mix(in oklab, #22c55e 14%, transparent);
+    color: #16a34a;
+    border: 1px solid color-mix(in oklab, #22c55e 35%, transparent);
+  }
+  .cdm-pill.no {
+    color: var(--muted-color);
+    border: 1px dashed color-mix(in oklab, var(--muted-color) 50%, transparent);
+    background: transparent;
+  }
+  .cdm-pill.na {
+    color: color-mix(in oklab, var(--muted-color) 70%, var(--text-color));
+    background: color-mix(in oklab, var(--muted-color) 6%, transparent);
+    border: 1px solid color-mix(in oklab, var(--border-color) 80%, transparent);
+    font-weight: 600;
+  }
+  a.cdm-pill.yes {
+    text-decoration: none;
+    cursor: pointer;
+    transition: filter .15s ease, transform .15s ease;
+  }
+  a.cdm-pill.yes:hover { filter: brightness(1.15); }
+  a.cdm-pill.yes::after {
+    content: "↗";
+    font-size: 10px;
+    margin-left: 1px;
+  }
+
+  /* table */
+  .comm-deploy-matrix__wrap { overflow-x: auto; }
+  .comm-deploy-matrix table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    min-width: 720px;
+  }
+  .comm-deploy-matrix table thead th {
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted-color);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+    white-space: nowrap;
+  }
+  .comm-deploy-matrix table thead th .swatch {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--c, var(--muted-color));
+    display: inline-block;
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+  .comm-deploy-matrix table tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid color-mix(in oklab, var(--border-color) 60%, transparent);
+    vertical-align: middle;
+    color: var(--text-color);
+  }
+  .comm-deploy-matrix table tbody tr:last-child td { border-bottom: 0; }
+  .comm-deploy-matrix table tbody tr:hover td {
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+  }
+  .comm-deploy-matrix table tbody td.row-name {
+    font-weight: 600;
+    color: var(--text-color);
+    white-space: nowrap;
+  }
+  .comm-deploy-matrix table tbody td code {
+    background: color-mix(in oklab, var(--muted-color) 10%, transparent);
+    border-radius: 3px;
+    padding: 0 5px;
+    font-size: 11px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .cdm-text { font-size: 11.5px; color: var(--text-color); }
+  .cdm-text .muted { color: var(--muted-color); }
+  .cdm-group-band {
+    background: color-mix(in oklab, var(--muted-color) 5%, transparent);
+  }
+  .cdm-group-band td {
+    padding: 5px 12px;
+    font-size: 9.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: var(--muted-color);
+  }
+</style>
+<script>
+(() => {
+  const bootstrap = () => {
+    const scriptEl = document.currentScript;
+    let container = scriptEl ? scriptEl.previousElementSibling : null;
+    if (!(container && container.classList && container.classList.contains('comm-deploy-matrix'))) {
+      const cands = Array.from(document.querySelectorAll('.comm-deploy-matrix'))
+        .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+      container = cands[cands.length - 1] || null;
+    }
+    if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+    container.dataset.mounted = 'true';
+
+    const FRAMEWORKS = [
+      { key: 'openenv', name: 'OpenEnv',   color: '#3b82f6', kind: 'http' },
+      { key: 'ors',     name: 'ORS',       color: '#a855f7', kind: 'http' },
+      { key: 'nemo',    name: 'NeMo Gym',  color: '#22c55e', kind: 'http' },
+      { key: 'verifs',  name: 'Verifiers', color: '#ec4899', kind: 'inproc' },
+      { key: 'skyrl',   name: 'SkyRL Gym', color: '#f59e0b', kind: 'inproc' },
+      { key: 'gem',     name: 'GEM',       color: '#14b8a6', kind: 'inproc' },
+    ];
+
+    const yes = (label='Yes') => `<span class="cdm-pill yes">✓ ${label}</span>`;
+    const no  = ()             => `<span class="cdm-pill no">—</span>`;
+    const na  = ()             => `<span class="cdm-pill na">N/A</span>`;
+    const link = (label, href) => `<a class="cdm-pill yes" href="${href}" target="_blank" rel="noopener">${label}</a>`;
+    const txt = (s, muted='') => `<span class="cdm-text">${s}${muted ? `<span class="muted"> · ${muted}</span>` : ''}</span>`;
+    const code = (s) => `<code>${s}</code>`;
+
+    const ROWS = [
+      { group: 'Shape' },
+      { name: 'Type', cells: {
+        openenv: txt('HTTP server'),
+        ors: txt('HTTP server'),
+        nemo: txt('HTTP server'),
+        verifs: txt('In-process'),
+        skyrl:  txt('In-process'),
+        gem:    txt('In-process'),
+      }},
+      { name: 'Protocol', cells: {
+        openenv: txt('JSON-RPC 2.0 (MCP)', 'WebSocket'),
+        ors:     txt('REST + SSE'),
+        nemo:    txt('REST + cookies'),
+        verifs:  txt('Python calls'),
+        skyrl:   txt('Python calls'),
+        gem:     txt('Python calls'),
+      }},
+
+      { group: 'Deployment' },
+      { name: 'Docker', cells: {
+        openenv: yes(), ors: yes(), nemo: yes(),
+        verifs: no(), skyrl: no(), gem: no(),
+      }},
+      { name: 'HF Spaces', cells: {
+        openenv: link('OpenEnv', 'https://huggingface.co/spaces/AdithyaSK/jupyter-agent-openenv'),
+        ors:     link('ORS',     'https://huggingface.co/spaces/AdithyaSK/jupyter-agent-ors'),
+        nemo:    link('NeMo',    'https://huggingface.co/spaces/AdithyaSK/jupyter-agent-nemo-gym'),
+        verifs: na(), skyrl: na(), gem: na(),
+      }},
+      { name: 'OpenReward', cells: {
+        openenv: no(), ors: yes(), nemo: no(),
+        verifs: no(), skyrl: no(), gem: no(),
+      }},
+      { name: 'PrimeIntellect Hub', cells: {
+        openenv: no(), ors: no(), nemo: no(),
+        verifs: link('Prime RL', 'https://github.com/PrimeIntellect-ai/prime-rl'),
+        skyrl: no(), gem: no(),
+      }},
+      { name: 'Scales independently', cells: {
+        openenv: yes(), ors: yes(), nemo: yes(),
+        verifs: no(), skyrl: no(), gem: no(),
+      }},
+
+      { group: 'Trainer-side' },
+      { name: 'Deps on trainer', cells: {
+        openenv: code('openenv-core'),
+        ors:     code('requests') + ' only',
+        nemo:    code('requests') + ' only',
+        verifs:  txt('Full package'),
+        skyrl:   txt('Full package'),
+        gem:     txt('Full package'),
+      }},
+      { name: 'Auth', cells: {
+        openenv: txt('None'),
+        ors:     code('X-API-Key'),
+        nemo:    txt('Cookies'),
+        verifs:  na(),
+        skyrl:   na(),
+        gem:     na(),
+      }},
+    ];
+
+    const headerCells = FRAMEWORKS.map(f =>
+      `<th><span class="swatch" style="--c:${f.color};"></span>${f.name}</th>`
+    ).join('');
+
+    const bodyHtml = ROWS.map(r => {
+      if (r.group) {
+        return `<tr class="cdm-group-band"><td colspan="${FRAMEWORKS.length + 1}">${r.group}</td></tr>`;
+      }
+      const cells = FRAMEWORKS.map(f => `<td>${r.cells[f.key]}</td>`).join('');
+      return `<tr><td class="row-name">${r.name}</td>${cells}</tr>`;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="comm-deploy-matrix__head">
+        <span class="comm-deploy-matrix__title">Communication & deployment · 6 frameworks</span>
+        <span class="comm-deploy-matrix__legend">
+          <span class="item"><span class="cdm-pill yes" style="padding:1px 7px;">✓</span> ships</span>
+          <span class="item"><span class="cdm-pill no" style="padding:1px 8px;">—</span> no</span>
+          <span class="item"><span class="cdm-pill na" style="padding:1px 7px;">N/A</span> not applicable</span>
+        </span>
+      </div>
+      <div class="comm-deploy-matrix__wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Capability</th>
+              ${headerCells}
+            </tr>
+          </thead>
+          <tbody>${bodyHtml}</tbody>
+        </table>
+      </div>
+    `;
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+  } else {
+    bootstrap();
+  }
+})();
+</script>

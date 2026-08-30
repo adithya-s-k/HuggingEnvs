@@ -1,0 +1,26 @@
+import HtmlEmbed from "../../components/HtmlEmbed.astro";
+
+## Introduction
+
+<div style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; line-height: 1.55; color: var(--muted-color); padding: 10px 14px; border-left: 2px solid var(--border-color); background: rgba(127,127,127,0.06); border-radius: 0 6px 6px 0; margin: 1.2em 0;">
+  Last updated in May 2026. This space is evolving quickly, and framework APIs, features, and ecosystem maturity may have changed since this was written.<br/>
+  The research, experiments, and notes were all done by hand. Claude was used afterward to format the article, build the visualizations, and reformat the handwritten and human-reviewed content.
+</div>
+
+RL has become the main driver of capability gains for agentic LLMs and reasoning models, the place where supervised fine-tuning hits a ceiling and RL keeps lifting performance past it. A core piece of that progress is the **RL environment**, the place a model practises, gets graded, and learns from interaction over long horizons. To match capability targets, environment counts have scaled dramatically: [Qwen3](https://qwen.ai/blog?id=qwen3) trained across roughly 20 general-domain tasks, [Qwen3-Coder](https://qwen.ai/blog?id=qwen3-coder) pushed that to 20,000 parallel environments on Alibaba Cloud, [MiniMax's Forge framework](https://www.minimax.io/news/forge-scalable-agent-rl-framework-and-algorithm) trains M2.5 across hundreds of thousands of real-world environments, and [Qwen3.5](https://qwen.ai/blog?id=qwen3.5) reports training across million-agent environments with progressively complex task distributions.
+
+The Qwen team is explicit about why this matters. In the [Qwen3.5 release notes](https://qwen.ai/blog?id=qwen3.5), they attribute most of the post-training gain over Qwen3 to *"extensive scaling of virtually all RL tasks and environments we could conceive"*, deliberately raising environment difficulty and generalisability rather than optimising for narrow benchmarks.
+
+![Qwen3.5 RL environment scaling](https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen3.5/Figures/qwen3.5_397b_a17b_scaling.png)
+
+The bottleneck is no longer "can we set up an environment", it's "how do we run 100,000 of them, keep them honest, and feed them into a training loop". Frameworks are emerging to standardise that, and environment hubs are showing up alongside them where pre-built environments can be plugged into a run. The largest catalog today sits on [Hugging Face Spaces](https://huggingface.co/spaces), with 4k+ MCP-compatible environments shipped by the community, with [PrimeIntellect's Environments Hub](https://www.primeintellect.ai/blog/environments) and [openreward.ai](https://openreward.ai) adding several thousand more. The anatomy of an RL environment, what it's actually made of, has stopped being obvious and started being important.
+
+We built the same environments across multiple [RL environment frameworks](#framework-inventory). Each has a different design for what an environment should look like, what it's composed of, and how it fits into the rest of training. We wanted to understand what components make up an RL environment in the LLM era, how they're built, how different frameworks tackle the same problems, how rewards are wired into the loop, how easy it is to scale, and how the environment fits into the overall RL training run.
+
+<HtmlEmbed src="d3-anatomy-hero.html" frameless />
+
+This is the anatomy we settled on. The environment side has a lot of moving parts; the agent side wraps a tight training loop around the action–observation cycle. We walk through each [component](#what-makes-an-rl-environment-for-llms-the-components) in detail, then go through how environments are built, how rewards are wired, and how things scale, paired with visualisations and comparison tables so you can see exactly what each framework offers and get a feel for the RL environment landscape as a whole.
+
+All the code (the six framework implementations, build walkthroughs, training scripts) lives in the companion repo, [**RL_Envs_101**](https://github.com/adithya-s-k/RL_Envs_101), so anything in here is reproducible end-to-end and easy to fork as a starting point for your own environment.
+
+**TL;DR:** each framework has its own way of doing the same thing. The differences are mostly about how the environment wires into the rest of training, not what it can ultimately do. You won't miss anything fundamental by picking one over another, the same environment can be replicated across all of them. What does change is convenience, which one is most pleasant to live with day to day depends on what's already in your stack.

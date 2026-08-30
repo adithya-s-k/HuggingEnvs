@@ -1,0 +1,18 @@
+[
+  { "name": "OpenEnv",       "tier": 2, "transport": "http",       "creator": "Meta",                  "included": true,  "category": "tier2", "repo": "https://github.com/meta-pytorch/OpenEnv" },
+  { "name": "ORS",           "tier": 2, "transport": "http",       "creator": "General Reasoning",     "included": true,  "category": "tier2", "repo": "https://openrewardstandard.io/" },
+  { "name": "NeMo Gym",      "tier": 2, "transport": "http",       "creator": "NVIDIA",                "included": true,  "category": "tier2", "repo": "https://github.com/NVIDIA-NeMo/Gym" },
+  { "name": "Verifiers",     "tier": 3, "transport": "in-process", "creator": "PrimeIntellect",        "included": true,  "category": "tier3", "repo": "https://github.com/PrimeIntellect-ai/verifiers" },
+  { "name": "SkyRL Gym",     "tier": 3, "transport": "in-process", "creator": "NovaSky-AI",            "included": true,  "category": "tier3", "repo": "https://github.com/NovaSky-AI/SkyRL/tree/main/skyrl-gym" },
+  { "name": "GEM",           "tier": 3, "transport": "in-process", "creator": "Axon-RL",               "included": true,  "category": "tier3", "repo": "https://github.com/axon-rl/gem" },
+  { "name": "Atropos",       "tier": 3, "transport": "http",       "creator": "Nous Research",         "included": false, "reason": "Env owns inference; POSTs scored batches",                  "repo": "https://github.com/NousResearch/atropos" },
+  { "name": "Harbor",        "tier": 3, "transport": "http",       "creator": "Laude Institute",       "included": false, "reason": "Agent eval + rollout generation, not a turn-by-turn env factory",     "repo": "https://github.com/laude-institute/harbor" },
+  { "name": "RLVE",          "tier": 1, "transport": "in-process", "creator": "Zhiyuan Zeng",          "included": false, "reason": "Pure verifier library, no transport",                       "repo": "https://github.com/Zhiyuan-Zeng/RLVE" },
+  { "name": "Reasoning Gym", "tier": 1, "transport": "in-process", "creator": "Open Thought",          "included": false, "reason": "Procedural task generators, no multi-turn",                 "repo": "https://github.com/open-thought/reasoning-gym" },
+  { "name": "RAGEN",         "tier": 3, "transport": "in-process", "creator": "Zihan Wang",            "included": false, "reason": "Tightly coupled to its own training loop",                  "repo": "https://github.com/ZihanWang314/RAGEN" },
+  { "name": "rLLM",          "tier": 3, "transport": "in-process", "creator": "Agentica",              "included": false, "reason": "Decorator wraps existing agent code",                       "repo": "https://github.com/agentica-project/rllm" },
+  { "name": "RL-Factory",    "tier": 2, "transport": "http",       "creator": "Simple-Efficient",      "included": false, "reason": "MCP config-based, very early stage",                        "repo": "https://github.com/Simple-Efficient/RL-Factory" },
+  { "name": "Open-Instruct", "tier": 3, "transport": "in-process", "creator": "Allen AI",              "included": false, "reason": "Reward functions only, not multi-turn",                     "repo": "https://github.com/allenai/open-instruct" },
+  { "name": "TextArena",     "tier": 3, "transport": "in-process", "creator": "Leon Guert",            "included": false, "reason": "Game-specific narrow domain",                               "repo": "https://github.com/LeonGuertwordle/TextArena" },
+  { "name": "LlamaGym",      "tier": 3, "transport": "in-process", "creator": "KhoomeiK",              "included": false, "reason": "Early prototype, not maintained",                           "repo": "https://github.com/KhoomeiK/LlamaGym" }
+]

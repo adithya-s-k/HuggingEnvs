@@ -1,0 +1,588 @@
+<div class="ship-matrix" style="width:100%;margin:14px 0;"></div>
+<style>
+  .ship-matrix {
+    --ok: #22c55e;
+    --partial: #f59e0b;
+    --byo: var(--muted-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-bg);
+    overflow: hidden;
+    color: var(--text-color);
+  }
+
+  /* ── Header bar ── */
+  .ship-matrix__head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 4%, transparent);
+    flex-wrap: wrap;
+  }
+  .ship-matrix__title {
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    margin-right: auto;
+  }
+  .ship-matrix__legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 10.5px;
+    color: var(--muted-color);
+  }
+  .ship-matrix__legend .item { display: inline-flex; align-items: center; gap: 5px; }
+  .ship-matrix__view {
+    display: inline-flex;
+    background: var(--surface-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 2px;
+    gap: 2px;
+  }
+  .ship-matrix__view button {
+    border: 0;
+    background: transparent;
+    color: var(--muted-color);
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }
+  .ship-matrix__view button.active {
+    color: var(--text-color);
+    background: color-mix(in oklab, var(--text-color) 8%, transparent);
+  }
+
+  /* ── Status emoji ── */
+  .sm-icon {
+    display: inline-block;
+    font-size: 12px;
+    line-height: 1;
+    flex-shrink: 0;
+    /* keep the emoji glyphs from inheriting the surrounding font */
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", system-ui, sans-serif;
+  }
+
+  /* ── Body switching ── */
+  .ship-matrix__body > div { display: none; }
+  .ship-matrix__body > div.active { display: block; }
+
+  /* ── Table view ── */
+  .ship-matrix__table-wrap { overflow-x: auto; }
+  .ship-matrix table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    min-width: 760px;
+  }
+  .ship-matrix table thead th {
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted-color);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+    white-space: nowrap;
+  }
+  .ship-matrix table tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid color-mix(in oklab, var(--border-color) 60%, transparent);
+    vertical-align: top;
+    color: var(--text-color);
+  }
+  .ship-matrix table tbody tr:last-child td { border-bottom: 0; }
+  .ship-matrix table tbody tr:hover td {
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+  }
+  .ship-matrix table tbody td.component {
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--text-color);
+  }
+  .ship-matrix .cell-row {
+    display: flex; align-items: flex-start; gap: 6px;
+  }
+  .ship-matrix .cell-note {
+    color: var(--muted-color);
+    font-size: 11.5px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+  .ship-matrix .cell-note code {
+    background: color-mix(in oklab, var(--muted-color) 10%, transparent);
+    border-radius: 3px;
+    padding: 0 4px;
+    font-size: 10.8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  /* ── Card view ── */
+  .ship-matrix__cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 10px;
+    padding: 12px;
+  }
+  .fw-card {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 12px 14px;
+    background: var(--surface-bg);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
+  .fw-card__head {
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 8px;
+  }
+  .fw-card__head .name {
+    font-weight: 700;
+    color: var(--text-color);
+    font-size: 13px;
+  }
+  .fw-card__head .swatch {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--c, var(--muted-color));
+    flex-shrink: 0;
+  }
+  .fw-card__head .score {
+    margin-left: auto;
+    font-size: 10.5px;
+    color: var(--muted-color);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .fw-card ul {
+    list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; gap: 6px;
+    font-size: 11.5px;
+  }
+  .fw-card li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 7px;
+    align-items: start;
+    line-height: 1.45;
+    min-width: 0;
+  }
+  .fw-card li .sm-icon { margin-top: 1px; }
+  .fw-card li .label {
+    color: var(--text-color);
+    font-weight: 600;
+    font-size: 11.5px;
+  }
+  .fw-card li .note {
+    color: var(--muted-color);
+    font-size: 11px;
+    overflow-wrap: anywhere;
+  }
+  .fw-card li .note code {
+    background: color-mix(in oklab, var(--muted-color) 10%, transparent);
+    border-radius: 3px;
+    padding: 0 3px;
+    font-size: 10.4px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  /* ── Compare view ── */
+  .ship-matrix__compare-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color);
+    align-items: center;
+    background: color-mix(in oklab, var(--muted-color) 2%, transparent);
+  }
+  .ship-matrix__compare-bar .label {
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.6px;
+    color: var(--muted-color);
+  }
+  .ship-matrix__compare-bar select {
+    border: 1px solid var(--border-color);
+    background: var(--surface-bg);
+    color: var(--text-color);
+    border-radius: 5px;
+    padding: 5px 8px;
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+  .ship-matrix__compare-bar .pickers {
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .ship-matrix__compare-grid {
+    padding: 12px;
+    display: grid;
+    gap: 4px;
+  }
+  .compare-header,
+  .compare-row {
+    display: grid;
+    grid-template-columns: minmax(140px, 1.2fr) 1fr 1fr;
+    gap: 14px;
+    align-items: start;
+    min-width: 0;
+  }
+  .compare-header {
+    padding: 6px 12px 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 4px;
+  }
+  .compare-header .head {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 10.5px;
+    color: var(--text-color);
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+  .compare-header .head .swatch {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--c, var(--muted-color));
+    flex-shrink: 0;
+  }
+  .compare-header .row-spacer {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--muted-color);
+  }
+  .compare-row {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .compare-row .row-name {
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--text-color);
+  }
+  .compare-row .cell { display: flex; min-width: 0; }
+  .compare-row .body {
+    display: flex; gap: 6px; align-items: flex-start;
+    color: var(--muted-color);
+    font-size: 11.5px;
+    line-height: 1.45;
+  }
+  .compare-row .body code {
+    background: color-mix(in oklab, var(--muted-color) 10%, transparent);
+    border-radius: 3px;
+    padding: 0 3px;
+    font-size: 10.4px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (max-width: 580px) {
+    .compare-header { display: none; }
+    .compare-row { grid-template-columns: 1fr; gap: 8px; }
+    .compare-row .row-name {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted-color);
+      border-bottom: 1px dashed var(--border-color);
+      padding-bottom: 4px;
+    }
+    .compare-row .cell::before {
+      content: attr(data-fw);
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: var(--c, var(--muted-color));
+      margin-bottom: 2px;
+    }
+    .compare-row .cell { flex-direction: column; gap: 4px; }
+  }
+</style>
+<script>
+(() => {
+  const bootstrap = () => {
+    const scriptEl = document.currentScript;
+    let container = scriptEl ? scriptEl.previousElementSibling : null;
+    if (!(container && container.classList && container.classList.contains('ship-matrix'))) {
+      const cands = Array.from(document.querySelectorAll('.ship-matrix'))
+        .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+      container = cands[cands.length - 1] || null;
+    }
+    if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+    container.dataset.mounted = 'true';
+
+    const FRAMEWORKS = [
+      { key: 'openenv', name: 'OpenEnv',   color: '#3b82f6' },
+      { key: 'ors',     name: 'ORS',       color: '#a855f7' },
+      { key: 'nemo',    name: 'NeMo Gym',  color: '#22c55e' },
+      { key: 'verifs',  name: 'Verifiers', color: '#ec4899' },
+      { key: 'skyrl',   name: 'SkyRL Gym', color: '#f59e0b' },
+      { key: 'gem',     name: 'GEM',       color: '#14b8a6' },
+    ];
+
+    const ROWS = [
+      { name: 'Tasks / dataset', cells: {
+        openenv: { s:'byo',     n:'BYO' },
+        ors:     { s:'ok',      n:'<code>list_tasks(split)</code> server-side' },
+        nemo:    { s:'ok',      n:'JSONL + <code>ng_prepare_data</code>' },
+        verifs:  { s:'ok',      n:'HF <code>Dataset</code> bundled' },
+        skyrl:   { s:'byo',     n:'BYO (JSONL)' },
+        gem:     { s:'ok',      n:'24+ built-in envs' },
+      }},
+      { name: 'Initial state', cells: {
+        openenv: { s:'ok', n:'<code>reset()</code> populates state' },
+        ors:     { s:'ok', n:'<code>setup()</code> lifecycle' },
+        nemo:    { s:'ok', n:'<code>/seed_session</code> endpoint' },
+        verifs:  { s:'ok', n:'<code>setup_state</code> hook' },
+        skyrl:   { s:'ok', n:'<code>init(prompt)</code> method' },
+        gem:     { s:'ok', n:'<code>reset(seed)</code>' },
+      }},
+      { name: 'Prompt template', cells: {
+        openenv: { s:'byo', n:'BYO' },
+        ors:     { s:'ok',  n:'<code>get_prompt()</code> from server' },
+        nemo:    { s:'ok',  n:'In JSONL <code>responses_create_params</code>' },
+        verifs:  { s:'ok',  n:'<code>system_prompt</code> param' },
+        skyrl:   { s:'byo', n:'BYO' },
+        gem:     { s:'ok',  n:'Per-env instructions' },
+      }},
+      { name: 'Tool definition', cells: {
+        openenv: { s:'ok', n:'<code>@mcp.tool</code> (FastMCP)' },
+        ors:     { s:'ok', n:'<code>@tool</code> decorator' },
+        nemo:    { s:'ok', n:'FastAPI <code>POST</code> endpoints' },
+        verifs:  { s:'ok', n:'Python functions' },
+        skyrl:   { s:'ok', n:'Via <code>ToolGroup</code>' },
+        gem:     { s:'ok', n:'<code>ToolEnvWrapper</code>' },
+      }},
+      { name: 'Observation format', cells: {
+        openenv: { s:'ok', n:'<code>str</code> (tool return)' },
+        ors:     { s:'ok', n:'<code>ToolOutput(blocks=[TextBlock])</code>' },
+        nemo:    { s:'ok', n:'<code>Response(output=str)</code>' },
+        verifs:  { s:'ok', n:'<code>str</code> (tool return)' },
+        skyrl:   { s:'ok', n:'<code>BaseTextEnvStepOutput</code>' },
+        gem:     { s:'ok', n:'Gymnasium 5-tuple' },
+      }},
+      { name: 'Execution backend', cells: {
+        openenv: { s:'byo', n:'BYO' },
+        ors:     { s:'byo', n:'BYO' },
+        nemo:    { s:'byo', n:'BYO' },
+        verifs:  { s:'byo', n:'BYO' },
+        skyrl:   { s:'byo', n:'BYO' },
+        gem:     { s:'byo', n:'BYO' },
+      }},
+      { name: 'State management', cells: {
+        openenv: { s:'ok',      n:'MCP sessions' },
+        ors:     { s:'ok',      n:'<code>X-Session-ID</code> headers' },
+        nemo:    { s:'ok',      n:'Cookie sessions' },
+        verifs:  { s:'partial', n:'In-process state' },
+        skyrl:   { s:'ok',      n:'<code>self.turns</code> counter' },
+        gem:     { s:'ok',      n:'<code>reset()</code>/<code>step()</code>' },
+      }},
+      { name: 'Reward / scoring', cells: {
+        openenv: { s:'ok', n:'<code>Rubric</code> (LLMJudge, WeightedSum)' },
+        ors:     { s:'ok', n:'<code>ToolOutput.reward</code> per call' },
+        nemo:    { s:'ok', n:'<code>/verify</code> endpoint' },
+        verifs:  { s:'ok', n:'<code>Rubric</code> + <code>JudgeRubric</code>' },
+        skyrl:   { s:'ok', n:'<code>step()</code> returns reward' },
+        gem:     { s:'ok', n:'<code>step()</code> returns reward' },
+      }},
+      { name: 'Done / termination', cells: {
+        openenv: { s:'ok',      n:'<code>Observation.done</code>' },
+        ors:     { s:'ok',      n:'<code>ToolOutput.finished</code> per call' },
+        nemo:    { s:'partial', n:'<code>verify()</code> decides post-ep' },
+        verifs:  { s:'ok',      n:'<code>@vf.stop</code> / max turns' },
+        skyrl:   { s:'ok',      n:'<code>step().done</code>' },
+        gem:     { s:'ok',      n:'<code>terminated</code> / <code>truncated</code>' },
+      }},
+      { name: 'Episode control', cells: {
+        openenv: { s:'partial', n:'Trainer drives' },
+        ors:     { s:'partial', n:'Trainer drives' },
+        nemo:    { s:'ok',      n:'Agent Server drives' },
+        verifs:  { s:'ok',      n:'<code>env.evaluate()</code>' },
+        skyrl:   { s:'partial', n:'Trainer drives' },
+        gem:     { s:'partial', n:'Trainer drives' },
+      }},
+      { name: 'Transport', cells: {
+        openenv: { s:'ok',      n:'HTTP + JSON-RPC (MCP)' },
+        ors:     { s:'ok',      n:'HTTP REST + SSE' },
+        nemo:    { s:'ok',      n:'HTTP REST + cookies' },
+        verifs:  { s:'partial', n:'In-process only' },
+        skyrl:   { s:'partial', n:'In-process only' },
+        gem:     { s:'partial', n:'In-process only' },
+      }},
+      { name: 'Deployment', cells: {
+        openenv: { s:'ok',      n:'Docker / HF Spaces' },
+        ors:     { s:'ok',      n:'Docker / HF Spaces / OpenReward' },
+        nemo:    { s:'ok',      n:'Docker / Ray cluster' },
+        verifs:  { s:'partial', n:'Training venv' },
+        skyrl:   { s:'partial', n:'Training venv' },
+        gem:     { s:'partial', n:'Training venv' },
+      }},
+      { name: 'Native training', cells: {
+        openenv: { s:'partial', n:'TRL integration' },
+        ors:     { s:'partial', n:'Multi-trainer' },
+        nemo:    { s:'ok',      n:'Megatron / Nemo RL' },
+        verifs:  { s:'ok',      n:'Prime RL' },
+        skyrl:   { s:'ok',      n:'SkyRL' },
+        gem:     { s:'partial', n:'Multi-trainer' },
+      }},
+    ];
+
+    const ICON = { ok: '✅', partial: '⚙️', byo: '🔧' };
+    const LABEL = { ok: 'full', partial: 'partial', byo: 'BYO' };
+    const dot = (s) => `<span class="sm-icon" role="img" aria-label="${LABEL[s]}">${ICON[s]}</span>`;
+
+    // 1. Table view
+    const tableHtml = `
+      <div class="ship-matrix__table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Component</th>
+              ${FRAMEWORKS.map(f => `<th>${f.name}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${ROWS.map(r => `
+              <tr>
+                <td class="component">${r.name}</td>
+                ${FRAMEWORKS.map(f => {
+                  const c = r.cells[f.key];
+                  return `<td><div class="cell-row">${dot(c.s)}<span class="cell-note">${c.n}</span></div></td>`;
+                }).join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    // 2. Card view (one per framework)
+    const cardsHtml = `
+      <div class="ship-matrix__cards">
+        ${FRAMEWORKS.map(f => {
+          let okN = 0, paN = 0, byN = 0;
+          ROWS.forEach(r => {
+            const s = r.cells[f.key].s;
+            if (s === 'ok') okN++;
+            else if (s === 'partial') paN++;
+            else byN++;
+          });
+          const items = ROWS.map(r => {
+            const c = r.cells[f.key];
+            return `<li>${dot(c.s)}<span><span class="label">${r.name}</span> <span class="note">${c.n}</span></span></li>`;
+          }).join('');
+          return `
+            <div class="fw-card" style="--c:${f.color};">
+              <div class="fw-card__head">
+                <span class="swatch"></span>
+                <span class="name">${f.name}</span>
+                <span class="score">${okN} full · ${paN} partial · ${byN} BYO</span>
+              </div>
+              <ul>${items}</ul>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+
+    // 3. Compare view
+    const compareHtml = `
+      <div class="ship-matrix__compare-bar">
+        <span class="label">Compare</span>
+        <div class="pickers">
+          <select data-cmp="0">${FRAMEWORKS.map((f, i) => `<option value="${f.key}" ${i === 0 ? 'selected' : ''}>${f.name}</option>`).join('')}</select>
+          <select data-cmp="1">${FRAMEWORKS.map((f, i) => `<option value="${f.key}" ${i === 3 ? 'selected' : ''}>${f.name}</option>`).join('')}</select>
+        </div>
+      </div>
+      <div class="ship-matrix__compare-grid"></div>
+    `;
+
+    container.innerHTML = `
+      <div class="ship-matrix__head">
+        <span class="ship-matrix__title">Component support · 6 frameworks</span>
+        <span class="ship-matrix__legend">
+          <span class="item">${dot('ok')}full</span>
+          <span class="item">${dot('partial')}partial</span>
+          <span class="item">${dot('byo')}BYO</span>
+        </span>
+        <div class="ship-matrix__view" role="tablist">
+          <button type="button" data-view="table" class="active">Table</button>
+          <button type="button" data-view="cards">Cards</button>
+          <button type="button" data-view="compare">Compare</button>
+        </div>
+      </div>
+      <div class="ship-matrix__body">
+        <div data-pane="table" class="active">${tableHtml}</div>
+        <div data-pane="cards">${cardsHtml}</div>
+        <div data-pane="compare">${compareHtml}</div>
+      </div>
+    `;
+
+    // View toggle
+    const buttons = container.querySelectorAll('.ship-matrix__view button');
+    const panes = container.querySelectorAll('.ship-matrix__body > div');
+    buttons.forEach(b => b.addEventListener('click', () => {
+      const v = b.getAttribute('data-view');
+      buttons.forEach(x => x.classList.toggle('active', x === b));
+      panes.forEach(p => p.classList.toggle('active', p.getAttribute('data-pane') === v));
+    }));
+
+    // Compare logic
+    const renderCompare = () => {
+      const selects = container.querySelectorAll('.ship-matrix__compare-bar select');
+      const a = selects[0].value, b = selects[1].value;
+      const grid = container.querySelector('.ship-matrix__compare-grid');
+      const fa = FRAMEWORKS.find(x => x.key === a);
+      const fb = FRAMEWORKS.find(x => x.key === b);
+      const header = `
+        <div class="compare-header">
+          <div class="row-spacer">Component</div>
+          <div class="head" style="--c:${fa.color};"><span class="swatch"></span>${fa.name}</div>
+          <div class="head" style="--c:${fb.color};"><span class="swatch"></span>${fb.name}</div>
+        </div>
+      `;
+      const rows = ROWS.map(r => {
+        const ca = r.cells[a], cb = r.cells[b];
+        return `
+          <div class="compare-row">
+            <div class="row-name">${r.name}</div>
+            <div class="cell" data-fw="${fa.name}" style="--c:${fa.color};">
+              <div class="body">${dot(ca.s)}<span>${ca.n}</span></div>
+            </div>
+            <div class="cell" data-fw="${fb.name}" style="--c:${fb.color};">
+              <div class="body">${dot(cb.s)}<span>${cb.n}</span></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      grid.innerHTML = header + rows;
+    };
+    container.querySelectorAll('.ship-matrix__compare-bar select').forEach(s => {
+      s.addEventListener('change', renderCompare);
+    });
+    renderCompare();
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+  } else {
+    bootstrap();
+  }
+})();
+</script>

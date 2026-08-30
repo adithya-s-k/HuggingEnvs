@@ -1,0 +1,406 @@
+<div class="concept-rosetta-wrap" style="width:100%;margin:14px 0;"></div>
+<style>
+  .concept-rosetta-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Toggle */
+  .concept-rosetta__toggle {
+    display: inline-flex;
+    align-self: flex-end;
+    padding: 3px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--surface-bg);
+    gap: 2px;
+  }
+  .concept-rosetta__toggle button {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 10px;
+    border: 0; background: transparent;
+    color: var(--muted-color);
+    font-size: 11.5px; font-weight: 600;
+    border-radius: 6px; cursor: pointer;
+    transition: background .15s ease, color .15s ease;
+  }
+  .concept-rosetta__toggle button:hover { color: var(--text-color); }
+  .concept-rosetta__toggle button.active {
+    background: color-mix(in oklab, var(--text-color) 10%, transparent);
+    color: var(--text-color);
+  }
+  .concept-rosetta__toggle svg { width: 12px; height: 12px; }
+
+  /* ───── Container variants ───── */
+  .concept-rosetta[data-view="cards"] .concept-rosetta__rows {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .concept-rosetta[data-view="cards"] .concept-rosetta__table-host { display: none; }
+  .concept-rosetta[data-view="table"] .concept-rosetta__rows { display: none; }
+  .concept-rosetta[data-view="table"] .concept-rosetta__table-host { display: block; }
+
+  /* ───── Cards view: each row = one concept ───── */
+  .concept-rosetta__row {
+    display: grid;
+    grid-template-columns: minmax(180px, 0.9fr) minmax(360px, 2fr);
+    gap: 16px;
+    align-items: start;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--surface-bg);
+    padding: 12px 14px;
+  }
+  @media (max-width: 720px) {
+    .concept-rosetta__row {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+  }
+  .concept-rosetta__concept {
+    display: flex; flex-direction: column; gap: 4px;
+    min-width: 0;
+  }
+  .concept-rosetta__concept-name {
+    font-size: 13.5px; font-weight: 700;
+    color: var(--text-color);
+    line-height: 1.3;
+  }
+  .concept-rosetta__concept-q {
+    font-size: 11.5px;
+    font-style: italic;
+    color: var(--muted-color);
+    line-height: 1.4;
+  }
+
+  .concept-rosetta__chips {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 6px;
+    min-width: 0;
+  }
+  .concept-rosetta__chip {
+    display: flex; flex-direction: column; gap: 2px;
+    padding: 7px 9px;
+    border-radius: 7px;
+    border: 1px solid color-mix(in oklab, var(--c) 32%, var(--border-color));
+    background: color-mix(in oklab, var(--c) 6%, var(--surface-bg));
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .concept-rosetta__chip.empty {
+    border-color: var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 4%, transparent);
+    opacity: 0.6;
+  }
+  .concept-rosetta__chip-fw {
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    color: var(--c);
+  }
+  .concept-rosetta__chip.empty .concept-rosetta__chip-fw { color: var(--muted-color); }
+  .concept-rosetta__chip-val {
+    font-size: 11.5px;
+    color: var(--text-color);
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .concept-rosetta__chip-val code {
+    display: inline-block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10.5px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: color-mix(in oklab, var(--muted-color) 14%, transparent);
+    border: 1px solid color-mix(in oklab, var(--muted-color) 18%, var(--border-color));
+    line-height: 1.4;
+    margin: 1px 0;
+    overflow-wrap: anywhere;
+  }
+  .concept-rosetta__chip.empty .concept-rosetta__chip-val {
+    color: var(--muted-color);
+  }
+
+  /* ───── HTML table view ───── */
+  .concept-rosetta__table-host {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--surface-bg);
+    overflow: auto;
+  }
+  .concept-rosetta__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11.5px;
+    table-layout: fixed;
+  }
+  .concept-rosetta__table th,
+  .concept-rosetta__table td {
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--border-color);
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    min-width: 0;
+  }
+  .concept-rosetta__table tr:last-child td { border-bottom: 0; }
+  .concept-rosetta__table thead th {
+    position: sticky;
+    top: 0;
+    background: color-mix(in oklab, var(--muted-color) 6%, var(--surface-bg));
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    border-bottom: 1px solid var(--border-color);
+    z-index: 1;
+  }
+  .concept-rosetta__table thead th[data-fw] {
+    color: var(--c);
+  }
+  .concept-rosetta__table tbody th {
+    font-weight: 700;
+    color: var(--text-color);
+    background: color-mix(in oklab, var(--muted-color) 3%, var(--surface-bg));
+    width: 22%;
+  }
+  .concept-rosetta__table tbody td {
+    color: var(--text-color);
+  }
+  .concept-rosetta__table tbody td.empty {
+    color: var(--muted-color);
+    opacity: 0.55;
+  }
+  .concept-rosetta__table code {
+    display: inline-block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10.5px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: color-mix(in oklab, var(--muted-color) 14%, transparent);
+    border: 1px solid color-mix(in oklab, var(--muted-color) 18%, var(--border-color));
+    margin: 1px 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+</style>
+<script>
+  (() => {
+    const bootstrap = () => {
+      const scriptEl = document.currentScript;
+      let container = scriptEl ? scriptEl.previousElementSibling : null;
+      if (!(container && container.classList && container.classList.contains('concept-rosetta-wrap'))) {
+        const cands = Array.from(document.querySelectorAll('.concept-rosetta-wrap'))
+          .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+        container = cands[cands.length - 1] || null;
+      }
+      if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+      container.dataset.mounted = 'true';
+
+      // 2-letter codes match the orientation strip / pipeline / cards palette.
+      const FRAMEWORKS = [
+        { id: 'OpenEnv',   short: 'OE', color: '#3b82f6' },
+        { id: 'ORS',       short: 'OR', color: '#a855f7' },
+        { id: 'NeMo Gym',  short: 'NG', color: '#22c55e' },
+        { id: 'Verifiers', short: 'VF', color: '#ec4899' },
+        { id: 'SkyRL Gym', short: 'SK', color: '#f59e0b' },
+        { id: 'GEM',       short: 'GM', color: '#14b8a6' }
+      ];
+
+      const CONCEPTS = [
+        {
+          name: 'Task collection',
+          question: 'How are tasks grouped or listed?',
+          cells: {
+            'OpenEnv': null,
+            'ORS': '<code>Split</code> · <code>list_tasks()</code>',
+            'NeMo Gym': 'JSONL dataset',
+            'Verifiers': '<code>Dataset</code>',
+            'SkyRL Gym': null,
+            'GEM': '<code>make("cat:Name-v0")</code>'
+          }
+        },
+        {
+          name: 'Initial state setup',
+          question: 'How is per-episode state initialised?',
+          cells: {
+            'OpenEnv': '<code>reset()</code>',
+            'ORS': '<code>setup()</code>',
+            'NeMo Gym': '<code>seed_session</code>',
+            'Verifiers': '<code>setup_state</code>',
+            'SkyRL Gym': '<code>init()</code>',
+            'GEM': '<code>reset()</code>'
+          }
+        },
+        {
+          name: 'Single task',
+          question: 'How is one task represented?',
+          cells: {
+            'OpenEnv': null,
+            'ORS': '<code>task_spec</code> (JSON)',
+            'NeMo Gym': 'JSONL line',
+            'Verifiers': 'Dataset row',
+            'SkyRL Gym': 'Prompt',
+            'GEM': 'Reset with kwargs'
+          }
+        },
+        {
+          name: 'Tool definition',
+          question: 'How are tools declared to the env?',
+          cells: {
+            'OpenEnv': '<code>@mcp.tool</code>',
+            'ORS': '<code>@tool</code> → <code>ToolOutput</code>',
+            'NeMo Gym': '<code>app.post("/name")</code>',
+            'Verifiers': 'Python <code>def func()</code>',
+            'SkyRL Gym': '<code>ToolGroup</code>',
+            'GEM': '<code>ToolEnvWrapper</code>'
+          }
+        },
+        {
+          name: 'Observation back',
+          question: 'What does the env return after a tool call?',
+          cells: {
+            'OpenEnv': '<code>str</code> return',
+            'ORS': '<code>TextBlock</code> in <code>ToolOutput</code>',
+            'NeMo Gym': '<code>Response(output=str)</code>',
+            'Verifiers': '<code>str</code> return',
+            'SkyRL Gym': '<code>observations</code> list',
+            'GEM': '5-tuple <code>(obs, ...)</code>'
+          }
+        },
+        {
+          name: 'Reward signal',
+          question: 'How is reward computed and surfaced?',
+          cells: {
+            'OpenEnv': '<code>Rubric(action, obs)</code>',
+            'ORS': '<code>ToolOutput.reward</code>',
+            'NeMo Gym': '<code>verify()</code> → reward',
+            'Verifiers': '<code>Rubric.score()</code>',
+            'SkyRL Gym': '<code>step().reward</code>',
+            'GEM': '<code>step().reward</code>'
+          }
+        },
+        {
+          name: 'Episode state',
+          question: 'How is per-rollout state held?',
+          cells: {
+            'OpenEnv': 'MCP session',
+            'ORS': 'HTTP session (<code>X-Session-ID</code>)',
+            'NeMo Gym': 'Cookie session',
+            'Verifiers': 'Python object',
+            'SkyRL Gym': '<code>self.turns</code>',
+            'GEM': '<code>reset()</code> / <code>step()</code>'
+          }
+        },
+        {
+          name: 'Done signal',
+          question: 'How does the episode end?',
+          cells: {
+            'OpenEnv': '<code>Observation.done</code>',
+            'ORS': '<code>ToolOutput.finished</code>',
+            'NeMo Gym': '— (verify decides)',
+            'Verifiers': '<code>@vf.stop</code>',
+            'SkyRL Gym': '<code>step().done</code>',
+            'GEM': '<code>terminated</code> + <code>truncated</code>'
+          }
+        },
+        {
+          name: 'Task prompt',
+          question: 'How is the prompt obtained?',
+          cells: {
+            'OpenEnv': '— (in <code>reset</code>)',
+            'ORS': '<code>get_prompt()</code>',
+            'NeMo Gym': 'In JSONL <code>input</code>',
+            'Verifiers': '<code>system_prompt</code> param',
+            'SkyRL Gym': '<code>init()</code> return',
+            'GEM': '<code>reset()</code> return'
+          }
+        }
+      ];
+
+      const ICON_GRID = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>';
+      const ICON_TABLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>';
+
+      const renderCardsRows = () => CONCEPTS.map(c => `
+        <div class="concept-rosetta__row">
+          <div class="concept-rosetta__concept">
+            <div class="concept-rosetta__concept-name">${c.name}</div>
+            <div class="concept-rosetta__concept-q">${c.question}</div>
+          </div>
+          <div class="concept-rosetta__chips">
+            ${FRAMEWORKS.map(fw => {
+              const v = c.cells[fw.id];
+              const empty = !v || v.trim() === '—' || /^—/.test(v.trim());
+              const valHtml = empty ? '—' : v;
+              return `
+                <div class="concept-rosetta__chip${empty ? ' empty' : ''}" style="--c:${fw.color};">
+                  <span class="concept-rosetta__chip-fw">${fw.id}</span>
+                  <span class="concept-rosetta__chip-val">${valHtml}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `).join('');
+
+      const renderTable = () => `
+        <table class="concept-rosetta__table">
+          <thead>
+            <tr>
+              <th scope="col">Concept</th>
+              ${FRAMEWORKS.map(fw => `<th scope="col" data-fw="${fw.id}" style="--c:${fw.color};">${fw.id}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${CONCEPTS.map(c => `
+              <tr>
+                <th scope="row">${c.name}</th>
+                ${FRAMEWORKS.map(fw => {
+                  const v = c.cells[fw.id];
+                  const empty = !v || v.trim() === '—' || /^—/.test(v.trim());
+                  return `<td${empty ? ' class="empty"' : ''}>${empty ? '—' : v}</td>`;
+                }).join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+
+      container.innerHTML = `
+        <div class="concept-rosetta__toggle" role="tablist" aria-label="View mode">
+          <button type="button" data-view="cards" role="tab" aria-selected="false">${ICON_GRID}<span>Cards</span></button>
+          <button type="button" data-view="table" class="active" role="tab" aria-selected="true">${ICON_TABLE}<span>Table</span></button>
+        </div>
+        <div class="concept-rosetta" data-view="table">
+          <div class="concept-rosetta__rows">${renderCardsRows()}</div>
+          <div class="concept-rosetta__table-host">${renderTable()}</div>
+        </div>
+      `;
+
+      const inner = container.querySelector('.concept-rosetta');
+      const buttons = container.querySelectorAll('.concept-rosetta__toggle button');
+      buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const view = btn.getAttribute('data-view');
+          inner.setAttribute('data-view', view);
+          buttons.forEach(b => {
+            const active = b.getAttribute('data-view') === view;
+            b.classList.toggle('active', active);
+            b.setAttribute('aria-selected', active ? 'true' : 'false');
+          });
+        });
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+    } else {
+      bootstrap();
+    }
+  })();
+</script>

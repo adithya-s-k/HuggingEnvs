@@ -1,0 +1,38 @@
+import HtmlEmbed from "../../components/HtmlEmbed.astro";
+
+## Framework inventory
+
+> **Why have environment frameworks at all?**
+>
+> Mostly for standardisation. If there's an agreed protocol for how an LLM trainer talks to an environment, like MCP for tools, any training loop can plug into any environment, researchers across different domains can follow the same shape, and someone else's environments become reusable for your training run instead of one-off scripts. The frameworks below are different attempts at that standardisation.
+
+We surveyed the space and picked these six to build the same environment across and compare head-to-head. There are other RL-environment-adjacent projects out there that didn't fit this comparison (different abstraction layer, training-only, pure verifier libraries); they're listed [below](#other-frameworks-in-the-landscape) with the reasons.
+
+### Frameworks we implemented and compared
+
+<HtmlEmbed src="framework-cards.html" frameless />
+
+### Other frameworks in the landscape
+
+These are notable RL environment frameworks we evaluated but did not implement. They're excluded because they serve a different purpose or operate at a different level of abstraction.
+
+| Framework | Creator | Why excluded |
+| --- | --- | --- |
+| [**Atropos**](https://github.com/NousResearch/atropos) | Nous Research | Different paradigm, environments own inference and POST scored batches to a central API. Not compatible with [TRL](https://huggingface.co/docs/trl)'s turn-by-turn tool calling. |
+| [**Harbor**](https://github.com/laude-institute/harbor) | Laude Institute | Eval and RL rollout-generation framework, the official harness for Terminal-Bench 2.0. Runs autonomous agent harnesses (Claude Code, Codex CLI, OpenHands) in parallel containers via Daytona / Modal, the agent drives the loop end-to-end inside the sandbox and emits trajectories. |
+| [**RLVE**](https://github.com/Zhiyuan-Zeng/RLVE) | Zhiyuan Zeng | Pure verifier library (445 tasks), `generate() → verify()` with no transport, no tools, no state. Not an environment framework, just problem oracles. |
+| [**Reasoning Gym**](https://github.com/open-thought/reasoning-gym) | Open Thought | Procedural task generators + verifiers, same tier as RLVE. Stateless, no multi-turn, no tools. |
+| [**RAGEN**](https://github.com/ZihanWang314/RAGEN) | Zihan Wang | Full stack (env + StarPO + veRL), tightly coupled to its own training loop. Gym-compatible but not easily separable for TRL integration. |
+| [**rLLM**](https://github.com/agentica-project/rllm) | Agentica | Decorator pattern, wraps existing agent code, intercepts LLM calls. No environment class to subclass. Different paradigm. |
+| [**RL-Factory**](https://github.com/Simple-Efficient/RL-Factory) | Simple-Efficient | MCP config-based, any MCP server becomes an environment. Interesting but very early stage. |
+| [**Open-Instruct**](https://github.com/allenai/open-instruct) | Allen AI | Full training framework with env hooks, environments are reward functions, not multi-turn interactive agents. |
+| [**TextArena**](https://github.com/TextArena/TextArena) | Leon Guertler | Game-specific multi-agent environments, narrow domain, not a general framework. |
+| [**LlamaGym**](https://github.com/KhoomeiK/LlamaGym) | KhoomeiK | Gymnasium wrapper for LLMs, early prototype, not actively maintained. |
+
+### How these relate
+
+The 16 frameworks we surveyed split cleanly into three tiers.
+
+<HtmlEmbed src="d3-tier-map.html" frameless />
+
+We focused on **Tier 2 + Tier 3** frameworks that support multi-turn tool-calling environments.

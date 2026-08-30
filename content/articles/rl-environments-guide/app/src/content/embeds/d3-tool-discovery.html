@@ -1,0 +1,435 @@
+<div class="d3-tool-discovery" style="width:100%;margin:14px 0;"></div>
+<style>
+  .d3-tool-discovery {
+    position: relative;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-bg);
+    overflow: hidden;
+    color: var(--text-color);
+  }
+
+  /* ── Header ── */
+  .d3-tool-discovery__header {
+    display: flex; flex-wrap: wrap; align-items: center;
+    gap: 12px 16px; padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .d3-tool-discovery__title {
+    font-size: 11px; font-weight: 800; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--muted-color);
+    margin-right: auto;
+  }
+  .d3-tool-discovery__btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 7px;
+    border: 1px solid var(--border-color);
+    background: var(--surface-bg); color: var(--text-color);
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: border-color .12s ease, background .12s ease;
+  }
+  .d3-tool-discovery__btn:hover { border-color: var(--primary-color); }
+  .d3-tool-discovery__btn.primary {
+    border-color: var(--primary-color);
+    background: color-mix(in oklab, var(--primary-color) 12%, var(--surface-bg));
+  }
+  .d3-tool-discovery__btn svg { width: 12px; height: 12px; }
+  .d3-tool-discovery__speed {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; color: var(--muted-color);
+  }
+  .d3-tool-discovery__speed input[type=range] {
+    width: 100px;
+    accent-color: var(--primary-color);
+  }
+  .d3-tool-discovery__speed-val {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--text-color); font-size: 11px;
+    min-width: 36px; text-align: right;
+  }
+
+  /* ── Grid of framework cards ── */
+  .d3-tool-discovery__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 0;
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+  }
+  .td-card {
+    padding: 14px 14px 12px 14px;
+    border-right: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    display: flex; flex-direction: column; gap: 9px;
+    background: var(--surface-bg);
+    min-width: 0;
+  }
+  /* fix the trailing edges so the grid looks clean */
+  .td-card:nth-child(3n) { border-right: 0; }
+  .td-card:nth-last-child(-n+3):not(:nth-child(3n+2)):not(:nth-child(3n)) { border-bottom: 0; }
+  @media (max-width: 880px) {
+    .td-card { border-right: 0 !important; }
+    .td-card:nth-last-child(-n+2) { border-bottom: 0; }
+  }
+  @media (max-width: 580px) {
+    .td-card { border-bottom: 1px solid var(--border-color) !important; }
+    .td-card:last-child { border-bottom: 0 !important; }
+  }
+
+  /* card head */
+  .td-card__head {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .td-card__head .swatch {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--c, var(--muted-color));
+    flex-shrink: 0;
+  }
+  .td-card__head .name {
+    font-weight: 700;
+    font-size: 12.5px;
+    color: var(--text-color);
+  }
+  .td-card__head .kind {
+    margin-left: auto;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--muted-color);
+    background: color-mix(in oklab, var(--muted-color) 8%, transparent);
+    border: 1px solid var(--border-color);
+  }
+  .td-card__head .kind.http {
+    color: color-mix(in oklab, var(--c, #3b82f6) 90%, var(--text-color));
+    background: color-mix(in oklab, var(--c, #3b82f6) 12%, transparent);
+    border-color: color-mix(in oklab, var(--c, #3b82f6) 30%, var(--border-color));
+  }
+
+  /* sequence stage */
+  .td-stage {
+    position: relative;
+    aspect-ratio: 16 / 6;
+    border-radius: 8px;
+    background: color-mix(in oklab, var(--muted-color) 4%, transparent);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    min-height: 90px;
+  }
+  .td-stage svg {
+    width: 100%; height: 100%; display: block;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .td-stage .node {
+    fill: var(--surface-bg);
+    stroke: var(--border-color);
+    stroke-width: 1.2;
+  }
+  .td-stage .node.client {
+    fill: color-mix(in oklab, var(--muted-color) 6%, var(--surface-bg));
+  }
+  .td-stage .node.env {
+    fill: color-mix(in oklab, var(--c) 10%, var(--surface-bg));
+    stroke: color-mix(in oklab, var(--c) 35%, var(--border-color));
+  }
+  .td-stage .label-title {
+    fill: var(--text-color);
+    font-size: 10px; font-weight: 700;
+  }
+  .td-stage .label-sub {
+    fill: var(--muted-color);
+    font-size: 8.5px; font-weight: 500;
+  }
+  .td-stage .arrow {
+    stroke: var(--muted-color);
+    stroke-width: 1.3;
+    fill: none;
+  }
+  .td-stage .arrow.dashed { stroke-dasharray: 4 3; }
+  .td-stage .arrow-label {
+    fill: var(--text-color);
+    font-size: 8.5px;
+    font-weight: 600;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .td-stage .stage-tag {
+    fill: var(--muted-color);
+    font-size: 7.5px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  /* travelling packets — sequence: discovery out → discovery in → call out → call in */
+  .td-stage .packet {
+    fill: var(--c, var(--primary-color));
+    opacity: 0;
+  }
+  .d3-tool-discovery.playing .packet {
+    animation-play-state: running;
+  }
+  .d3-tool-discovery:not(.playing) .packet { animation-play-state: paused; opacity: 0; }
+
+  /* full sequence packet covering 4 phases over the duration */
+  .td-stage .packet.disc-out {
+    animation: td-disc-out var(--dur, 2.4s) linear infinite;
+  }
+  .td-stage .packet.disc-in {
+    animation: td-disc-in var(--dur, 2.4s) linear infinite;
+  }
+  .td-stage .packet.call-out {
+    animation: td-call-out var(--dur, 2.4s) linear infinite;
+  }
+  .td-stage .packet.call-in {
+    animation: td-call-in var(--dur, 2.4s) linear infinite;
+  }
+  @keyframes td-disc-out {
+    0%   { transform: translate(0, 0); opacity: 0; }
+    1%   { opacity: 1; }
+    23%  { transform: translate(180px, 0); opacity: 1; }
+    24%  { opacity: 0; }
+    100% { opacity: 0; }
+  }
+  @keyframes td-disc-in {
+    0%, 24% { opacity: 0; }
+    25%  { transform: translate(0, 0); opacity: 1; }
+    48%  { transform: translate(-180px, 0); opacity: 1; }
+    49%  { opacity: 0; }
+    100% { opacity: 0; }
+  }
+  @keyframes td-call-out {
+    0%, 49% { opacity: 0; }
+    50%  { transform: translate(0, 0); opacity: 1; }
+    73%  { transform: translate(180px, 0); opacity: 1; }
+    74%  { opacity: 0; }
+    100% { opacity: 0; }
+  }
+  @keyframes td-call-in {
+    0%, 74% { opacity: 0; }
+    75%  { transform: translate(0, 0); opacity: 1; }
+    98%  { transform: translate(-180px, 0); opacity: 1; }
+    99%  { opacity: 0; }
+    100% { opacity: 0; }
+  }
+
+  /* card footer table */
+  .td-card__rows {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 3px 10px;
+    font-size: 10.5px;
+    line-height: 1.5;
+  }
+  .td-card__rows .k {
+    color: var(--muted-color);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-size: 9.5px;
+    padding-top: 1px;
+  }
+  .td-card__rows .v {
+    color: var(--text-color);
+    overflow-wrap: anywhere;
+  }
+  .td-card__rows code {
+    background: color-mix(in oklab, var(--muted-color) 10%, transparent);
+    border-radius: 3px;
+    padding: 0 4px;
+    font-size: 10.5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  /* caption */
+  .d3-tool-discovery__caption {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border-color);
+    font-size: 11.5px;
+    color: var(--muted-color);
+    font-style: italic;
+    line-height: 1.55;
+  }
+</style>
+<script>
+(() => {
+  const bootstrap = () => {
+    const scriptEl = document.currentScript;
+    let container = scriptEl ? scriptEl.previousElementSibling : null;
+    if (!(container && container.classList && container.classList.contains('d3-tool-discovery'))) {
+      const cands = Array.from(document.querySelectorAll('.d3-tool-discovery'))
+        .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+      container = cands[cands.length - 1] || null;
+    }
+    if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+    container.dataset.mounted = 'true';
+
+    const FRAMEWORKS = [
+      {
+        key: 'openenv',  name: 'OpenEnv',   color: '#3b82f6', kind: 'http',
+        defn: '<code>@mcp.tool</code> on FastMCP',
+        discoveryLabel: 'tools/list',
+        callLabel: 'tools/call',
+        schema: 'MCP tool spec (JSON Schema)',
+      },
+      {
+        key: 'ors',      name: 'ORS',       color: '#a855f7', kind: 'http',
+        defn: '<code>@tool</code> + Pydantic',
+        discoveryLabel: 'GET /tools',
+        callLabel: 'POST /call',
+        schema: 'ORS ToolSpec',
+      },
+      {
+        key: 'nemo',     name: 'NeMo Gym',  color: '#22c55e', kind: 'http',
+        defn: '<code>app.post()</code> endpoints',
+        discoveryLabel: 'GET /openapi.json',
+        callLabel: 'POST /tool',
+        schema: 'OpenAPI JSON Schema',
+      },
+      {
+        key: 'verifs',   name: 'Verifiers', color: '#ec4899', kind: 'inproc',
+        defn: 'Plain Python fns',
+        discoveryLabel: 'tools=[fn]',
+        callLabel: 'fn(args)',
+        schema: 'Type hints (auto)',
+      },
+      {
+        key: 'skyrl',    name: 'SkyRL Gym', color: '#f59e0b', kind: 'inproc',
+        defn: '<code>ToolGroup</code> subclass',
+        discoveryLabel: 'init_tool_groups()',
+        callLabel: 'group.invoke()',
+        schema: 'Type hints (auto)',
+      },
+      {
+        key: 'gem',      name: 'GEM',       color: '#14b8a6', kind: 'inproc',
+        defn: '<code>ToolEnvWrapper</code>',
+        discoveryLabel: 'wrapper compose',
+        callLabel: 'env.step(call)',
+        schema: 'Wrapper-defined',
+      },
+    ];
+
+    const cardSvg = (f) => `
+      <svg viewBox="0 0 280 110" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <marker id="td-arr-${f.key}" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="6" markerHeight="6" orient="auto" markerUnits="userSpaceOnUse">
+            <path d="M0,0 L10,5 L0,10 Z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <!-- left node: Trainer -->
+        <rect class="node client" x="10" y="22" width="64" height="62" rx="8"/>
+        <text class="label-title" x="42" y="48" text-anchor="middle">Trainer</text>
+        <text class="label-sub" x="42" y="62" text-anchor="middle">${f.kind === 'http' ? 'client' : 'in-process'}</text>
+
+        <!-- right node: Env / tools -->
+        <rect class="node env" x="206" y="22" width="64" height="62" rx="8"/>
+        <text class="label-title" x="238" y="48" text-anchor="middle">${f.kind === 'http' ? 'Env server' : 'Env (Py)'}</text>
+        <text class="label-sub" x="238" y="62" text-anchor="middle">tools</text>
+
+        <!-- discovery arrow (top) -->
+        <g style="color: var(--muted-color);">
+          <path class="arrow ${f.kind === 'http' ? 'dashed' : ''}" d="M74,38 L206,38" marker-end="url(#td-arr-${f.key})"/>
+          <text class="arrow-label" x="140" y="32" text-anchor="middle">${f.discoveryLabel}</text>
+        </g>
+        <text class="stage-tag" x="140" y="14" text-anchor="middle">discover</text>
+
+        <!-- call arrow (bottom) -->
+        <g style="color: var(--c);">
+          <path class="arrow" d="M74,72 L206,72" marker-end="url(#td-arr-${f.key})"/>
+          <text class="arrow-label" x="140" y="88" text-anchor="middle">${f.callLabel}</text>
+        </g>
+        <text class="stage-tag" x="140" y="106" text-anchor="middle">invoke</text>
+
+        <!-- packets -->
+        <circle class="packet disc-out" cx="74" cy="38" r="3" style="fill: var(--muted-color);"/>
+        <circle class="packet disc-in"  cx="206" cy="38" r="3" style="fill: var(--muted-color);"/>
+        <circle class="packet call-out" cx="74" cy="72" r="3.2" style="fill: var(--c);"/>
+        <circle class="packet call-in"  cx="206" cy="72" r="3.2" style="fill: #22c55e;"/>
+      </svg>
+    `;
+
+    const cardsHtml = FRAMEWORKS.map(f => `
+      <article class="td-card" style="--c:${f.color};">
+        <div class="td-card__head">
+          <span class="swatch"></span>
+          <span class="name">${f.name}</span>
+          <span class="kind ${f.kind === 'http' ? 'http' : ''}">${f.kind === 'http' ? 'HTTP' : 'In-process'}</span>
+        </div>
+        <div class="td-stage">${cardSvg(f)}</div>
+        <div class="td-card__rows">
+          <span class="k">def</span><span class="v">${f.defn}</span>
+          <span class="k">discover</span><span class="v"><code>${f.discoveryLabel}</code></span>
+          <span class="k">schema</span><span class="v">${f.schema}</span>
+        </div>
+      </article>
+    `).join('');
+
+    container.innerHTML = `
+      <div class="d3-tool-discovery__header">
+        <div class="d3-tool-discovery__title">Tool discovery & invocation · 6 frameworks</div>
+        <button type="button" class="d3-tool-discovery__btn primary" data-act="play">
+          <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>
+          <span data-label>Play</span>
+        </button>
+        <label class="d3-tool-discovery__speed">
+          Speed
+          <input type="range" min="0.4" max="2" step="0.1" value="1" data-act="speed">
+          <span class="d3-tool-discovery__speed-val" data-speed-val>1.0×</span>
+        </label>
+      </div>
+      <div class="d3-tool-discovery__grid">${cardsHtml}</div>
+      <div class="d3-tool-discovery__caption">
+        Same loop, two discovery shapes. HTTP frameworks fetch the tool list at runtime over the wire (dashed line). In-process frameworks register tools when the env constructs (solid Python call). After that, both look the same to the model: name + typed args in, observation out.
+      </div>
+    `;
+
+    // ── Controls ──
+    const playBtn = container.querySelector('[data-act="play"]');
+    const playLbl = container.querySelector('[data-label]');
+    const speedInput = container.querySelector('[data-act="speed"]');
+    const speedVal = container.querySelector('[data-speed-val]');
+
+    let playing = false;
+    const setPlaying = (next) => {
+      playing = next;
+      container.classList.toggle('playing', playing);
+      playLbl.textContent = playing ? 'Pause' : 'Play';
+      const icon = playBtn.querySelector('svg');
+      if (playing) {
+        icon.innerHTML = '<rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/>';
+      } else {
+        icon.innerHTML = '<polygon points="6,4 20,12 6,20" fill="currentColor"/>';
+      }
+    };
+    playBtn.addEventListener('click', () => setPlaying(!playing));
+
+    const updateSpeed = () => {
+      const s = parseFloat(speedInput.value);
+      const dur = (2.4 / s).toFixed(2) + 's';
+      container.style.setProperty('--dur', dur);
+      speedVal.textContent = s.toFixed(1) + '×';
+    };
+    speedInput.addEventListener('input', updateSpeed);
+    updateSpeed();
+
+    const io = ('IntersectionObserver' in window) ? new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting && !playing) {
+          setPlaying(true);
+          io.disconnect();
+        }
+      });
+    }, { threshold: 0.3 }) : null;
+    if (io) io.observe(container); else setPlaying(true);
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+  } else {
+    bootstrap();
+  }
+})();
+</script>

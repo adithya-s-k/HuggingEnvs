@@ -1,0 +1,27 @@
+## Framework profiles
+
+Six profiles. What each framework is, what ships out of the box, and what it's good for. Structured facts live in the [Framework inventory](#framework-inventory) cards above; per-axis specifics live in [Dimensions of comparison](#dimensions-of-comparison).
+
+### OpenEnv (Meta PyTorch)
+
+[OpenEnv](https://github.com/meta-pytorch/OpenEnv) is an MCP-based contract for building RL environments. It ships the protocol, session and transport layer (WebSocket), and a composable `Rubric` reward system (`LLMJudge`, `WeightedSum`, trajectory rubrics). Tasks, datasets, and execution backends are left to you. Good for thin, swappable env interfaces and tooling that needs to stay MCP-compatible.
+
+### ORS: Open Reward Standard (General Reasoning)
+
+[ORS](https://openrewardstandard.io/) is a standard API for tool, task, and reward shapes: `@tool` decorators, `ToolOutput` responses with inline per-step rewards, and server-side task management via `list_tasks(split)`. The [openreward.ai](https://openreward.ai) platform hosts 330+ environments built on top of the spec. Good for plugging into a large pre-built environment catalog.
+
+### NeMo Gym (NVIDIA)
+
+[NeMo Gym](https://github.com/NVIDIA-NeMo/Gym) ships FastAPI tool servers and a separate `/verify` endpoint for post-episode reward, with 50+ built-in environments and tight integration with NVIDIA's NeMo / Megatron training stack. Good for trajectory-level scoring and teams already on the NVIDIA stack.
+
+### Verifiers (PrimeIntellect)
+
+[Verifiers](https://github.com/PrimeIntellect-ai/verifiers) bundles the most components out of the box: datasets, tools, rubrics, rollout harness, trainer, and a `prime env init` CLI scaffold. The [Environments Hub](https://www.primeintellect.ai/blog/environments) is the community registry for sharing and pulling in envs as wheels. Good for going from zero to training fast with a full toolchain.
+
+### SkyRL Gym (NovaSky / Berkeley)
+
+[SkyRL Gym](https://github.com/NovaSky-AI/SkyRL/tree/main/skyrl-gym) is a Gym-style API with `BaseTextEnv` and `ToolGroup` classes, minimal dependencies, and the same library used to train SkyRL-Agent for SWE-Bench. Good for full control over the rollout loop with a familiar Gym mental model.
+
+### GEM (Axon-RL)
+
+[GEM](https://github.com/axon-rl/gem) follows the Gymnasium API most closely: `reset()` returns an observation, `step()` returns a 5-tuple `(obs, reward, terminated, truncated, info)`, and `AsyncVectorEnv` provides vectorised environments. Ships 24+ built-in games, math, and code environments. Good for carrying a Gymnasium / Atari mental model over to text agents.

@@ -1,0 +1,57 @@
+import HtmlEmbed from "../../components/HtmlEmbed.astro";
+
+## What is an RL environment in the LLM age?
+
+In classical RL (Atari, robotics), an environment is small and self-contained. The textbook example is **CartPole**: a cart on a track with a pole balanced on top. The agent observes a 4-number state (cart position and velocity, pole angle and angular velocity), picks one of two actions (push left or right), and the environment ticks one step of physics forward. The reward is +1 every step the pole stays upright. The whole loop is a tight feedback cycle, and "the environment" is the physics simulator plus the reward rule.
+
+<HtmlEmbed src="d3-classical-rl.html" frameless />
+
+In the LLM era the picture is more complex, and there's no single canonical implementation. To set the analogy, here's one common shape: the "agent" is a language model, the "environment" is a sandbox that runs shell commands or executes code, and the "action space" is whatever set of tools the framework exposes. Each rollout is a multi-turn conversation where the model writes, runs a tool, reads the output, decides what to try next, and eventually submits an answer. The environment scores the completed rollout and returns a reward, and a training step pulls in a group of these rollouts per prompt to learn from. Many other shapes exist (single-turn reasoning, agentic web tasks, code-repo agents, multi-agent setups), but they're all variations on the same skeleton. What changes is the tools, the observations, and the reward rule.
+
+<HtmlEmbed src="d3-llm-rl-coding.html" frameless />
+
+That whole loop, from picking a task through to updating the policy, is what an RL training system has to handle end to end. The catch is that no two frameworks split that work the same way. Some hand you only a thin protocol over the environment; others bundle a full trainer on top. Before we taxonomize the individual pieces, it's worth pulling back to a bird's-eye view and seeing who covers what.
+
+### How an RL training system fits together
+
+Every RL training system for LLMs sits on the same five-stage spine: there are tasks to solve, a harness that lets the model interact, a reward signal that scores the behaviour, a rollout collector that gathers full episodes, and a trainer that turns those episodes into a policy update. What changes from one framework to the next is which slice of that spine they ship to you in the box.
+
+The diagram below maps each framework's bracket onto those five stages.
+
+<HtmlEmbed src="d3-rl-pipeline.html" frameless />
+
+Take OpenEnv, for example: it gives you the harness (the tools the model can call) and the reward, but you have to write the trainer yourself. Verifiers, on its own, is really just a way to describe the task, the tools, the harness, and the reward; the actual training is handled by Prime RL, which Verifiers pairs with. That's why a flat "X vs Y" comparison is hard. Each framework was built to slot into a different ecosystem, and they don't all live at the same level of the stack. What we can do, and what the rest of this article does, is define what an RL environment actually is, and then compare every environment framework across those same dimensions so you can see exactly what each one offers. For a complementary cut at the same question from the angle of async vs sync training architectures, see Hugging Face's [async RL training landscape](https://huggingface.co/blog/async-rl-training-landscape).
+
+That bird's-eye view tells us where each framework sits in the wider stack. The next thing to pin down is what's actually inside the slice marked "environment".
+
+### What makes an RL environment for LLMs (the components)
+
+So far we've looked at the loop in both its classical and LLM form, and at how the frameworks split that loop across the same five stages. Now we open the box itself. After spending enough time inside all six frameworks, the same set of pieces kept showing up: the parts you actually have to think about when you build or pick an environment for an LLM agent. They're listed below, each with the question it answers and how it usually shows up in code.
+
+<HtmlEmbed src="taxonomy-of-environment.html" frameless />
+
+These are the dimensions we'll use to compare frameworks across the rest of the article. The next section maps each framework against this list to show what they ship for you and what they leave for you to build.
+
+### What each framework ships (raw, out of the box)
+
+This is the key table. Each framework provides a **different subset** of components. Three states show up in the cells: **✅ full** means the framework ships a first-class API for that component; **⚙️ partial** means it works but you lean on a convention or trainer hook to get there; **🔧 BYO** means it's left to you to bring.
+
+<HtmlEmbed src="ship-matrix.html" frameless />
+
+### What this means in practice
+
+**Most components bundled.** Verifiers bundles dataset + tools + rubric + rollout harness + training. You define your problem and it handles everything, with the trade-off that you work within the Verifiers API surface.
+
+**Fewest components bundled.** OpenEnv provides a protocol (MCP), session management, and a built-in Rubric system for rewards. You bring your own tasks and execution backend, more setup, more control over each piece.
+
+**In between.** ORS and NeMo Gym provide a deployment protocol + reward mechanism, but you bring your own execution backend and tasks. GEM provides built-in environments + Gymnasium API but you bring the trainer.
+
+The catch with reading any one framework's docs is that everyone uses different vocabulary for the same idea. The reward function is a `Rubric` in OpenEnv and Verifiers, a `verify()` endpoint in NeMo Gym, the `reward` field on a `ToolOutput` in ORS, and just whatever you return from `step()` in SkyRL Gym and GEM. The end-of-episode flag is `done` in some, `terminated` vs `truncated` in others, and `finished` on every tool call in ORS. A single training prompt is a "task" in one place, a "split row" in another, a "JSONL line" in a third, and a `Dataset` row in a fourth. Same concept, six names. Before we go deeper, here's a translation table.
+
+### How each framework names the same things
+
+The same idea has a different name in every framework. Reading two of these docs back-to-back can feel like reading two different APIs for the same concept, because that's basically what it is. The table below pins each concept (the rows we just walked through) to whatever each framework calls it, so when you jump between docs you can carry your mental model with you.
+
+<HtmlEmbed src="concept-rosetta.html" frameless />
+
+A few things stand out once it's all in one view: every framework has *something* under "Initial state setup" and "Tool definition" because every multi-turn env needs both, but "Task collection" is only filled in for frameworks that bundle their own task source. "Episode state" is where the HTTP frameworks all use sessions and the in-process ones lean on plain Python. With the components named and the vocabulary mapped, the next chapter takes each of these dimensions in turn and compares the frameworks in detail.

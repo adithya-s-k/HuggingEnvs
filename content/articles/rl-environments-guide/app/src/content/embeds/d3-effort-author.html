@@ -1,0 +1,339 @@
+<div class="d3-effort" style="width:100%;margin:14px 0;"></div>
+<style>
+  .d3-effort {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-bg);
+    overflow: hidden;
+    color: var(--text-color);
+  }
+  .d3-effort__header {
+    display: flex; flex-wrap: wrap; align-items: center;
+    gap: 12px 16px; padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .d3-effort__title {
+    font-size: 11px; font-weight: 800; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--muted-color);
+    margin-right: auto;
+  }
+  .d3-effort__legend {
+    display: inline-flex; align-items: center; gap: 14px;
+    font-size: 10.5px; color: var(--muted-color);
+  }
+  .d3-effort__legend .item { display: inline-flex; align-items: center; gap: 5px; }
+  .d3-effort__legend .ring-solid,
+  .d3-effort__legend .ring-dashed {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: transparent;
+  }
+  .d3-effort__legend .ring-solid  { border: 2px solid var(--text-color); }
+  .d3-effort__legend .ring-dashed { border: 2px dashed var(--text-color); }
+  .d3-effort__legend .size-dot {
+    background: var(--muted-color); border-radius: 50%;
+  }
+
+  /* ── Quadrant chart ── */
+  .d3-effort__chart {
+    position: relative;
+    padding: 10px 16px 14px 16px;
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+  }
+  .d3-effort__chart svg {
+    width: 100%;
+    display: block;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    aspect-ratio: 16 / 9;
+    min-height: 320px;
+  }
+  .d3-effort .axis-line {
+    stroke: var(--border-color);
+    stroke-width: 1;
+  }
+  .d3-effort .grid-line {
+    stroke: var(--border-color);
+    stroke-width: 1;
+    stroke-dasharray: 3 3;
+    opacity: 0.5;
+  }
+  .d3-effort .median {
+    stroke: color-mix(in oklab, var(--muted-color) 50%, transparent);
+    stroke-width: 1.2;
+    stroke-dasharray: 4 4;
+  }
+  .d3-effort .axis-label {
+    fill: var(--muted-color);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .d3-effort .tick-label {
+    fill: var(--muted-color);
+    font-size: 13px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .d3-effort .quadrant-tag {
+    fill: color-mix(in oklab, var(--muted-color) 60%, transparent);
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+  }
+  .d3-effort .point-group { cursor: pointer; }
+  .d3-effort .bubble {
+    fill-opacity: 0.55;
+    stroke-width: 2;
+    transition: fill-opacity 0.18s ease, filter 0.18s ease;
+  }
+  .d3-effort .bubble.dashed {
+    stroke-dasharray: 5 4;
+    fill-opacity: 0.35;
+  }
+  .d3-effort .point-group:hover .bubble { fill-opacity: 0.85; filter: brightness(1.15); }
+
+  .d3-effort .bubble-halo {
+    fill: none;
+    stroke-width: 3;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+    pointer-events: none;
+  }
+  .d3-effort .point-group:hover .bubble-halo { opacity: 0.45; }
+
+  .d3-effort .bubble-label {
+    fill: var(--text-color);
+    font-size: 14px;
+    font-weight: 700;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+    paint-order: stroke;
+    stroke: var(--surface-bg);
+    stroke-width: 4;
+    stroke-linejoin: round;
+  }
+  .d3-effort .point-group:hover .bubble-label { opacity: 1; }
+  /* Always-visible compact framework code chip in the bubble centre */
+  .d3-effort .bubble-code {
+    fill: var(--text-color);
+    font-size: 13px;
+    font-weight: 800;
+    pointer-events: none;
+    text-anchor: middle;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  /* tooltip */
+  .d3-effort__tooltip {
+    position: absolute;
+    pointer-events: none;
+    border: 1px solid var(--border-color);
+    background: var(--surface-bg);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    box-shadow: 0 4px 12px color-mix(in oklab, #000 14%, transparent);
+    z-index: 5;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    max-width: 240px;
+  }
+  .d3-effort__tooltip.visible { opacity: 1; }
+  .d3-effort__tooltip .name {
+    font-weight: 800;
+    color: var(--text-color);
+    margin-bottom: 4px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .d3-effort__tooltip .name .swatch {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--c, var(--muted-color));
+  }
+  .d3-effort__tooltip dl {
+    margin: 0;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 2px 8px;
+    color: var(--muted-color);
+    font-size: 11px;
+  }
+  .d3-effort__tooltip dt { font-weight: 600; }
+  .d3-effort__tooltip dd {
+    margin: 0;
+    color: var(--text-color);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10.5px;
+  }
+
+  .d3-effort__caption {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border-color);
+    font-size: 11.5px;
+    color: var(--muted-color);
+    font-style: italic;
+    line-height: 1.55;
+  }
+</style>
+<script>
+(() => {
+  const bootstrap = () => {
+    const scriptEl = document.currentScript;
+    let container = scriptEl ? scriptEl.previousElementSibling : null;
+    if (!(container && container.classList && container.classList.contains('d3-effort'))) {
+      const cands = Array.from(document.querySelectorAll('.d3-effort'))
+        .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+      container = cands[cands.length - 1] || null;
+    }
+    if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+    container.dataset.mounted = 'true';
+
+    // x: files-to-create (1–6)
+    // y: concepts-to-learn (3–7)
+    // size: time-to-first-test (5–30 min)
+    // outline: solid if has CLI scaffold, dashed if not
+    // x: files-to-create, y: concepts-to-learn, size: time-to-first-test (min)
+    // The three in-process frameworks would overlap at (1.5, 3); we jitter them
+    // a touch so each bubble stays clickable and labels don't collide.
+    const POINTS = [
+      { key:'verifs', name:'Verifiers', code:'VF', color:'#ec4899', files:1.0, concepts:3.2, time:5,  cli:true,  test:'pytest', concept:'ToolEnv, Rubric, DI reward fns' },
+      { key:'skyrl',  name:'SkyRL Gym', code:'SK', color:'#f59e0b', files:1.6, concepts:2.7, time:5,  cli:false, test:'pytest', concept:'BaseTextEnv, init/step/close' },
+      { key:'gem',    name:'GEM',       code:'GM', color:'#14b8a6', files:2.2, concepts:3.4, time:5,  cli:false, test:'pytest', concept:'gem.Env, reset/step 5-tuple, spawn' },
+      { key:'ors',    name:'ORS',       code:'OR', color:'#a855f7', files:3.5, concepts:5.0, time:20, cli:true,  test:'curl',   concept:'Environment, @tool, ToolOutput, Server, Split' },
+      { key:'openenv',name:'OpenEnv',   code:'OE', color:'#3b82f6', files:5.0, concepts:5.2, time:30, cli:true,  test:'curl',   concept:'MCPEnvironment, create_app, Observation, Rubric, FastMCP' },
+      { key:'nemo',   name:'NeMo Gym',  code:'NG', color:'#22c55e', files:4.5, concepts:4.0, time:30, cli:false, test:'curl',   concept:'SimpleResourcesServer, setup_webserver, verify, sessions' },
+    ];
+
+    // chart geometry
+    const W = 1280, H = 720;       // viewBox
+    const padL = 70, padR = 30, padT = 36, padB = 60;
+    const innerW = W - padL - padR;
+    const innerH = H - padT - padB;
+
+    const xMin = 0, xMax = 7;
+    const yMin = 0, yMax = 8;
+    const xScale = (v) => padL + (v - xMin) / (xMax - xMin) * innerW;
+    const yScale = (v) => padT + innerH - (v - yMin) / (yMax - yMin) * innerH;
+
+    // bubble radius from time-to-test (minutes)
+    const rScale = (t) => 18 + (t / 30) * 32; // 18..50
+
+    // grid lines for x = 1..6, y = 0..7
+    const gridX = [1, 2, 3, 4, 5, 6].map(v => `<line class="grid-line" x1="${xScale(v)}" y1="${padT}" x2="${xScale(v)}" y2="${H - padB}"/>`).join('');
+    const gridY = [1, 2, 3, 4, 5, 6, 7].map(v => `<line class="grid-line" x1="${padL}" y1="${yScale(v)}" x2="${W - padR}" y2="${yScale(v)}"/>`).join('');
+
+    const xTicks = [1, 2, 3, 4, 5, 6].map(v => `<text class="tick-label" x="${xScale(v)}" y="${H - padB + 18}" text-anchor="middle">${v}</text>`).join('');
+    const yTicks = [3, 4, 5, 6, 7].map(v => `<text class="tick-label" x="${padL - 10}" y="${yScale(v) + 4}" text-anchor="end">${v}</text>`).join('');
+
+    // medians (3.5 files, 4.5 concepts)
+    const medX = xScale(3.5), medY = yScale(4.5);
+
+    const bubbles = POINTS.map(p => {
+      const cx = xScale(p.files), cy = yScale(p.concepts);
+      const r = rScale(p.time);
+      const cls = p.cli ? '' : 'dashed';
+      return `
+        <g class="point-group" data-key="${p.key}">
+          <circle class="bubble-halo" cx="${cx}" cy="${cy}" r="${r + 6}" stroke="${p.color}"/>
+          <circle class="bubble ${cls}"
+            cx="${cx}" cy="${cy}" r="${r}"
+            fill="${p.color}" stroke="${p.color}"
+            data-name="${p.name}"
+            data-files="${p.files}"
+            data-concepts="${p.concepts}"
+            data-time="${p.time}"
+            data-cli="${p.cli}"
+            data-test="${p.test}"
+            data-concept="${p.concept}"
+            data-color="${p.color}"
+          />
+          <text class="bubble-code" x="${cx}" y="${cy + 5}">${p.code}</text>
+          <text class="bubble-label" x="${cx}" y="${cy - r - 10}" text-anchor="middle">${p.name}</text>
+        </g>
+      `;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="d3-effort__header">
+        <div class="d3-effort__title">Effort to author · files × concepts × time</div>
+        <span class="d3-effort__legend">
+          <span class="item"><span class="ring-solid"></span> CLI scaffold</span>
+          <span class="item"><span class="ring-dashed"></span> no scaffold</span>
+          <span class="item"><span class="size-dot" style="width:6px;height:6px;"></span><span class="size-dot" style="width:11px;height:11px;"></span> time to test</span>
+        </span>
+      </div>
+
+      <div class="d3-effort__chart">
+        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+          <!-- grid -->
+          ${gridX}
+          ${gridY}
+
+          <!-- median guides -->
+          <line class="median" x1="${medX}" y1="${padT}" x2="${medX}" y2="${H - padB}"/>
+          <line class="median" x1="${padL}" y1="${medY}" x2="${W - padR}" y2="${medY}"/>
+
+          <!-- quadrant tags -->
+          <text class="quadrant-tag" x="${padL + 14}" y="${H - padB - 14}">easy & lean</text>
+          <text class="quadrant-tag" x="${W - padR - 14}" y="${padT + 18}" text-anchor="end">heavy boilerplate</text>
+
+          <!-- axes -->
+          <line class="axis-line" x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}"/>
+          <line class="axis-line" x1="${padL}" y1="${padT}" x2="${padL}" y2="${H - padB}"/>
+
+          <!-- tick labels -->
+          ${xTicks}
+          ${yTicks}
+
+          <!-- axis titles -->
+          <text class="axis-label" x="${padL + innerW/2}" y="${H - 18}" text-anchor="middle">Files to create →</text>
+          <text class="axis-label" transform="translate(20, ${padT + innerH/2}) rotate(-90)" text-anchor="middle">Concepts to learn ↑</text>
+
+          <!-- bubbles -->
+          ${bubbles}
+        </svg>
+        <div class="d3-effort__tooltip" data-tooltip></div>
+      </div>
+
+      <div class="d3-effort__caption">
+        Bottom-left = easy and lean (1-2 files, 3 concepts, ~5 min to test). Top-right = heavy boilerplate (4-6 files, 5 concepts, ~30 min). Bubble size grows with time-to-first-test. Solid outline means a CLI scaffolder ships (<code>openenv init</code>, <code>orwd init</code>, <code>prime env init</code>); dashed means start from scratch.
+      </div>
+    `;
+
+    // tooltip behavior — listen on the group so hover doesn't flicker
+    const tt = container.querySelector('[data-tooltip]');
+    const chart = container.querySelector('.d3-effort__chart');
+    container.querySelectorAll('.point-group').forEach(g => {
+      const b = g.querySelector('.bubble');
+      g.addEventListener('mousemove', (e) => {
+        const rect = chart.getBoundingClientRect();
+        const cli = b.getAttribute('data-cli') === 'true';
+        tt.innerHTML = `
+          <div class="name" style="--c:${b.getAttribute('data-color')};">
+            <span class="swatch"></span>${b.getAttribute('data-name')}
+          </div>
+          <dl>
+            <dt>files</dt><dd>${b.getAttribute('data-files')}</dd>
+            <dt>concepts</dt><dd>${b.getAttribute('data-concepts')}</dd>
+            <dt>time</dt><dd>~${b.getAttribute('data-time')} min</dd>
+            <dt>CLI</dt><dd>${cli ? 'yes' : 'no'}</dd>
+            <dt>test</dt><dd>${b.getAttribute('data-test')}</dd>
+          </dl>
+        `;
+        const x = Math.min(rect.width - 250, e.clientX - rect.left + 12);
+        const y = Math.max(0, e.clientY - rect.top - 4);
+        tt.style.transform = `translate(${x}px, ${y}px)`;
+        tt.classList.add('visible');
+      });
+      g.addEventListener('mouseleave', () => { tt.classList.remove('visible'); });
+    });
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+  } else {
+    bootstrap();
+  }
+})();
+</script>

@@ -1,0 +1,413 @@
+<div class="d3-rl-pipeline" style="width:100%;margin:14px 0;min-height:480px;"></div>
+<style>
+  .d3-rl-pipeline {
+    position: relative;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-bg);
+    padding: 18px 22px 16px 22px;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  .d3-rl-pipeline__title {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    margin-bottom: 12px;
+  }
+
+  .d3-rl-pipeline svg {
+    display: block;
+    width: 100%;
+    /* viewBox aspect drives the rendered height — diagram scales down
+       gracefully on narrow screens without overflowing the article column */
+    height: auto;
+    min-height: 280px;
+  }
+
+  .d3-rl-pipeline .stage rect {
+    fill: var(--surface-bg);
+    stroke: var(--text-color);
+    stroke-width: 1.5;
+  }
+  .d3-rl-pipeline .stage text.name {
+    fill: var(--text-color);
+    font-size: 13px;
+    font-weight: 700;
+    text-anchor: middle;
+    dominant-baseline: middle;
+    pointer-events: none;
+  }
+  .d3-rl-pipeline .stage text.desc {
+    fill: var(--muted-color);
+    font-size: 10.5px;
+    font-weight: 500;
+    text-anchor: middle;
+    pointer-events: none;
+  }
+
+  .d3-rl-pipeline .arrow {
+    stroke: var(--muted-color);
+    stroke-width: 1.4;
+    fill: none;
+  }
+
+  .d3-rl-pipeline .env-bracket {
+    stroke: var(--text-color);
+    stroke-width: 1.4;
+    stroke-opacity: 0.45;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .d3-rl-pipeline .env-label {
+    fill: var(--text-color);
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 1.0px;
+    text-transform: uppercase;
+    pointer-events: none;
+    opacity: 0.78;
+  }
+
+  .d3-rl-pipeline .bracket {
+    transition: opacity .2s ease;
+    cursor: pointer;
+  }
+  .d3-rl-pipeline .bracket.dim { opacity: 0.18; }
+  .d3-rl-pipeline .bracket rect {
+    rx: 11;
+    ry: 11;
+  }
+  .d3-rl-pipeline .bracket text {
+    font-size: 10.5px;
+    font-weight: 700;
+    fill: #fff;
+    dominant-baseline: middle;
+    pointer-events: none;
+    letter-spacing: 0.3px;
+  }
+  .d3-rl-pipeline .bracket-tip {
+    stroke-width: 1.5;
+  }
+
+  .d3-rl-pipeline__legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .d3-rl-pipeline__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: var(--surface-bg);
+    color: var(--text-color);
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease, opacity .15s ease;
+  }
+  .d3-rl-pipeline__chip .swatch {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--cc, var(--primary-color));
+  }
+  .d3-rl-pipeline__chip:hover { border-color: var(--cc, var(--primary-color)); }
+  .d3-rl-pipeline__chip.active {
+    border-color: var(--cc, var(--primary-color));
+    background: color-mix(in oklab, var(--cc, var(--primary-color)) 14%, var(--surface-bg));
+  }
+  .d3-rl-pipeline__chip.dim { opacity: 0.45; }
+
+  .d3-rl-pipeline__caption {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+    font-size: 11.5px;
+    color: var(--muted-color);
+    line-height: 1.55;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .d3-rl-pipeline .bracket, .d3-rl-pipeline__chip { transition: none; }
+  }
+</style>
+<script>
+  (() => {
+    const ensureD3 = (cb) => {
+      if (window.d3 && typeof window.d3.select === 'function') return cb();
+      let s = document.getElementById('d3-cdn-script');
+      if (!s) {
+        s = document.createElement('script');
+        s.id = 'd3-cdn-script';
+        s.src = 'https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js';
+        document.head.appendChild(s);
+      }
+      const onReady = () => { if (window.d3) cb(); };
+      s.addEventListener('load', onReady, { once: true });
+      if (window.d3) onReady();
+    };
+
+    const bootstrap = () => {
+      const scriptEl = document.currentScript;
+      let container = scriptEl ? scriptEl.previousElementSibling : null;
+      if (!(container && container.classList && container.classList.contains('d3-rl-pipeline'))) {
+        const cands = Array.from(document.querySelectorAll('.d3-rl-pipeline'))
+          .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+        container = cands[cands.length - 1] || null;
+      }
+      if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+      container.dataset.mounted = 'true';
+
+      const STAGES = [
+        { id: 'Tasks',   desc: 'What to solve' },
+        { id: 'Harness', desc: 'How model interacts' },
+        { id: 'Reward',  desc: 'How good was it' },
+        { id: 'Rollout', desc: 'Collect episodes' },
+        { id: 'Trainer', desc: 'Update weights' }
+      ];
+
+      // Per-framework boundary, indices into STAGES.
+      const FRAMEWORKS = [
+        { name: 'OpenEnv',   color: '#3b82f6', from: 'Harness', to: 'Reward' },
+        { name: 'ORS',       color: '#a855f7', from: 'Tasks',   to: 'Reward' },
+        { name: 'NeMo Gym',  color: '#22c55e', from: 'Tasks',   to: 'Rollout' },
+        { name: 'Verifiers + Prime RL', color: '#ec4899', from: 'Tasks',   to: 'Trainer' },
+        { name: 'SkyRL Gym', color: '#f59e0b', from: 'Harness', to: 'Trainer' },
+        { name: 'GEM',       color: '#14b8a6', from: 'Tasks',   to: 'Reward' }
+      ];
+
+      container.innerHTML = `
+        <div class="d3-rl-pipeline__title">The RL ecosystem · who owns what</div>
+        <svg preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="d3-rl-pipeline__legend" data-legend></div>
+        <div class="d3-rl-pipeline__caption">
+          Five stages in any RL training system. Each colored bar marks the slice of the
+          pipeline a framework actually owns; everything outside the bar is something you wire up
+          yourself or hand off to another tool. Click any chip to isolate one framework.
+        </div>
+      `;
+
+      const svg = d3.select(container).select('svg');
+      const legendEl = container.querySelector('[data-legend]');
+
+      // Defs
+      const defs = svg.append('defs');
+      defs.append('marker')
+        .attr('id', 'rlp-arrow')
+        .attr('viewBox', '0 0 10 10')
+        .attr('refX', 9).attr('refY', 5)
+        .attr('markerWidth', 7).attr('markerHeight', 7)
+        .attr('orient', 'auto')
+        .append('path').attr('d', 'M0,0 L10,5 L0,10 Z').attr('fill', 'currentColor');
+
+      const gBrackets = svg.append('g').attr('class', 'brackets');
+      const gPipeline = svg.append('g').attr('class', 'pipeline');
+
+      let activeFw = null;
+      let mounted = false;
+
+      function render() {
+        // Minimum width matches the SVG's CSS min-width so the layout math never
+        // produces negative or hyper-narrow stage pills on narrow screens — parent
+        // container scrolls horizontally instead.
+        const W = Math.max(720 - 44, container.clientWidth - 44);
+        const padX = 16;
+        const stageGap = 24;
+        const stageH = 56;
+        const stageW = (W - padX * 2 - stageGap * (STAGES.length - 1)) / STAGES.length;
+        const stageY = 240;
+        const totalH = 400; // extra room for the env-bracket label below the pills
+        svg.attr('viewBox', `0 0 ${W} ${totalH}`);
+
+        // Stage pills
+        const stageData = STAGES.map((s, i) => ({
+          ...s,
+          x: padX + i * (stageW + stageGap),
+          cx: padX + i * (stageW + stageGap) + stageW / 2,
+          right: padX + i * (stageW + stageGap) + stageW
+        }));
+
+        const stageSel = gPipeline.selectAll('g.stage').data(stageData, d => d.id);
+        stageSel.exit().remove();
+        const stageEnter = stageSel.enter().append('g').attr('class', 'stage');
+        stageEnter.append('rect');
+        stageEnter.append('text').attr('class', 'name');
+        stageEnter.append('text').attr('class', 'desc');
+        const stageAll = stageEnter.merge(stageSel);
+
+        stageAll.attr('transform', d => `translate(${d.x}, ${stageY})`);
+        stageAll.select('rect')
+          .attr('width', stageW).attr('height', stageH)
+          .attr('rx', 12).attr('ry', 12);
+        stageAll.select('text.name')
+          .attr('x', stageW / 2).attr('y', stageH / 2 - 4)
+          .text(d => d.id);
+        stageAll.select('text.desc')
+          .attr('x', stageW / 2).attr('y', stageH / 2 + 14)
+          .text(d => d.desc);
+
+        // Arrows between stages
+        gPipeline.selectAll('path.arrow').remove();
+        for (let i = 0; i < stageData.length - 1; i++) {
+          const a = stageData[i];
+          const b = stageData[i + 1];
+          const y = stageY + stageH / 2;
+          gPipeline.append('path')
+            .attr('class', 'arrow')
+            .style('color', 'var(--muted-color)')
+            .attr('marker-end', 'url(#rlp-arrow)')
+            .attr('d', `M${a.right + 4},${y} L${b.x - 8},${y}`);
+        }
+
+        // "RL environment" bracket spanning the first three pills (Tasks, Harness, Reward).
+        gPipeline.selectAll('.env-bracket').remove();
+        gPipeline.selectAll('.env-label').remove();
+        const envLeft = stageData[0].x;
+        const envRight = stageData[2].right;
+        const envTopY = stageY + stageH + 6;
+        const envBracketY = stageY + stageH + 18;
+        gPipeline.append('path')
+          .attr('class', 'env-bracket')
+          .attr('d', `M${envLeft},${envTopY} L${envLeft},${envBracketY} L${envRight},${envBracketY} L${envRight},${envTopY}`);
+        gPipeline.append('text')
+          .attr('class', 'env-label')
+          .attr('x', (envLeft + envRight) / 2)
+          .attr('y', envBracketY + 18)
+          .attr('text-anchor', 'middle')
+          .text('RL environment');
+
+        // Brackets — stack vertically above the pipeline.
+        // Each bracket spans from the leftmost stage to the rightmost stage it owns.
+        const bracketRows = FRAMEWORKS.length;
+        const bracketH = 22;
+        const bracketGap = 6;
+        const bracketsAreaH = bracketRows * (bracketH + bracketGap);
+        const bracketsTopY = stageY - 24 - bracketsAreaH;  // 24px gap to pipeline
+
+        const idxOf = (id) => STAGES.findIndex(s => s.id === id);
+
+        gBrackets.selectAll('g.bracket').remove();
+        FRAMEWORKS.forEach((fw, i) => {
+          const fromI = idxOf(fw.from);
+          const toI   = idxOf(fw.to);
+          const left  = stageData[fromI].x - 4;
+          const right = stageData[toI].right + 4;
+          const y = bracketsTopY + i * (bracketH + bracketGap);
+
+          const g = gBrackets.append('g')
+            .attr('class', 'bracket')
+            .attr('data-fw', fw.name);
+
+          g.append('rect')
+            .attr('x', left).attr('y', y)
+            .attr('width', right - left).attr('height', bracketH)
+            .attr('fill', fw.color)
+            .attr('fill-opacity', 0.18)
+            .attr('stroke', fw.color)
+            .attr('stroke-width', 1.5);
+
+          // Tiny vertical "tips" at the bracket ends, like a [ … ] shape.
+          g.append('path')
+            .attr('class', 'bracket-tip')
+            .attr('stroke', fw.color)
+            .attr('fill', 'none')
+            .attr('d', `M${left},${y - 4} L${left},${y + bracketH + 4}`);
+          g.append('path')
+            .attr('class', 'bracket-tip')
+            .attr('stroke', fw.color)
+            .attr('fill', 'none')
+            .attr('d', `M${right},${y - 4} L${right},${y + bracketH + 4}`);
+
+          g.append('text')
+            .attr('x', left + 12)
+            .attr('y', y + bracketH / 2)
+            .attr('fill', fw.color)
+            .style('fill', fw.color)
+            .text(fw.name);
+
+          g.on('click', () => {
+            setActive(activeFw === fw.name ? null : fw.name);
+          });
+        });
+
+        applyActive();
+      }
+
+      function applyActive() {
+        const bracketSel = gBrackets.selectAll('g.bracket');
+        bracketSel.classed('dim', false);
+        if (activeFw) {
+          bracketSel.each(function(d, i) {
+            const node = d3.select(this);
+            const name = node.attr('data-fw');
+            node.classed('dim', name !== activeFw);
+          });
+        }
+        // Sync chip styling
+        legendEl.querySelectorAll('.d3-rl-pipeline__chip').forEach(c => {
+          const fw = c.getAttribute('data-fw');
+          c.classList.toggle('active', activeFw === fw);
+          c.classList.toggle('dim', activeFw !== null && activeFw !== fw);
+        });
+      }
+
+      function setActive(name) {
+        activeFw = name;
+        applyActive();
+      }
+
+      // Build legend chips
+      FRAMEWORKS.forEach(fw => {
+        const chip = document.createElement('span');
+        chip.className = 'd3-rl-pipeline__chip';
+        chip.setAttribute('data-fw', fw.name);
+        chip.style.setProperty('--cc', fw.color);
+        chip.innerHTML = `<span class="swatch"></span><span>${fw.name}</span>`;
+        chip.addEventListener('click', () => {
+          setActive(activeFw === fw.name ? null : fw.name);
+        });
+        legendEl.appendChild(chip);
+      });
+
+      render();
+
+      // Entrance animation
+      if (!mounted) {
+        mounted = true;
+        const stages = container.querySelectorAll('.stage');
+        stages.forEach((el, i) => {
+          el.style.opacity = '0';
+          el.style.transform = (el.getAttribute('transform') || '') + ' translate(0, 6)';
+        });
+        // staged fade-in via simple setTimeout (avoids depending on d3 transitions for transform)
+        const allBrackets = container.querySelectorAll('.bracket');
+        allBrackets.forEach(el => { el.style.opacity = '0'; });
+
+        // Use d3 transitions on the SVG groups
+        d3.selectAll(stages.length ? Array.from(stages) : [])
+          .transition().delay((d, i) => 100 + i * 90).duration(420).ease(d3.easeCubicOut)
+          .style('opacity', 1);
+        d3.selectAll(allBrackets.length ? Array.from(allBrackets) : [])
+          .transition().delay((d, i) => 600 + i * 110).duration(450).ease(d3.easeCubicOut)
+          .style('opacity', 1);
+      }
+
+      const ro = new ResizeObserver(() => render());
+      ro.observe(container);
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => ensureD3(bootstrap), { once: true });
+    } else {
+      ensureD3(bootstrap);
+    }
+  })();
+</script>

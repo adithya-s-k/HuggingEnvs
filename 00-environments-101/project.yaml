@@ -1,0 +1,51 @@
+# Project manifest. `tools/build_index.py` renders the root README table and the
+# per-project status matrix from this file; `tools/deploy.py` reads the `hub` keys.
+name: environments-101
+title: "RL Environments 101"
+tagline: "Three environments, six frameworks, side by side."
+order: 0
+status: stable
+
+hub:
+  org: HuggingEnvs
+  article: content/articles/rl-environments-guide
+  slides:
+    - content/slides/rl-environments-101
+    - content/slides/scaling-rl-amd
+
+envs:
+  - name: jupyter
+    summary: "Multi-turn Jupyter agent — real code execution in an E2B sandbox."
+    backend: e2b-sandbox
+    tools: 4
+    frameworks:
+      openenv:   {transport: http-mcp,      space: AdithyaSK/jupyter-agent-openenv,   verified: true}
+      ors:       {transport: http-rest-sse, space: AdithyaSK/jupyter-agent-ors,       verified: true}
+      nemo_gym:  {transport: http-rest,     space: AdithyaSK/jupyter-agent-nemo-gym,  verified: deployed-only}
+      verifiers: {transport: in-process,    verified: true}
+      skyrl_gym: {transport: in-process,    verified: true}
+      gem:       {transport: in-process,    verified: true}
+
+  - name: wordle
+    summary: "Multi-turn Wordle solver — pure Python, no external backend."
+    backend: none
+    tools: 1
+    frameworks:
+      openenv:   {transport: http-mcp,      space: AdithyaSK/wordle-openenv,   verified: true}
+      ors:       {transport: http-rest-sse, space: AdithyaSK/wordle-ors,       verified: true}
+      nemo_gym:  {transport: http-rest,     space: AdithyaSK/wordle-nemo-gym,  verified: deployed-only}
+      verifiers: {transport: in-process,    verified: true}
+      skyrl_gym: {transport: in-process,    verified: true}
+      gem:       {transport: in-process,    verified: true}
+
+  - name: desktop
+    summary: "Computer-use desktop — vision-driven, full Linux desktop in E2B."
+    backend: e2b-desktop
+    tools: 19
+    frameworks:
+      openenv:   {transport: http-mcp,      space: AdithyaSK/desktop-openenv, verified: true}
+      ors:       {transport: http-rest-sse, space: AdithyaSK/desktop-ors,     verified: true}
+      nemo_gym:  {transport: http-rest,     verified: deployed-only}
+      verifiers: {transport: in-process,    verified: true}
+      skyrl_gym: {transport: in-process,    verified: true}
+      gem:       {transport: in-process,    verified: true}

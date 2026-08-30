@@ -1,0 +1,515 @@
+<div class="cmp-matrix" style="width:100%;margin:14px 0;"></div>
+<style>
+  .cmp-matrix {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-bg);
+    overflow: hidden;
+    color: var(--text-color);
+  }
+
+  /* ── Header ── */
+  .cmp-matrix__head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 4%, transparent);
+    flex-wrap: wrap;
+  }
+  .cmp-matrix__title {
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    margin-right: auto;
+  }
+  .cmp-matrix__count {
+    font-size: 10.5px;
+    color: var(--muted-color);
+    font-weight: 600;
+  }
+  .cmp-matrix__count strong { color: var(--text-color); font-weight: 800; }
+
+  /* ── Filter chips bar ── */
+  .cmp-matrix__filters {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 2%, transparent);
+    flex-wrap: wrap;
+  }
+  .cmp-matrix__filters .label {
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    margin-right: 4px;
+  }
+  .cmp-filter {
+    border: 1px solid var(--border-color);
+    background: var(--surface-bg);
+    color: var(--text-color);
+    border-radius: 999px;
+    padding: 4px 11px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+  }
+  .cmp-filter:hover { border-color: var(--primary-color); }
+  .cmp-filter.active {
+    background: color-mix(in oklab, var(--primary-color) 18%, var(--surface-bg));
+    border-color: var(--primary-color);
+    color: var(--text-color);
+  }
+  .cmp-filter.clear {
+    color: var(--muted-color);
+    border-style: dashed;
+  }
+  .cmp-filter.clear:hover {
+    color: var(--text-color);
+    border-color: var(--text-color);
+  }
+
+  /* ── Table ── */
+  .cmp-matrix__wrap { overflow-x: auto; }
+  .cmp-matrix table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    min-width: 760px;
+  }
+  .cmp-matrix table thead th {
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted-color);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  .cmp-matrix table thead th .swatch {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--c, var(--muted-color));
+    display: inline-block;
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+  .cmp-matrix table thead th.kind-http   { box-shadow: inset 0 -3px 0 0 color-mix(in oklab, #3b82f6 35%, transparent); }
+  .cmp-matrix table thead th.kind-inproc { box-shadow: inset 0 -3px 0 0 color-mix(in oklab, #ec4899 28%, transparent); }
+  .cmp-matrix table thead th[data-fw].col-hidden,
+  .cmp-matrix table tbody td.col-hidden { display: none; }
+
+  /* section bands */
+  .cmp-matrix table tbody tr.section-band td {
+    padding: 9px 12px 6px 12px;
+    background: color-mix(in oklab, var(--muted-color) 5%, transparent);
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    color: var(--muted-color);
+  }
+  .cmp-matrix table tbody tr.section-band:first-child td { border-top: 0; }
+
+  /* body cells */
+  .cmp-matrix table tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid color-mix(in oklab, var(--border-color) 60%, transparent);
+    vertical-align: middle;
+    color: var(--text-color);
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+  .cmp-matrix table tbody tr.data:last-child td { border-bottom: 0; }
+  .cmp-matrix table tbody tr.data:hover td {
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+  }
+
+  /* row name column with copy affordance */
+  .cmp-matrix table tbody td.row-name {
+    font-weight: 600;
+    color: var(--text-color);
+    white-space: nowrap;
+    position: relative;
+  }
+  .cmp-row-copy {
+    border: 0;
+    background: transparent;
+    color: var(--muted-color);
+    margin-left: 6px;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+    font-size: 10px;
+  }
+  .cmp-matrix table tbody tr.data:hover .cmp-row-copy { opacity: 1; }
+  .cmp-row-copy:hover {
+    color: var(--text-color);
+    background: color-mix(in oklab, var(--text-color) 8%, transparent);
+  }
+  .cmp-row-copy.copied { color: #16a34a; opacity: 1; }
+  .cmp-row-copy svg { width: 12px; height: 12px; vertical-align: middle; }
+
+  /* code */
+  .cmp-matrix code {
+    background: color-mix(in oklab, var(--muted-color) 10%, transparent);
+    border-radius: 3px;
+    padding: 0 5px;
+    font-size: 11px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  /* ── Cell category tinting ── */
+  .cmp-tint-http       { background: color-mix(in oklab, #3b82f6 8%, transparent); }
+  .cmp-tint-inproc     { background: color-mix(in oklab, #ec4899 7%, transparent); }
+  .cmp-tint-yes        { background: color-mix(in oklab, #22c55e 9%, transparent); }
+  .cmp-tint-prod       { background: color-mix(in oklab, #f59e0b 11%, transparent); }
+  .cmp-tint-no         { background: color-mix(in oklab, var(--muted-color) 5%, transparent); }
+  .cmp-tint-cli        { background: color-mix(in oklab, #22c55e 9%, transparent); }
+  .cmp-tint-trainer-yes{ background: color-mix(in oklab, #22c55e 9%, transparent); }
+  .cmp-tint-trainer-no { background: color-mix(in oklab, var(--muted-color) 5%, transparent); }
+
+  /* small status pills used in cells */
+  .cmp-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 1px 7px;
+    font-size: 10.5px;
+    font-weight: 700;
+    border-radius: 999px;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+  .cmp-pill.yes  { background: color-mix(in oklab, #22c55e 16%, transparent); color: #16a34a; border: 1px solid color-mix(in oklab, #22c55e 35%, transparent); }
+  .cmp-pill.no   { color: var(--muted-color); border: 1px dashed color-mix(in oklab, var(--muted-color) 50%, transparent); background: transparent; }
+  .cmp-pill.prod { background: color-mix(in oklab, #f59e0b 16%, transparent); color: #b45309; border: 1px solid color-mix(in oklab, #f59e0b 35%, transparent); }
+  .cmp-pill.http { background: color-mix(in oklab, #3b82f6 14%, transparent); color: color-mix(in oklab, #3b82f6 80%, var(--text-color)); border: 1px solid color-mix(in oklab, #3b82f6 30%, transparent); }
+  .cmp-pill.inproc { background: color-mix(in oklab, #ec4899 12%, transparent); color: color-mix(in oklab, #ec4899 80%, var(--text-color)); border: 1px solid color-mix(in oklab, #ec4899 28%, transparent); }
+</style>
+<script>
+(() => {
+  const bootstrap = () => {
+    const scriptEl = document.currentScript;
+    let container = scriptEl ? scriptEl.previousElementSibling : null;
+    if (!(container && container.classList && container.classList.contains('cmp-matrix'))) {
+      const cands = Array.from(document.querySelectorAll('.cmp-matrix'))
+        .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+      container = cands[cands.length - 1] || null;
+    }
+    if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+    container.dataset.mounted = 'true';
+
+    const FRAMEWORKS = [
+      { key:'openenv', name:'OpenEnv',   color:'#3b82f6', kind:'http',   hasTrainer:false, hasCli:true  },
+      { key:'ors',     name:'ORS',       color:'#a855f7', kind:'http',   hasTrainer:false, hasCli:true  },
+      { key:'nemo',    name:'NeMo Gym',  color:'#22c55e', kind:'http',   hasTrainer:true,  hasCli:false },
+      { key:'verifs',  name:'Verifiers', color:'#ec4899', kind:'inproc', hasTrainer:true,  hasCli:true  },
+      { key:'skyrl',   name:'SkyRL Gym', color:'#f59e0b', kind:'inproc', hasTrainer:true,  hasCli:false },
+      { key:'gem',     name:'GEM',       color:'#14b8a6', kind:'inproc', hasTrainer:true,  hasCli:false },
+    ];
+
+    // helpers
+    const code = s => `<code>${s}</code>`;
+    const yesPill = '<span class="cmp-pill yes">Yes</span>';
+    const noPill  = '<span class="cmp-pill no">No</span>';
+    const prodPill = '<span class="cmp-pill prod">For production</span>';
+    const dash = '<span class="cmp-pill no">—</span>';
+    const httpPill = (label) => `<span class="cmp-pill http">${label}</span>`;
+    const inprocPill = '<span class="cmp-pill inproc">In-process</span>';
+
+    // sections + rows
+    const SECTIONS = [
+      {
+        title: 'Identity',
+        rows: [
+          { name: 'Creator', cells: {
+            openenv: 'Meta PyTorch',
+            ors:     'General Reasoning',
+            nemo:    'NVIDIA',
+            verifs:  'PrimeIntellect',
+            skyrl:   'NovaSky · Berkeley',
+            gem:     'Axon-RL',
+          }},
+          { name: 'Type', tint: 'kind', cells: {
+            openenv: httpPill('HTTP · MCP'),
+            ors:     httpPill('HTTP · REST+SSE'),
+            nemo:    httpPill('HTTP · REST'),
+            verifs:  inprocPill,
+            skyrl:   inprocPill,
+            gem:     inprocPill,
+          }},
+          { name: 'Package', cells: {
+            openenv: code('openenv-core'),
+            ors:     code('ors-sdk'),
+            nemo:    code('nemo_gym') + ' (git)',
+            verifs:  code('verifiers'),
+            skyrl:   code('skyrl-gym'),
+            gem:     code('gem-llm'),
+          }},
+          { name: 'Python', cells: {
+            openenv: '≥3.11',
+            ors:     '≥3.10',
+            nemo:    '≥3.12',
+            verifs:  '≥3.11',
+            skyrl:   '≥3.10',
+            gem:     '≥3.10',
+          }},
+        ]
+      },
+      {
+        title: 'API surface',
+        rows: [
+          { name: 'Tool syntax', cells: {
+            openenv: code('@mcp.tool'),
+            ors:     code('@tool') + ' + Pydantic',
+            nemo:    code('app.post()'),
+            verifs:  'Plain functions',
+            skyrl:   code('ToolGroup') + ' methods',
+            gem:     code('ToolEnvWrapper'),
+          }},
+          { name: 'Observation', cells: {
+            openenv: code('str'),
+            ors:     code('ToolOutput(blocks)'),
+            nemo:    code('Response(output)'),
+            verifs:  code('str'),
+            skyrl:   code('BaseTextEnvStepOutput'),
+            gem:     'Gymnasium 5-tuple',
+          }},
+          { name: 'Reward', cells: {
+            openenv: code('Rubric') + ' system',
+            ors:     'Per-tool-call',
+            nemo:    code('/verify') + ' post-ep',
+            verifs:  code('Rubric') + ' system',
+            skyrl:   'External',
+            gem:     'External',
+          }},
+          { name: 'Done signal', cells: {
+            openenv: code('Observation.done'),
+            ors:     code('finished') + ' per call',
+            nemo:    'Post-ep verify',
+            verifs:  code('@vf.stop'),
+            skyrl:   code('done') + ' bool',
+            gem:     code('terminated') + ' + ' + code('truncated'),
+          }},
+        ]
+      },
+      {
+        title: 'Deployment',
+        rows: [
+          { name: 'Deployment', cells: {
+            openenv: 'Docker · HF Spaces',
+            ors:     'Docker · HF Spaces · OpenReward',
+            nemo:    'Docker · HF Spaces',
+            verifs:  'In-process · PrimeIntellect Hub',
+            skyrl:   'In-process',
+            gem:     'In-process',
+          }},
+          { name: 'Docker needed', tint: 'docker', cells: {
+            openenv: prodPill,
+            ors:     prodPill,
+            nemo:    prodPill,
+            verifs:  noPill,
+            skyrl:   noPill,
+            gem:     noPill,
+          }},
+          { name: 'Scales independently', tint: 'scales', cells: {
+            openenv: yesPill,
+            ors:     yesPill,
+            nemo:    yesPill,
+            verifs:  noPill + ' <span style="color:var(--muted-color); font-size:10.5px;">shares training node</span>',
+            skyrl:   noPill,
+            gem:     noPill,
+          }},
+          { name: 'Heavy deps', cells: {
+            openenv: 'FastMCP · Gradio',
+            ors:     'Minimal',
+            nemo:    code('Ray') + ' · OmegaConf',
+            verifs:  'Minimal',
+            skyrl:   'Minimal',
+            gem:     'Minimal',
+          }},
+        ]
+      },
+      {
+        title: 'Tooling',
+        rows: [
+          { name: 'CLI scaffold', tint: 'cli', cells: {
+            openenv: code('openenv init'),
+            ors:     code('orwd init'),
+            nemo:    dash,
+            verifs:  code('prime env init'),
+            skyrl:   dash,
+            gem:     dash,
+          }},
+          { name: 'Built-in envs', cells: {
+            openenv: 'Community on HF Spaces',
+            ors:     '330+ on openreward.ai',
+            nemo:    '50+ (NVIDIA)',
+            verifs:  'Community',
+            skyrl:   'Few',
+            gem:     '24+ (games · math · code)',
+          }},
+          { name: 'Has own trainer', tint: 'trainer', cells: {
+            openenv: noPill,
+            ors:     noPill,
+            nemo:    yesPill,
+            verifs:  yesPill,
+            skyrl:   yesPill,
+            gem:     yesPill,
+          }},
+        ]
+      },
+    ];
+
+    const headerCells = FRAMEWORKS.map(f =>
+      `<th class="kind-${f.kind}" data-fw="${f.key}"><span class="swatch" style="--c:${f.color};"></span>${f.name}</th>`
+    ).join('');
+
+    const tintFor = (rowTint, fw, raw) => {
+      if (rowTint === 'kind') return fw.kind === 'http' ? 'cmp-tint-http' : 'cmp-tint-inproc';
+      if (rowTint === 'docker') return fw.kind === 'http' ? 'cmp-tint-prod' : 'cmp-tint-no';
+      if (rowTint === 'scales') return fw.kind === 'http' ? 'cmp-tint-yes' : 'cmp-tint-no';
+      if (rowTint === 'cli') return fw.hasCli ? 'cmp-tint-cli' : '';
+      if (rowTint === 'trainer') return fw.hasTrainer ? 'cmp-tint-trainer-yes' : 'cmp-tint-trainer-no';
+      return '';
+    };
+
+    const bodyHtml = SECTIONS.map(sec => {
+      const sectionRow = `<tr class="section-band"><td colspan="${FRAMEWORKS.length + 1}">${sec.title}</td></tr>`;
+      const rows = sec.rows.map(r => {
+        const cells = FRAMEWORKS.map(f => {
+          const tint = tintFor(r.tint, f, r.cells[f.key]);
+          return `<td data-fw="${f.key}" class="${tint}">${r.cells[f.key]}</td>`;
+        }).join('');
+        return `
+          <tr class="data" data-row="${r.name}">
+            <td class="row-name">${r.name}<button class="cmp-row-copy" data-copy aria-label="Copy row as Markdown" title="Copy row as Markdown"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></td>
+            ${cells}
+          </tr>
+        `;
+      }).join('');
+      return sectionRow + rows;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="cmp-matrix__head">
+        <span class="cmp-matrix__title">Global comparison matrix · 6 frameworks</span>
+        <span class="cmp-matrix__count"><strong data-visible-count>6</strong> visible</span>
+      </div>
+      <div class="cmp-matrix__filters">
+        <span class="label">Filter</span>
+        <button type="button" class="cmp-filter" data-filter="http">HTTP only</button>
+        <button type="button" class="cmp-filter" data-filter="inproc">In-process only</button>
+        <button type="button" class="cmp-filter" data-filter="trainer">Has own trainer</button>
+        <button type="button" class="cmp-filter" data-filter="nocli">No CLI scaffold</button>
+        <button type="button" class="cmp-filter clear" data-filter="clear">Reset</button>
+      </div>
+      <div class="cmp-matrix__wrap">
+        <table>
+          <thead>
+            <tr><th>Capability</th>${headerCells}</tr>
+          </thead>
+          <tbody>${bodyHtml}</tbody>
+        </table>
+      </div>
+    `;
+
+    // ── Filter logic ──
+    const active = new Set();
+    const matches = (f) => {
+      if (active.has('http') && f.kind !== 'http') return false;
+      if (active.has('inproc') && f.kind !== 'inproc') return false;
+      if (active.has('trainer') && !f.hasTrainer) return false;
+      if (active.has('nocli') && f.hasCli) return false;
+      return true;
+    };
+
+    const applyFilters = () => {
+      let visible = 0;
+      FRAMEWORKS.forEach(f => {
+        const ok = matches(f);
+        if (ok) visible++;
+        container.querySelectorAll(`th[data-fw="${f.key}"], td[data-fw="${f.key}"]`).forEach(el => {
+          el.classList.toggle('col-hidden', !ok);
+        });
+      });
+      container.querySelector('[data-visible-count]').textContent = visible;
+      container.querySelectorAll('.cmp-filter').forEach(b => {
+        const f = b.getAttribute('data-filter');
+        if (f === 'clear') return;
+        b.classList.toggle('active', active.has(f));
+      });
+    };
+
+    container.querySelectorAll('.cmp-filter').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const f = btn.getAttribute('data-filter');
+        if (f === 'clear') {
+          active.clear();
+        } else {
+          // http and inproc are mutually exclusive
+          if (f === 'http' && !active.has('http')) active.delete('inproc');
+          if (f === 'inproc' && !active.has('inproc')) active.delete('http');
+          if (active.has(f)) active.delete(f); else active.add(f);
+        }
+        applyFilters();
+      });
+    });
+
+    // ── Copy row as Markdown ──
+    container.querySelectorAll('[data-copy]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const tr = btn.closest('tr.data');
+        if (!tr) return;
+        const rowName = tr.getAttribute('data-row');
+        const visibleFws = FRAMEWORKS.filter(matches);
+        const headerLine = `| ${rowName} | ` + visibleFws.map(f => f.name).join(' | ') + ' |';
+        const sepLine = `| --- | ` + visibleFws.map(() => '---').join(' | ') + ' |';
+        const valueCell = (key) => {
+          const td = tr.querySelector(`td[data-fw="${key}"]`);
+          if (!td) return '';
+          // strip HTML to a plain markdown-ish string
+          return td.innerText.replace(/\s+/g, ' ').trim();
+        };
+        const valueLine = `|  | ` + visibleFws.map(f => valueCell(f.key)).join(' | ') + ' |';
+        const md = headerLine + '\n' + sepLine + '\n' + valueLine;
+        const flash = () => {
+          btn.classList.add('copied');
+          const orig = btn.innerHTML;
+          btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 13 10 18 19 7"/></svg>';
+          setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = orig; }, 1100);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(md).then(flash).catch(() => {});
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = md; ta.style.position = 'fixed'; ta.style.opacity = '0';
+          document.body.appendChild(ta); ta.select();
+          try { document.execCommand('copy'); flash(); } catch(_) {}
+          document.body.removeChild(ta);
+        }
+      });
+    });
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+  } else {
+    bootstrap();
+  }
+})();
+</script>

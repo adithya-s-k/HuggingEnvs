@@ -1,0 +1,10 @@
+## Why this comparison
+
+There is no standard protocol for how LLMs interact with RL environments yet. Each framework picks its own answer for the same handful of questions, and the answers shape how you write code, how you deploy, and what you have to debug when training breaks. The four that mattered most while we were building the same env six ways:
+
+- **What is an "environment"?** Some frameworks treat it as just a reward function, others include tools, state management, and the full multi-turn loop, others again bundle a whole training pipeline.
+- **Where does it run?** Some run as HTTP servers (Docker, [HF Spaces](https://huggingface.co/spaces)) so the env scales independently from training, others run in-process inside the training venv so there's no network hop but no isolation either.
+- **How much trainer comes with it?** A few frameworks ship their own trainer (Prime RL, NeMo RL, SkyRL); others require adapters to plug into external training loops like [TRL](https://github.com/huggingface/trl).
+- **When does the reward fire?** Per-tool-call, per-step rubric, post-episode verify, or an external scoring function; each makes different assumptions about how dense the signal is and who owns the scoring code.
+
+The rest of this article walks through these and a handful of related questions, framework by framework, with side-by-side code, benchmark numbers, and a decision tree at the end if you just want a recommendation.

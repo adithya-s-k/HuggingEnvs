@@ -1,0 +1,643 @@
+<div class="d3-classical-rl" style="width:100%;margin:14px 0;"></div>
+<style>
+  .d3-classical-rl {
+    position: relative;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-bg);
+    overflow: hidden;
+  }
+  .d3-classical-rl__header {
+    display: flex; flex-wrap: wrap; align-items: center;
+    gap: 14px 18px; padding: 14px 18px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .d3-classical-rl__title {
+    font-size: 11px; font-weight: 800; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--muted-color);
+    margin-right: auto;
+  }
+  .d3-classical-rl__btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 7px;
+    border: 1px solid var(--border-color);
+    background: var(--surface-bg); color: var(--text-color);
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: border-color .12s ease, background .12s ease;
+  }
+  .d3-classical-rl__btn:hover { border-color: var(--primary-color); }
+  .d3-classical-rl__btn.primary {
+    border-color: var(--primary-color);
+    background: color-mix(in oklab, var(--primary-color) 12%, var(--surface-bg));
+  }
+  .d3-classical-rl__btn svg { width: 12px; height: 12px; }
+  .d3-classical-rl__speed {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; color: var(--muted-color);
+  }
+  .d3-classical-rl__speed input[type=range] {
+    width: 110px;
+    accent-color: var(--primary-color);
+  }
+  .d3-classical-rl__speed-val {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--text-color); font-size: 11px;
+    min-width: 38px; text-align: right;
+  }
+
+  /* ─── Body: agent | bus | env ─── */
+  .d3-classical-rl__body {
+    display: grid;
+    grid-template-columns: minmax(200px, 220px) minmax(70px, 90px) 1fr;
+    gap: 0;
+    padding: 16px 18px;
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+  }
+  @media (max-width: 720px) {
+    .d3-classical-rl__body {
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+  }
+
+  .d3-classical-rl__zone {
+    position: relative;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 14px 14px 12px 14px;
+    background: var(--surface-bg);
+    display: flex; flex-direction: column; gap: 8px;
+    transition: box-shadow .25s ease, border-color .25s ease;
+  }
+  .d3-classical-rl__zone-label {
+    position: absolute;
+    top: -9px; left: 12px;
+    padding: 1px 8px;
+    background: var(--surface-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 9.5px; font-weight: 800; letter-spacing: 1.0px;
+    text-transform: uppercase; color: var(--muted-color);
+  }
+  .d3-classical-rl__zone--agent { padding-top: 18px; }
+  .d3-classical-rl__zone--env  { padding: 18px 12px 12px 12px; }
+
+  /* update flash on the agent box */
+  .d3-classical-rl__zone--agent.flash {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary-color) 22%, transparent);
+  }
+
+  .d3-classical-rl__policy {
+    background: color-mix(in oklab, var(--muted-color) 7%, transparent);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--text-color);
+  }
+  .d3-classical-rl__policy-line + .d3-classical-rl__policy-line { margin-top: 2px; }
+  .d3-classical-rl__policy-comment { color: var(--muted-color); font-size: 10.5px; }
+
+  .d3-classical-rl__action-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 11px; color: var(--muted-color);
+  }
+  .d3-classical-rl__action-tag {
+    display: inline-flex; align-items: center;
+    padding: 3px 9px; border-radius: 999px;
+    font-size: 11px; font-weight: 700;
+    background: color-mix(in oklab, var(--primary-color) 16%, transparent);
+    color: var(--primary-color);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .d3-classical-rl__counters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 10px;
+    font-size: 11px;
+    margin-top: auto;
+    padding-top: 6px;
+    border-top: 1px dashed var(--border-color);
+  }
+  .d3-classical-rl__counter {
+    display: flex; justify-content: space-between;
+    color: var(--muted-color);
+  }
+  .d3-classical-rl__counter strong {
+    color: var(--text-color);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-weight: 600;
+  }
+
+  /* Bus between agent and env (animated arrows) */
+  .d3-classical-rl__bus {
+    position: relative;
+  }
+  .d3-classical-rl__bus svg { width: 100%; height: 100%; display: block; }
+  .d3-classical-rl__bus-label {
+    fill: var(--muted-color);
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+  @media (max-width: 720px) {
+    .d3-classical-rl__bus { display: none; }
+  }
+
+  /* Environment zone — canvas inside */
+  .d3-classical-rl__stage {
+    position: relative;
+    aspect-ratio: 9 / 4;
+    border-radius: 6px;
+    overflow: hidden;
+    background: color-mix(in oklab, var(--muted-color) 4%, transparent);
+  }
+  .d3-classical-rl__stage canvas {
+    display: block; width: 100%; height: 100%;
+  }
+  .d3-classical-rl__env-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px 12px;
+    font-size: 11px;
+  }
+  .d3-classical-rl__stat {
+    display: flex; justify-content: space-between;
+    color: var(--muted-color);
+  }
+  .d3-classical-rl__stat strong {
+    color: var(--text-color);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-weight: 600;
+  }
+
+  .d3-classical-rl__caption {
+    padding: 10px 18px;
+    border-top: 1px solid var(--border-color);
+    font-size: 11.5px;
+    color: var(--muted-color);
+    font-style: italic;
+  }
+
+  /* Reward burst that floats out of the env box on each successful step */
+  @keyframes cprl-reward-burst {
+    0%   { opacity: 0; transform: translateY(-4px); }
+    20%  { opacity: 1; transform: translateY(-12px); }
+    100% { opacity: 0; transform: translateY(-30px); }
+  }
+  .d3-classical-rl__reward-burst {
+    position: absolute;
+    top: -8px; right: 10px;
+    color: #22c55e;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10.5px; font-weight: 800;
+    pointer-events: none;
+    animation: cprl-reward-burst .9s ease-out forwards;
+  }
+</style>
+<script>
+  (() => {
+    const bootstrap = () => {
+      const scriptEl = document.currentScript;
+      let container = scriptEl ? scriptEl.previousElementSibling : null;
+      if (!(container && container.classList && container.classList.contains('d3-classical-rl'))) {
+        const cands = Array.from(document.querySelectorAll('.d3-classical-rl'))
+          .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+        container = cands[cands.length - 1] || null;
+      }
+      if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+      container.dataset.mounted = 'true';
+
+      container.innerHTML = `
+        <div class="d3-classical-rl__header">
+          <div class="d3-classical-rl__title">Classical RL · CartPole</div>
+          <button type="button" class="d3-classical-rl__btn primary" data-act="play">
+            <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>
+            <span data-label>Play</span>
+          </button>
+          <button type="button" class="d3-classical-rl__btn" data-act="reset">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M21 3v5h-5"/>
+            </svg>
+            <span>Reset</span>
+          </button>
+          <label class="d3-classical-rl__speed">
+            Speed
+            <input type="range" min="0.05" max="2" step="0.05" value="0.1" data-act="speed">
+            <span class="d3-classical-rl__speed-val" data-speed-val>0.10×</span>
+          </label>
+        </div>
+
+        <div class="d3-classical-rl__body">
+          <div class="d3-classical-rl__zone d3-classical-rl__zone--agent" data-agent>
+            <span class="d3-classical-rl__zone-label">Agent · Policy</span>
+            <div class="d3-classical-rl__policy">
+              <div class="d3-classical-rl__policy-line">a = sign(θ + 0.5·ω</div>
+              <div class="d3-classical-rl__policy-line">      + 0.05·x + 0.10·v)</div>
+              <div class="d3-classical-rl__policy-line d3-classical-rl__policy-comment">// hand-coded PD controller</div>
+            </div>
+            <div class="d3-classical-rl__action-row">
+              <span>last action</span>
+              <span data-stat="action"><span class="d3-classical-rl__action-tag">← left</span></span>
+            </div>
+            <div class="d3-classical-rl__counters">
+              <span class="d3-classical-rl__counter"><span>steps</span><strong data-stat="step">0</strong></span>
+              <span class="d3-classical-rl__counter"><span>reward</span><strong data-stat="reward">+0</strong></span>
+              <span class="d3-classical-rl__counter"><span>episodes</span><strong data-stat="episodes">0</strong></span>
+              <span class="d3-classical-rl__counter"><span>updates</span><strong data-stat="updates">0</strong></span>
+            </div>
+          </div>
+
+          <div class="d3-classical-rl__bus" data-bus>
+            <svg viewBox="0 0 100 280" preserveAspectRatio="none">
+              <defs>
+                <!-- Single right-pointing arrowhead. orient="auto" rotates it to match
+                     each line's direction at the end, so a line going left will get
+                     a left-pointing arrowhead automatically. -->
+                <marker id="cprl-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                  <path d="M0,0 L10,5 L0,10 Z" fill="currentColor"/>
+                </marker>
+              </defs>
+              <!-- Action: agent → env (line goes right) -->
+              <g class="cprl-bus-action" data-bus-action style="color: var(--muted-color);">
+                <line x1="6" y1="80" x2="92" y2="80" stroke="currentColor" stroke-width="1.4" marker-end="url(#cprl-arrow)"/>
+                <text class="d3-classical-rl__bus-label" x="50" y="68" text-anchor="middle">action</text>
+              </g>
+              <!-- State + reward: env → agent (line goes left) -->
+              <g class="cprl-bus-state" data-bus-state style="color: var(--muted-color);">
+                <line x1="92" y1="180" x2="6" y2="180" stroke="currentColor" stroke-width="1.4" marker-end="url(#cprl-arrow)"/>
+                <text class="d3-classical-rl__bus-label" x="50" y="170" text-anchor="middle">state · reward</text>
+              </g>
+            </svg>
+          </div>
+
+          <div class="d3-classical-rl__zone d3-classical-rl__zone--env">
+            <span class="d3-classical-rl__zone-label">Environment · CartPole physics</span>
+            <div class="d3-classical-rl__stage" data-stage></div>
+            <div class="d3-classical-rl__env-stats">
+              <span class="d3-classical-rl__stat"><span>cart x</span><strong data-stat="x">0.00 m</strong></span>
+              <span class="d3-classical-rl__stat"><span>cart v</span><strong data-stat="v">0.00 m/s</strong></span>
+              <span class="d3-classical-rl__stat"><span>pole θ</span><strong data-stat="theta">0.000 rad</strong></span>
+              <span class="d3-classical-rl__stat"><span>pole ω</span><strong data-stat="omega">0.000 rad/s</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="d3-classical-rl__caption">
+          One full RL loop: the agent reads the state, the policy picks a discrete action (push
+          left or right), the environment ticks one physics step and returns the next state plus a
+          reward of +1 for every step the pole stays upright. When an episode ends the policy
+          would be updated from the collected return — shown here as the agent box flashing.
+          Physics and bounds match the
+          <a href="https://gymnasium.farama.org/environments/classic_control/cart_pole/" target="_blank" rel="noopener" style="color: var(--primary-color); text-decoration: none;">OpenAI Gymnasium CartPole-v1</a>
+          spec.
+        </div>
+      `;
+
+      const stage = container.querySelector('[data-stage]');
+      const canvas = document.createElement('canvas');
+      stage.appendChild(canvas);
+      const ctx = canvas.getContext('2d');
+
+      const playBtn = container.querySelector('[data-act="play"]');
+      const playLabel = container.querySelector('[data-label]');
+      const resetBtn = container.querySelector('[data-act="reset"]');
+      const speedInput = container.querySelector('[data-act="speed"]');
+      const speedVal = container.querySelector('[data-speed-val]');
+      const agentBox = container.querySelector('[data-agent]');
+      const busAction = container.querySelector('[data-bus-action]');
+      const busState = container.querySelector('[data-bus-state]');
+      const envStage = stage;
+
+      const statEls = {
+        x: container.querySelector('[data-stat="x"]'),
+        v: container.querySelector('[data-stat="v"]'),
+        theta: container.querySelector('[data-stat="theta"]'),
+        omega: container.querySelector('[data-stat="omega"]'),
+        action: container.querySelector('[data-stat="action"]'),
+        step: container.querySelector('[data-stat="step"]'),
+        reward: container.querySelector('[data-stat="reward"]'),
+        episodes: container.querySelector('[data-stat="episodes"]'),
+        updates: container.querySelector('[data-stat="updates"]')
+      };
+
+      // ─── Physics (CartPole-v1) ───
+      const G = 9.8, MC = 1.0, MP = 0.1, TOTAL_M = MC + MP;
+      const L = 0.5, POLEMASS_LENGTH = MP * L, FORCE_MAG = 10.0;
+      const TAU = 0.02;
+      const X_LIMIT = 2.4;
+      const THETA_LIMIT = 12 * Math.PI / 180;
+
+      let state = { x: 0, v: 0, theta: 0, omega: 0 };
+      let prevAction = +1;
+      let action = +1;
+      let stepCount = 0;
+      let reward = 0;
+      let episodes = 0;
+      let updates = 0;
+      let running = false;
+      let speed = 0.1;
+      let lastFrameMs = 0;
+      let physicsAcc = 0;
+      let endHoldFrames = 0;
+
+      // Animation pulses for the bus arrows
+      let actionPulse = 0;     // ms remaining
+      let statePulse = 0;
+      const PULSE_MS = 220;
+
+      const reset = () => {
+        state = {
+          x: (Math.random() - 0.5) * 0.1,
+          v: (Math.random() - 0.5) * 0.1,
+          theta: (Math.random() - 0.5) * 0.06,
+          omega: (Math.random() - 0.5) * 0.06
+        };
+        stepCount = 0;
+        reward = 0;
+        prevAction = action;
+        action = state.theta > 0 ? +1 : -1;
+        physicsAcc = 0;
+        endHoldFrames = 0;
+      };
+
+      const policy = (s) => {
+        const score = 1.0 * s.theta + 0.5 * s.omega + 0.05 * s.x + 0.10 * s.v;
+        return score > 0 ? +1 : -1;
+      };
+
+      const tickPhysics = () => {
+        if (endHoldFrames > 0) {
+          endHoldFrames -= 1;
+          if (endHoldFrames === 0) {
+            // simulate a "policy update" event at episode end
+            episodes += 1;
+            updates += 1;
+            agentBox.classList.add('flash');
+            setTimeout(() => agentBox.classList.remove('flash'), 700);
+            reset();
+          }
+          return;
+        }
+        const force = action * FORCE_MAG;
+        const sinT = Math.sin(state.theta);
+        const cosT = Math.cos(state.theta);
+        const temp = (force + POLEMASS_LENGTH * state.omega * state.omega * sinT) / TOTAL_M;
+        const thetaAcc = (G * sinT - cosT * temp) / (L * (4.0 / 3.0 - MP * cosT * cosT / TOTAL_M));
+        const xAcc = temp - POLEMASS_LENGTH * thetaAcc * cosT / TOTAL_M;
+
+        state.x += TAU * state.v;
+        state.v += TAU * xAcc;
+        state.theta += TAU * state.omega;
+        state.omega += TAU * thetaAcc;
+        stepCount += 1;
+        reward += 1;
+
+        // pulse the "state · reward" arrow on every step
+        statePulse = PULSE_MS;
+        // reward burst inside env box
+        spawnRewardBurst();
+
+        // pick next action; if it changed, pulse the "action" arrow
+        prevAction = action;
+        action = policy(state);
+        if (action !== prevAction) actionPulse = PULSE_MS;
+
+        if (Math.abs(state.x) > X_LIMIT || Math.abs(state.theta) > THETA_LIMIT) {
+          endHoldFrames = 30;
+        }
+      };
+
+      // ─── Reward burst inside env box ───
+      let lastBurstAt = 0;
+      const spawnRewardBurst = () => {
+        const now = performance.now();
+        // don't spam — minimum 200ms between bursts
+        if (now - lastBurstAt < 200) return;
+        lastBurstAt = now;
+        const burst = document.createElement('div');
+        burst.className = 'd3-classical-rl__reward-burst';
+        burst.textContent = '+1';
+        envStage.appendChild(burst);
+        setTimeout(() => burst.remove(), 900);
+      };
+
+      // ─── Drawing ───
+      const TRACK_FRAC = 0.78;
+      const TRACK_Y_FRAC = 0.78;
+      const CART_HEIGHT = 30;
+      const CART_WIDTH = 60;
+      const POLE_PIXELS = 92;
+      let widthPx = 0, heightPx = 0;
+      let dpr = Math.max(1, window.devicePixelRatio || 1);
+
+      const computeLayout = () => {
+        const rect = stage.getBoundingClientRect();
+        widthPx = Math.max(1, Math.round(rect.width));
+        heightPx = Math.max(1, Math.round(rect.height));
+        dpr = Math.max(1, window.devicePixelRatio || 1);
+        canvas.style.width = widthPx + 'px';
+        canvas.style.height = heightPx + 'px';
+        canvas.width = Math.round(widthPx * dpr);
+        canvas.height = Math.round(heightPx * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      };
+
+      const cssVar = (name) => {
+        const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        return v || '#888';
+      };
+
+      function roundedRect(c, x, y, w, h, r) {
+        c.beginPath();
+        c.moveTo(x + r, y);
+        c.lineTo(x + w - r, y);
+        c.quadraticCurveTo(x + w, y, x + w, y + r);
+        c.lineTo(x + w, y + h - r);
+        c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        c.lineTo(x + r, y + h);
+        c.quadraticCurveTo(x, y + h, x, y + h - r);
+        c.lineTo(x, y + r);
+        c.quadraticCurveTo(x, y, x + r, y);
+        c.closePath();
+      }
+
+      const draw = () => {
+        if (!widthPx || !heightPx) return;
+        ctx.clearRect(0, 0, widthPx, heightPx);
+
+        const text = cssVar('--text-color');
+        const muted = cssVar('--muted-color');
+        const border = cssVar('--border-color');
+        const primary = cssVar('--primary-color') || '#6D4AFF';
+        const surface = cssVar('--surface-bg');
+
+        const trackY = Math.round(heightPx * TRACK_Y_FRAC);
+        const trackHalfW = (widthPx * TRACK_FRAC) / 2;
+        const trackLeft = widthPx / 2 - trackHalfW;
+        const trackRight = widthPx / 2 + trackHalfW;
+
+        ctx.lineWidth = 2; ctx.strokeStyle = border;
+        ctx.beginPath(); ctx.moveTo(trackLeft, trackY); ctx.lineTo(trackRight, trackY); ctx.stroke();
+
+        ctx.lineWidth = 1; ctx.strokeStyle = muted; ctx.globalAlpha = 0.5;
+        [trackLeft, widthPx / 2, trackRight].forEach(tx => {
+          ctx.beginPath(); ctx.moveTo(tx, trackY - 5); ctx.lineTo(tx, trackY + 5); ctx.stroke();
+        });
+        ctx.globalAlpha = 1;
+
+        const cartCx = widthPx / 2 + (state.x / X_LIMIT) * trackHalfW;
+        const cartTop = trackY - CART_HEIGHT;
+        const cartLeft = cartCx - CART_WIDTH / 2;
+
+        ctx.fillStyle = surface; ctx.strokeStyle = text; ctx.lineWidth = 1.5;
+        roundedRect(ctx, cartLeft, cartTop, CART_WIDTH, CART_HEIGHT, 4);
+        ctx.fill(); ctx.stroke();
+
+        ctx.fillStyle = text;
+        ctx.beginPath(); ctx.arc(cartCx, cartTop, 2.5, 0, Math.PI * 2); ctx.fill();
+
+        const tilt = Math.min(1, Math.abs(state.theta) / THETA_LIMIT);
+        const poleColor = tilt > 0.65 ? '#ef4444' : (tilt > 0.35 ? '#f59e0b' : primary);
+        ctx.strokeStyle = poleColor; ctx.lineWidth = 5; ctx.lineCap = 'round';
+        const tipX = cartCx + Math.sin(state.theta) * POLE_PIXELS;
+        const tipY = cartTop - Math.cos(state.theta) * POLE_PIXELS;
+        ctx.beginPath(); ctx.moveTo(cartCx, cartTop); ctx.lineTo(tipX, tipY); ctx.stroke();
+        ctx.lineCap = 'butt';
+
+        // Force arrow under cart
+        if (running && endHoldFrames === 0) {
+          const arrowLen = 26;
+          const ax0 = cartCx, ax1 = cartCx + action * arrowLen;
+          const ay = trackY + 14;
+          ctx.strokeStyle = primary; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(ax0, ay); ctx.lineTo(ax1, ay); ctx.stroke();
+          ctx.fillStyle = primary;
+          const hd = action > 0 ? 1 : -1;
+          ctx.beginPath();
+          ctx.moveTo(ax1 + hd * 5, ay);
+          ctx.lineTo(ax1, ay - 3.5);
+          ctx.lineTo(ax1, ay + 3.5);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        // End-of-episode flash
+        if (endHoldFrames > 0) {
+          const flash = endHoldFrames / 30;
+          ctx.fillStyle = `rgba(239, 68, 68, ${0.10 * flash})`;
+          ctx.fillRect(0, 0, widthPx, heightPx);
+        }
+      };
+
+      const updateBus = (dtMs) => {
+        actionPulse = Math.max(0, actionPulse - dtMs);
+        statePulse = Math.max(0, statePulse - dtMs);
+        const primary = cssVar('--primary-color') || '#6D4AFF';
+        const muted = cssVar('--muted-color');
+        const aActive = actionPulse > 0;
+        const sActive = statePulse > 0;
+        busAction.style.color = aActive ? primary : muted;
+        busState.style.color = sActive ? '#22c55e' : muted;
+        busAction.querySelector('line').setAttribute('stroke-width', aActive ? '2.4' : '1.4');
+        busState.querySelector('line').setAttribute('stroke-width', sActive ? '2.4' : '1.4');
+      };
+
+      const updateStats = () => {
+        statEls.x.textContent = state.x.toFixed(2) + ' m';
+        statEls.v.textContent = state.v.toFixed(2) + ' m/s';
+        statEls.theta.textContent = state.theta.toFixed(3) + ' rad';
+        statEls.omega.textContent = state.omega.toFixed(3) + ' rad/s';
+        statEls.step.textContent = String(stepCount);
+        statEls.reward.textContent = '+' + reward;
+        statEls.episodes.textContent = String(episodes);
+        statEls.updates.textContent = String(updates);
+        statEls.action.innerHTML = `<span class="d3-classical-rl__action-tag">${action > 0 ? 'right →' : '← left'}</span>`;
+      };
+
+      const updatePlayBtn = () => {
+        playLabel.textContent = running ? 'Pause' : 'Play';
+        playBtn.classList.toggle('primary', !running);
+        const svgEl = playBtn.querySelector('svg');
+        svgEl.innerHTML = running
+          ? '<rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/>'
+          : '<polygon points="6,4 20,12 6,20" fill="currentColor"/>';
+      };
+
+      // ─── Animation loop ───
+      let rafId = null;
+      const tick = () => {
+        if (!running) { rafId = null; return; }
+        const now = performance.now();
+        const dtMs = Math.min(50, now - lastFrameMs);
+        lastFrameMs = now;
+        physicsAcc += (dtMs / 1000) * speed;
+        let safety = 8;
+        while (physicsAcc >= TAU && safety-- > 0) {
+          tickPhysics();
+          physicsAcc -= TAU;
+        }
+        draw();
+        updateBus(dtMs);
+        updateStats();
+        rafId = window.requestAnimationFrame(tick);
+      };
+
+      // ─── Wire controls ───
+      playBtn.addEventListener('click', () => {
+        running = !running;
+        updatePlayBtn();
+        if (running) {
+          lastFrameMs = performance.now();
+          rafId = window.requestAnimationFrame(tick);
+        }
+      });
+      resetBtn.addEventListener('click', () => {
+        running = false;
+        if (rafId) window.cancelAnimationFrame(rafId);
+        rafId = null;
+        updatePlayBtn();
+        episodes = 0; updates = 0;
+        reset();
+        draw();
+        updateBus(0);
+        updateStats();
+      });
+      speedInput.addEventListener('input', () => {
+        speed = parseFloat(speedInput.value);
+        speedVal.textContent = speed.toFixed(2) + '×';
+      });
+
+      computeLayout();
+      reset();
+      draw();
+      updateBus(0);
+      updateStats();
+
+      const ro = new ResizeObserver(() => {
+        computeLayout();
+        draw();
+      });
+      ro.observe(stage);
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden && rafId) {
+          window.cancelAnimationFrame(rafId); rafId = null;
+        } else if (!document.hidden && running && !rafId) {
+          lastFrameMs = performance.now();
+          rafId = window.requestAnimationFrame(tick);
+        }
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+    } else {
+      bootstrap();
+    }
+  })();
+</script>

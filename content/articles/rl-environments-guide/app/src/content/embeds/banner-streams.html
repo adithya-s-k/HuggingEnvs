@@ -1,0 +1,399 @@
+<div class="d3-streams" style="width:100%;margin:10px 0;aspect-ratio:3/1;min-height:260px;"></div>
+<style>
+  .d3-streams { position: relative; }
+  .d3-streams canvas { display: block; width: 100%; height: 100%; }
+  .d3-streams .d3-tooltip {
+    position: absolute;
+    top: 0; left: 0;
+    transform: translate(-9999px, -9999px);
+    pointer-events: none;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    line-height: 1.35;
+    border: 1px solid var(--border-color);
+    background: var(--surface-bg);
+    color: var(--text-color);
+    box-shadow: 0 8px 32px rgba(0,0,0,.28), 0 2px 8px rgba(0,0,0,.12);
+    opacity: 0;
+    transition: opacity .12s ease;
+    backdrop-filter: saturate(1.12) blur(8px);
+    z-index: 20;
+  }
+  .d3-streams .d3-tooltip__inner {
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 200px;
+  }
+</style>
+<script>
+  (() => {
+    const ensureD3 = (cb) => {
+      if (window.d3 && typeof window.d3.select === 'function') return cb();
+      let s = document.getElementById('d3-cdn-script');
+      if (!s) {
+        s = document.createElement('script');
+        s.id = 'd3-cdn-script';
+        s.src = 'https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js';
+        document.head.appendChild(s);
+      }
+      const onReady = () => { if (window.d3 && typeof window.d3.select === 'function') cb(); };
+      s.addEventListener('load', onReady, { once: true });
+      if (window.d3) onReady();
+    };
+
+    const bootstrap = () => {
+      const scriptEl = document.currentScript;
+      let container = scriptEl ? scriptEl.previousElementSibling : null;
+      if (!(container && container.classList && container.classList.contains('d3-streams'))) {
+        const candidates = Array.from(document.querySelectorAll('.d3-streams'))
+          .filter((el) => !(el.dataset && el.dataset.mounted === 'true'));
+        container = candidates[candidates.length - 1] || null;
+      }
+      if (!container) return;
+      if (container.dataset) {
+        if (container.dataset.mounted === 'true') return;
+        container.dataset.mounted = 'true';
+      }
+
+      container.style.position = container.style.position || 'relative';
+
+      // Tooltip
+      let tip = container.querySelector('.d3-tooltip');
+      let tipInner;
+      if (!tip) {
+        tip = document.createElement('div');
+        tip.className = 'd3-tooltip';
+        tipInner = document.createElement('div');
+        tipInner.className = 'd3-tooltip__inner';
+        tip.appendChild(tipInner);
+        container.appendChild(tip);
+      } else {
+        tipInner = tip.querySelector('.d3-tooltip__inner') || tip;
+      }
+
+      // Canvas
+      const canvas = document.createElement('canvas');
+      canvas.style.cursor = 'crosshair';
+      container.appendChild(canvas);
+      const ctx = canvas.getContext('2d');
+
+      // Colors — match galaxy banner exactly
+      const c0 = d3.rgb(78, 165, 183);
+      const c1 = d3.rgb(206, 192, 250);
+      const c2 = d3.rgb(232, 137, 171);
+      const interp01 = d3.interpolateRgb(c0, c1);
+      const interp12 = d3.interpolateRgb(c1, c2);
+      const colorFor = (v) => {
+        const t = Math.max(0, Math.min(1, v));
+        return t <= 0.5 ? interp01(t / 0.5) : interp12((t - 0.5) / 0.5);
+      };
+
+      const TOOL_NAMES = ['exec_code', 'search', 'final_answer', 'plot', 'read_file'];
+
+      // Lane geometry
+      const LANE_HEIGHT = 8; // px between lanes
+      const TAIL_LENGTH = 12;
+      const FADE_FRAMES = 12;
+      const GLOW_FRAMES = 6;
+
+      let width = 0, height = 0, dpr = window.devicePixelRatio || 1;
+      let laneCount = 0;
+      let lanes = [];
+      let rolloutCounter = 0;
+      let hoverIdx = -1;
+      let rafId = null;
+      let frame = 0;
+      let stopped = false;
+
+      const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      const rand = (a, b) => a + Math.random() * (b - a);
+      const randInt = (a, b) => Math.floor(rand(a, b + 1));
+
+      function makeLane(initialProgress) {
+        const numCalls = randInt(3, 6);
+        const calls = [];
+        const callNames = [];
+        for (let k = 0; k < numCalls; k++) {
+          calls.push(rand(0.06, 0.94));
+          callNames.push(TOOL_NAMES[randInt(0, TOOL_NAMES.length - 1)]);
+        }
+        calls.sort((a, b) => a - b);
+        return {
+          id: ++rolloutCounter,
+          progress: initialProgress != null ? initialProgress : Math.random(),
+          velocity: rand(0.0012, 0.0042),
+          tail: [],
+          toolCalls: calls,
+          toolNames: callNames,
+          glowFrames: new Array(numCalls).fill(0),
+          callsTriggered: 0,
+          fade: 0,
+          fading: false,
+          alphaIn: Math.min(1, (initialProgress != null ? initialProgress : 0) * 6 + 0.2)
+        };
+      }
+
+      function rebuildLanes(prevLanes, newCount) {
+        const next = [];
+        // proportionally remap existing lanes
+        if (prevLanes && prevLanes.length) {
+          const oldCount = prevLanes.length;
+          for (let i = 0; i < newCount; i++) {
+            const srcIdx = Math.min(oldCount - 1, Math.floor((i / newCount) * oldCount));
+            next.push(prevLanes[srcIdx] || makeLane());
+          }
+        } else {
+          for (let i = 0; i < newCount; i++) {
+            // Stagger initial progress
+            next.push(makeLane((i / Math.max(1, newCount)) * 0.95 + Math.random() * 0.05));
+          }
+        }
+        return next;
+      }
+
+      function resize() {
+        const cw = container.clientWidth || 800;
+        const ch = container.clientHeight || Math.max(260, Math.round(cw / 3));
+        dpr = window.devicePixelRatio || 1;
+        width = cw;
+        height = ch;
+        canvas.width = Math.round(cw * dpr);
+        canvas.height = Math.round(ch * dpr);
+        canvas.style.width = cw + 'px';
+        canvas.style.height = ch + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        const newCount = Math.max(8, Math.floor(ch / LANE_HEIGHT));
+        if (newCount !== laneCount) {
+          lanes = rebuildLanes(lanes, newCount);
+          laneCount = newCount;
+        }
+      }
+
+      function isDark() {
+        return document.documentElement.getAttribute('data-theme') === 'dark';
+      }
+
+      function step() {
+        for (let i = 0; i < lanes.length; i++) {
+          const lane = lanes[i];
+          if (lane.fading) {
+            lane.fade++;
+            if (lane.fade >= FADE_FRAMES) {
+              lanes[i] = makeLane(0);
+            }
+            continue;
+          }
+          // alpha-in fade for newly spawned
+          if (lane.alphaIn < 1) lane.alphaIn = Math.min(1, lane.alphaIn + 0.06);
+
+          const prevProgress = lane.progress;
+          lane.progress += lane.velocity;
+
+          // Trigger glow when crossing tool-call points
+          for (let k = 0; k < lane.toolCalls.length; k++) {
+            const tc = lane.toolCalls[k];
+            if (prevProgress < tc && lane.progress >= tc) {
+              lane.glowFrames[k] = GLOW_FRAMES;
+              lane.callsTriggered = Math.max(lane.callsTriggered, k + 1);
+            }
+            if (lane.glowFrames[k] > 0) lane.glowFrames[k]--;
+          }
+
+          // Tail
+          lane.tail.push(lane.progress);
+          if (lane.tail.length > TAIL_LENGTH) lane.tail.shift();
+
+          if (lane.progress >= 1.0) {
+            lane.fading = true;
+          }
+        }
+      }
+
+      function drawFrame() {
+        const dark = isDark();
+
+        // Motion-blur fill
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = dark ? 'rgba(0,0,0,0.10)' : 'rgba(255,255,255,0.10)';
+        ctx.fillRect(0, 0, width, height);
+
+        // Composite mode for glow
+        ctx.globalCompositeOperation = dark ? 'lighter' : 'source-over';
+
+        for (let i = 0; i < lanes.length; i++) {
+          const lane = lanes[i];
+          const y = (i + 0.5) * (height / lanes.length);
+          const isHover = hoverIdx === i;
+
+          let laneAlpha = lane.alphaIn;
+          if (lane.fading) {
+            laneAlpha *= 1 - (lane.fade / FADE_FRAMES);
+          }
+          if (laneAlpha <= 0.001) continue;
+
+          const baseColor = colorFor(lane.progress);
+          const colObj = d3.rgb(baseColor);
+
+          // Tail
+          const tailLen = lane.tail.length;
+          if (tailLen > 1) {
+            ctx.lineWidth = isHover ? 2.2 : 1.0;
+            ctx.lineCap = 'round';
+            for (let k = 1; k < tailLen; k++) {
+              const t0 = lane.tail[k - 1];
+              const t1 = lane.tail[k];
+              const seg = k / tailLen; // 0 → 1 (tip is 1)
+              const segAlpha = laneAlpha * seg * (isHover ? 1.0 : 0.75);
+              const col = colorFor(t1);
+              const cobj = d3.rgb(col);
+              ctx.strokeStyle = `rgba(${cobj.r},${cobj.g},${cobj.b},${segAlpha.toFixed(3)})`;
+              ctx.beginPath();
+              ctx.moveTo(t0 * width, y);
+              ctx.lineTo(t1 * width, y);
+              ctx.stroke();
+            }
+          }
+
+          // Tool-call markers
+          for (let k = 0; k < lane.toolCalls.length; k++) {
+            const tc = lane.toolCalls[k];
+            const px = tc * width;
+            // Only draw if reached or upcoming (subtle for upcoming)
+            const reached = lane.progress >= tc;
+            const dotAlpha = laneAlpha * (reached ? 0.9 : 0.25) * (isHover ? 1.0 : 0.85);
+            ctx.fillStyle = `rgba(${colObj.r},${colObj.g},${colObj.b},${dotAlpha.toFixed(3)})`;
+            ctx.beginPath();
+            ctx.arc(px, y, isHover ? 4.0 : 3.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Glow pulse
+            const gf = lane.glowFrames[k];
+            if (gf > 0) {
+              const glowT = gf / GLOW_FRAMES; // 1 → 0
+              const glowR = 3.5 + (1 - glowT) * 6;
+              const glowA = laneAlpha * 0.55 * glowT;
+              ctx.fillStyle = `rgba(${colObj.r},${colObj.g},${colObj.b},${glowA.toFixed(3)})`;
+              ctx.beginPath();
+              ctx.arc(px, y, glowR, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+
+          // Lead particle
+          const leadX = lane.progress * width;
+          const leadAlpha = laneAlpha * (isHover ? 1.0 : 0.95);
+          ctx.fillStyle = `rgba(${colObj.r},${colObj.g},${colObj.b},${leadAlpha.toFixed(3)})`;
+          ctx.beginPath();
+          ctx.arc(leadX, y, isHover ? 2.6 : 2.0, 0, Math.PI * 2);
+          ctx.fill();
+
+          if (isHover) {
+            // Bright halo on hover
+            ctx.fillStyle = `rgba(${colObj.r},${colObj.g},${colObj.b},${(laneAlpha * 0.4).toFixed(3)})`;
+            ctx.beginPath();
+            ctx.arc(leadX, y, 5.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        ctx.globalCompositeOperation = 'source-over';
+      }
+
+      function loop() {
+        if (stopped) return;
+        frame++;
+        step();
+        drawFrame();
+        rafId = requestAnimationFrame(loop);
+      }
+
+      function staticFrame() {
+        // For reduced-motion: draw all lanes with frozen progress
+        ctx.fillStyle = isDark() ? 'rgb(0,0,0)' : 'rgb(255,255,255)';
+        ctx.fillRect(0, 0, width, height);
+        for (let i = 0; i < lanes.length; i++) {
+          const lane = lanes[i];
+          // Freeze tail by faking it
+          lane.tail = [];
+          for (let k = 0; k < TAIL_LENGTH; k++) {
+            const t = Math.max(0, lane.progress - (TAIL_LENGTH - k) * lane.velocity * 1.2);
+            lane.tail.push(t);
+          }
+        }
+        drawFrame();
+      }
+
+      // Hover handling
+      function updateTooltip(mx, my) {
+        if (lanes.length === 0) return;
+        const idx = Math.max(0, Math.min(lanes.length - 1, Math.floor((my / height) * lanes.length)));
+        hoverIdx = idx;
+        const lane = lanes[idx];
+        if (!lane) { tip.style.opacity = '0'; return; }
+        const lastName = lane.callsTriggered > 0
+          ? lane.toolNames[Math.min(lane.callsTriggered - 1, lane.toolNames.length - 1)]
+          : '—';
+        const stepNum = Math.floor(lane.progress * 100);
+        tipInner.innerHTML =
+          `<div style="font-weight:800;letter-spacing:.1px;"><strong>Rollout #${lane.id}</strong></div>` +
+          `<div style="font-size:11px;color:var(--muted-color);margin-top:-4px;margin-bottom:2px;letter-spacing:.1px;"><strong>Status</strong> ${lane.fading ? 'completing' : 'running'}</div>` +
+          `<div style="padding-top:6px;border-top:1px solid var(--border-color);"><strong>Step</strong> ${stepNum} · <strong>Progress</strong> ${(lane.progress * 100).toFixed(0)}%</div>` +
+          `<div><strong>Tool calls so far</strong> ${lane.callsTriggered} / ${lane.toolCalls.length}</div>` +
+          `<div><strong>Last tool</strong> <code style="font-family:ui-monospace,Menlo,monospace;">${lastName}</code></div>`;
+        tip.style.opacity = '1';
+        const offsetX = 12, offsetY = 14;
+        let tx = mx + offsetX, ty = my + offsetY;
+        // Clamp inside container
+        const tw = tip.offsetWidth || 220, th = tip.offsetHeight || 100;
+        if (tx + tw > width) tx = mx - tw - offsetX;
+        if (ty + th > height) ty = my - th - offsetY;
+        tip.style.transform = `translate(${Math.round(tx)}px, ${Math.round(ty)}px)`;
+      }
+
+      canvas.addEventListener('mousemove', (ev) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = ev.clientX - rect.left;
+        const my = ev.clientY - rect.top;
+        updateTooltip(mx, my);
+      });
+      canvas.addEventListener('mouseleave', () => {
+        hoverIdx = -1;
+        tip.style.opacity = '0';
+        tip.style.transform = 'translate(-9999px, -9999px)';
+      });
+
+      // Theme observer — redraw on toggle
+      const themeObserver = new MutationObserver(() => { /* loop will pick up next frame */ });
+      themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+      // Initial size + start
+      resize();
+
+      if (window.ResizeObserver) {
+        const ro = new ResizeObserver(() => resize());
+        ro.observe(container);
+      } else {
+        window.addEventListener('resize', resize);
+      }
+
+      if (reduceMotion) {
+        staticFrame();
+        stopped = true;
+      } else {
+        // Prime canvas with solid bg so motion blur has something to fade
+        ctx.fillStyle = isDark() ? 'rgb(0,0,0)' : 'rgb(255,255,255)';
+        ctx.fillRect(0, 0, width, height);
+        rafId = requestAnimationFrame(loop);
+      }
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => ensureD3(bootstrap), { once: true });
+    } else { ensureD3(bootstrap); }
+  })();
+</script>

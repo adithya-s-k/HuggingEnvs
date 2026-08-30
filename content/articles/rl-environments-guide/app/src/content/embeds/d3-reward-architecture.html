@@ -1,0 +1,513 @@
+<div class="d3-reward-arch" style="width:100%;margin:14px 0;"></div>
+<style>
+  .d3-reward-arch {
+    position: relative;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-bg);
+    overflow: hidden;
+    color: var(--text-color);
+  }
+  .d3-reward-arch__header {
+    display: flex; flex-wrap: wrap; align-items: center;
+    gap: 12px 16px; padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .d3-reward-arch__title {
+    font-size: 11px; font-weight: 800; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--muted-color);
+    margin-right: auto;
+  }
+  .d3-reward-arch__btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 7px;
+    border: 1px solid var(--border-color);
+    background: var(--surface-bg); color: var(--text-color);
+    font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .d3-reward-arch__btn.primary {
+    border-color: var(--primary-color);
+    background: color-mix(in oklab, var(--primary-color) 12%, var(--surface-bg));
+  }
+  .d3-reward-arch__btn svg { width: 12px; height: 12px; }
+  .d3-reward-arch__speed {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; color: var(--muted-color);
+  }
+  .d3-reward-arch__speed input[type=range] { width: 100px; accent-color: var(--primary-color); }
+  .d3-reward-arch__speed-val {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--text-color); font-size: 11px;
+    min-width: 36px; text-align: right;
+  }
+
+  /* 4 cards */
+  .d3-reward-arch__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 0;
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+  }
+  .ra-card {
+    padding: 16px 18px 14px 18px;
+    border-right: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    display: flex; flex-direction: column; gap: 12px;
+    background: var(--surface-bg);
+    min-width: 0;
+    --c: var(--primary-color);
+  }
+  .ra-card:nth-child(2n) { border-right: 0; }
+  .ra-card:nth-last-child(-n+2) { border-bottom: 0; }
+  @media (max-width: 880px) {
+    .ra-card { border-right: 0 !important; }
+    .ra-card:nth-last-child(2) { border-bottom: 1px solid var(--border-color); }
+    .ra-card:last-child { border-bottom: 0; }
+  }
+
+  .ra-card__head {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .ra-card__head .swatch {
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    background: var(--c);
+    flex-shrink: 0;
+  }
+  .ra-card__head .name {
+    font-weight: 700;
+    font-size: 14.5px;
+    color: var(--text-color);
+  }
+  .ra-card__head .when {
+    margin-left: auto;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 5px;
+    color: color-mix(in oklab, var(--c) 90%, var(--text-color));
+    background: color-mix(in oklab, var(--c) 14%, transparent);
+    border: 1px solid color-mix(in oklab, var(--c) 30%, var(--border-color));
+  }
+
+  /* Stage */
+  .ra-stage {
+    position: relative;
+    aspect-ratio: 16 / 7;
+    border-radius: 10px;
+    background: color-mix(in oklab, var(--muted-color) 4%, transparent);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    min-height: 200px;
+  }
+  .ra-stage svg {
+    width: 100%; height: 100%; display: block;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+
+  /* Static trajectory bits */
+  .ra-stage .stage-tag {
+    fill: var(--muted-color);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+  }
+  .ra-stage .baseline {
+    stroke: var(--border-color);
+    stroke-width: 2;
+  }
+  .ra-stage .baseline.dashed {
+    stroke-dasharray: 5 5;
+    opacity: 0.7;
+  }
+  .ra-stage .event-dot {
+    fill: color-mix(in oklab, var(--muted-color) 18%, var(--surface-bg));
+    stroke: var(--border-color);
+    stroke-width: 1.6;
+  }
+  .ra-stage .event-flag {
+    fill: color-mix(in oklab, var(--muted-color) 12%, var(--surface-bg));
+    stroke: var(--border-color);
+    stroke-width: 1.6;
+  }
+  .ra-stage .event-flag.verify {
+    fill: color-mix(in oklab, var(--c) 14%, var(--surface-bg));
+    stroke: color-mix(in oklab, var(--c) 50%, var(--border-color));
+  }
+  .ra-stage .event-label {
+    fill: var(--text-color);
+    font-size: 14px;
+    font-weight: 600;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .ra-stage .event-flag-label {
+    fill: var(--text-color);
+    font-size: 13px;
+    font-weight: 700;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  /* Reward spikes — vertical bars rising from the baseline */
+  .ra-stage .spike {
+    opacity: 0;
+    transform: scaleY(0);
+  }
+  .ra-stage .spike-bar {
+    fill: color-mix(in oklab, var(--c) 75%, transparent);
+  }
+  .ra-stage .spike-head {
+    fill: var(--c);
+    stroke: color-mix(in oklab, var(--c) 50%, var(--surface-bg));
+    stroke-width: 2;
+  }
+  .ra-stage .spike-badge {
+    fill: color-mix(in oklab, var(--c) 18%, var(--surface-bg));
+    stroke: var(--c);
+    stroke-width: 2;
+  }
+  .ra-stage .spike-value {
+    fill: color-mix(in oklab, var(--c) 95%, var(--text-color));
+    font-size: 15px;
+    font-weight: 800;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  .d3-reward-arch.playing .spike { animation-play-state: running; }
+  .d3-reward-arch:not(.playing) .spike { animation-play-state: paused; opacity: 0; }
+
+  /* Each spike shares the cursor's cycle (no animation-delay), and uses a
+     keyframe whose visible-from% matches the cursor's arrival fraction.
+     Cursor sweeps over 0-96% of cycle, x = 20 + 540 * (t/0.96).
+     Tool 1   (x=110) → cursor at 16.0%
+     Tool 2   (x=260) → cursor at 42.7%
+     End      (x=410) → cursor at 69.3%
+     Verify   (x=520) → cursor at 88.9% */
+
+  /* All spike animations share the cursor's linear easing so the browser
+     keeps them perfectly aligned over long runs. The bouncy effect is
+     baked into the keyframe values themselves (1.06 → 0.97 → 1) and
+     doesn't need cubic-bezier easing on top. */
+  .ra-card.external .spike.r-end       { animation: ra-fire-069 var(--dur, 4s) linear infinite; }
+  .ra-card.server   .spike.r1          { animation: ra-fire-016 var(--dur, 4s) linear infinite; }
+  .ra-card.server   .spike.r2          { animation: ra-fire-043 var(--dur, 4s) linear infinite; }
+  .ra-card.verify   .spike.r-verify    { animation: ra-fire-089 var(--dur, 4s) linear infinite; }
+  .ra-card.rubric   .spike.r1          { animation: ra-fire-016 var(--dur, 4s) linear infinite; }
+  .ra-card.rubric   .spike.r2          { animation: ra-fire-043 var(--dur, 4s) linear infinite; }
+  .ra-card.rubric   .spike.r3          { animation: ra-fire-069 var(--dur, 4s) linear infinite; }
+
+  /* Per-fire-time keyframes — invisible until cursor arrives, rise, hold
+     until cursor exits at 96%, fade out as cursor disappears. */
+  @keyframes ra-fire-016 {
+    0%, 16%  { opacity: 0; transform: scaleY(0); }
+    20%      { opacity: 1; transform: scaleY(1.06); }
+    24%      { transform: scaleY(0.97); }
+    28%      { transform: scaleY(1); }
+    96%      { opacity: 1; transform: scaleY(1); }
+    100%     { opacity: 0; transform: scaleY(0); }
+  }
+  @keyframes ra-fire-043 {
+    0%, 43%  { opacity: 0; transform: scaleY(0); }
+    47%      { opacity: 1; transform: scaleY(1.06); }
+    51%      { transform: scaleY(0.97); }
+    55%      { transform: scaleY(1); }
+    96%      { opacity: 1; transform: scaleY(1); }
+    100%     { opacity: 0; transform: scaleY(0); }
+  }
+  @keyframes ra-fire-069 {
+    0%, 69%  { opacity: 0; transform: scaleY(0); }
+    73%      { opacity: 1; transform: scaleY(1.06); }
+    77%      { transform: scaleY(0.97); }
+    81%      { transform: scaleY(1); }
+    96%      { opacity: 1; transform: scaleY(1); }
+    100%     { opacity: 0; transform: scaleY(0); }
+  }
+  @keyframes ra-fire-089 {
+    0%, 89%  { opacity: 0; transform: scaleY(0); }
+    92%      { opacity: 1; transform: scaleY(1.06); }
+    94%      { transform: scaleY(0.97); }
+    96%      { opacity: 1; transform: scaleY(1); }
+    100%     { opacity: 0; transform: scaleY(0); }
+  }
+
+  /* sweeping play-head */
+  .ra-stage .playhead {
+    stroke: color-mix(in oklab, var(--c) 70%, transparent);
+    stroke-width: 1.5;
+    stroke-dasharray: 3 3;
+    opacity: 0;
+  }
+  .ra-stage .playhead-dot {
+    fill: var(--c);
+    opacity: 0;
+  }
+  .d3-reward-arch.playing .playhead,
+  .d3-reward-arch.playing .playhead-dot {
+    animation: ra-playhead var(--dur, 4s) linear infinite;
+  }
+  @keyframes ra-playhead {
+    0%   { transform: translate(0, 0); opacity: 0; }
+    4%   { opacity: 0.85; }
+    96%  { opacity: 0.85; transform: translate(540px, 0); }
+    100% { opacity: 0; transform: translate(540px, 0); }
+  }
+
+  .ra-card__chips {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .ra-card__chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px;
+    font-size: 11.5px; font-weight: 600;
+    border-radius: 999px;
+    border: 1px solid color-mix(in oklab, var(--cc, var(--border-color)) 35%, var(--border-color));
+    background: color-mix(in oklab, var(--cc, transparent) 8%, transparent);
+    color: var(--text-color);
+  }
+  .ra-card__chip .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--cc, var(--muted-color));
+    flex-shrink: 0;
+  }
+
+  .ra-card__note {
+    font-size: 12px;
+    color: var(--muted-color);
+    line-height: 1.5;
+  }
+  .ra-card__note code {
+    background: color-mix(in oklab, var(--muted-color) 10%, transparent);
+    border-radius: 3px;
+    padding: 0 5px;
+    font-size: 11.5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  .d3-reward-arch__caption {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border-color);
+    font-size: 11.5px;
+    color: var(--muted-color);
+    font-style: italic;
+    line-height: 1.55;
+  }
+</style>
+<script>
+(() => {
+  const bootstrap = () => {
+    const scriptEl = document.currentScript;
+    let container = scriptEl ? scriptEl.previousElementSibling : null;
+    if (!(container && container.classList && container.classList.contains('d3-reward-arch'))) {
+      const cands = Array.from(document.querySelectorAll('.d3-reward-arch'))
+        .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+      container = cands[cands.length - 1] || null;
+    }
+    if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+    container.dataset.mounted = 'true';
+
+    // Geometry — viewBox 600x230, baseline at y=150.
+    // Tool 1 at x=110, Tool 2 at x=260, End at x=410, Verify at x=520 (only verify card)
+    const TOOL1_X = 110;
+    const TOOL2_X = 260;
+    const END_X   = 410;
+    const VERIFY_X = 520;
+    const BASE_Y  = 150;
+
+    const eventMarkers = (opts = {}) => {
+      const verify = opts.verify ? `
+        <line class="baseline dashed" x1="${END_X + 30}" y1="${BASE_Y}" x2="${VERIFY_X - 30}" y2="${BASE_Y}"/>
+        <rect class="event-flag verify" x="${VERIFY_X - 38}" y="${BASE_Y - 14}" width="76" height="28" rx="7"/>
+        <text class="event-flag-label" x="${VERIFY_X}" y="${BASE_Y + 5}" text-anchor="middle">verify()</text>
+        <text class="event-label" x="${VERIFY_X}" y="${BASE_Y + 38}" text-anchor="middle" style="font-size: 11px; fill: var(--muted-color);">post-rollout</text>
+      ` : '';
+
+      const endLabel = opts.endLabel || 'end';
+      return `
+        <!-- baseline runs full width or partial when verify -->
+        <line class="baseline" x1="20" y1="${BASE_Y}" x2="${opts.verify ? END_X + 30 : 580}" y2="${BASE_Y}"/>
+
+        <!-- tool 1 -->
+        <circle class="event-dot" cx="${TOOL1_X}" cy="${BASE_Y}" r="9"/>
+        <text class="event-label" x="${TOOL1_X}" y="${BASE_Y + 30}" text-anchor="middle">tool()</text>
+
+        <!-- tool 2 -->
+        <circle class="event-dot" cx="${TOOL2_X}" cy="${BASE_Y}" r="9"/>
+        <text class="event-label" x="${TOOL2_X}" y="${BASE_Y + 30}" text-anchor="middle">tool()</text>
+
+        <!-- end flag -->
+        <rect class="event-flag" x="${END_X - 32}" y="${BASE_Y - 14}" width="64" height="28" rx="7"/>
+        <text class="event-flag-label" x="${END_X}" y="${BASE_Y + 5}" text-anchor="middle">${endLabel}</text>
+
+        ${verify}
+
+        <!-- play-head -->
+        <line class="playhead" x1="20" y1="40" x2="20" y2="${BASE_Y}"/>
+        <circle class="playhead-dot" cx="20" cy="${BASE_Y}" r="4"/>
+      `;
+    };
+
+    const spike = (x, value, cls) => {
+      // height tied to magnitude: r=0.3 -> 60, r=1.0 -> 100
+      const r = parseFloat(value);
+      const h = Math.round(56 + r * 50);
+      const top = BASE_Y - h;
+      return `
+        <g class="spike ${cls}" style="transform-origin: ${x}px ${BASE_Y}px;">
+          <rect class="spike-bar" x="${x - 3}" y="${top}" width="6" height="${h}" rx="2"/>
+          <circle class="spike-head" cx="${x}" cy="${top}" r="6"/>
+          <rect class="spike-badge" x="${x - 30}" y="${top - 32}" width="60" height="26" rx="13"/>
+          <text class="spike-value" x="${x}" y="${top - 14}" text-anchor="middle">r=${value}</text>
+        </g>
+      `;
+    };
+
+    const baseSvg = (markersHtml, spikesHtml) => `
+      <svg viewBox="0 0 600 230" preserveAspectRatio="xMidYMid meet">
+        <text class="stage-tag" x="20" y="22">trajectory</text>
+        ${markersHtml}
+        ${spikesHtml}
+      </svg>
+    `;
+
+    const CARDS = [
+      {
+        kind: 'external',
+        name: 'External reward',
+        when: 'after rollout',
+        color: '#f59e0b',
+        users: [
+          { name: 'SkyRL Gym', c: '#f59e0b' },
+          { name: 'GEM',       c: '#14b8a6' },
+        ],
+        note: 'Trainer wires up its own reward function. The env returns text from <code>step()</code>; you score the trajectory afterwards.',
+        svg: baseSvg(
+          eventMarkers({ endLabel: 'end' }),
+          spike(END_X, '1.0', 'r-end')
+        ),
+      },
+      {
+        kind: 'server',
+        name: 'Server-embedded',
+        when: 'every tool call',
+        color: '#a855f7',
+        users: [
+          { name: 'ORS', c: '#a855f7' },
+        ],
+        note: 'Server attaches a reward to every <code>ToolOutput</code>. Trainer reads <code>env.reward</code> as it goes, no separate scoring step.',
+        svg: baseSvg(
+          eventMarkers({ endLabel: 'end' }),
+          spike(TOOL1_X, '0.3', 'r1') + spike(TOOL2_X, '0.5', 'r2')
+        ),
+      },
+      {
+        kind: 'verify',
+        name: 'Post-episode verify',
+        when: 'separate /verify call',
+        color: '#22c55e',
+        users: [
+          { name: 'NeMo Gym', c: '#22c55e' },
+        ],
+        note: 'Trajectory runs unscored. Trainer hits <code>/verify</code> at the end and the server returns a single trajectory-level reward.',
+        svg: baseSvg(
+          eventMarkers({ endLabel: 'rollout', verify: true }),
+          spike(VERIFY_X, '0.7', 'r-verify')
+        ),
+      },
+      {
+        kind: 'rubric',
+        name: 'Embedded rubric',
+        when: 'every step',
+        color: '#3b82f6',
+        users: [
+          { name: 'OpenEnv',   c: '#3b82f6' },
+          { name: 'Verifiers', c: '#ec4899' },
+        ],
+        note: 'Composable <code>Rubric</code> object scores each step inline. Supports <code>WeightedSum</code>, <code>LLMJudge</code>, trajectory-level rules.',
+        svg: baseSvg(
+          eventMarkers({ endLabel: 'end' }),
+          spike(TOOL1_X, '0.4', 'r1') + spike(TOOL2_X, '0.5', 'r2') + spike(END_X, '0.7', 'r3')
+        ),
+      },
+    ];
+
+    const cardsHtml = CARDS.map(c => `
+      <article class="ra-card ${c.kind}" style="--c:${c.color};">
+        <div class="ra-card__head">
+          <span class="swatch"></span>
+          <span class="name">${c.name}</span>
+          <span class="when">${c.when}</span>
+        </div>
+        <div class="ra-stage">${c.svg}</div>
+        <div class="ra-card__chips">
+          ${c.users.map(u => `<span class="ra-card__chip" style="--cc:${u.c};"><span class="dot"></span>${u.name}</span>`).join('')}
+        </div>
+        <div class="ra-card__note">${c.note}</div>
+      </article>
+    `).join('');
+
+    container.innerHTML = `
+      <div class="d3-reward-arch__header">
+        <div class="d3-reward-arch__title">When does the reward fire?</div>
+        <button type="button" class="d3-reward-arch__btn primary" data-act="play">
+          <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>
+          <span data-label>Play</span>
+        </button>
+        <label class="d3-reward-arch__speed">
+          Speed
+          <input type="range" min="0.4" max="2" step="0.1" value="1" data-act="speed">
+          <span class="d3-reward-arch__speed-val" data-speed-val>1.0×</span>
+        </label>
+      </div>
+      <div class="d3-reward-arch__grid">${cardsHtml}</div>
+      <div class="d3-reward-arch__caption">
+        Each card runs the same trajectory of two tool calls and an end. The reward signal (<code>r=…</code>) is shown as a vertical spike that rises from the baseline at the moment that pattern actually fires it. Same loop, four very different signal densities.
+      </div>
+    `;
+
+    // controls
+    const playBtn = container.querySelector('[data-act="play"]');
+    const playLbl = container.querySelector('[data-label]');
+    const speedInput = container.querySelector('[data-act="speed"]');
+    const speedVal = container.querySelector('[data-speed-val]');
+
+    let playing = false;
+    const setPlaying = (next) => {
+      playing = next;
+      container.classList.toggle('playing', playing);
+      playLbl.textContent = playing ? 'Pause' : 'Play';
+      const icon = playBtn.querySelector('svg');
+      icon.innerHTML = playing
+        ? '<rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/>'
+        : '<polygon points="6,4 20,12 6,20" fill="currentColor"/>';
+    };
+    playBtn.addEventListener('click', () => setPlaying(!playing));
+
+    const updateSpeed = () => {
+      const s = parseFloat(speedInput.value);
+      const dur = (4 / s).toFixed(2) + 's';
+      container.style.setProperty('--dur', dur);
+      speedVal.textContent = s.toFixed(1) + '×';
+    };
+    speedInput.addEventListener('input', updateSpeed);
+    updateSpeed();
+
+    const io = ('IntersectionObserver' in window) ? new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting && !playing) {
+          setPlaying(true);
+          io.disconnect();
+        }
+      });
+    }, { threshold: 0.3 }) : null;
+    if (io) io.observe(container); else setPlaying(true);
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+  } else {
+    bootstrap();
+  }
+})();
+</script>

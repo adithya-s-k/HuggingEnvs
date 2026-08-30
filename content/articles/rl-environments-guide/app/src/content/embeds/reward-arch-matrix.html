@@ -1,0 +1,220 @@
+<div class="reward-arch-matrix" style="width:100%;margin:14px 0;"></div>
+<style>
+  .reward-arch-matrix {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-bg);
+    overflow: hidden;
+    color: var(--text-color);
+  }
+  .reward-arch-matrix__head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 4%, transparent);
+    flex-wrap: wrap;
+  }
+  .reward-arch-matrix__title {
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    margin-right: auto;
+  }
+  .reward-arch-matrix__legend {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 10.5px; color: var(--muted-color);
+    flex-wrap: wrap;
+  }
+
+  .ram-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 9px;
+    font-size: 10.5px;
+    font-weight: 700;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .ram-pill.rubric  { background: color-mix(in oklab, #3b82f6 12%, transparent); color: #1d4ed8; border: 1px solid color-mix(in oklab, #3b82f6 35%, transparent); }
+  .ram-pill.server  { background: color-mix(in oklab, #a855f7 12%, transparent); color: #7c3aed; border: 1px solid color-mix(in oklab, #a855f7 35%, transparent); }
+  .ram-pill.verify  { background: color-mix(in oklab, #22c55e 12%, transparent); color: #16a34a; border: 1px solid color-mix(in oklab, #22c55e 35%, transparent); }
+  .ram-pill.external{ background: color-mix(in oklab, #f59e0b 12%, transparent); color: #b45309; border: 1px solid color-mix(in oklab, #f59e0b 35%, transparent); }
+  .ram-pill.yes     { background: color-mix(in oklab, #22c55e 14%, transparent); color: #16a34a; border: 1px solid color-mix(in oklab, #22c55e 35%, transparent); }
+  .ram-pill.no      { color: var(--muted-color); border: 1px dashed color-mix(in oklab, var(--muted-color) 50%, transparent); background: transparent; }
+
+  .reward-arch-matrix__wrap { overflow-x: auto; }
+  .reward-arch-matrix table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    min-width: 760px;
+  }
+  .reward-arch-matrix table thead th {
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted-color);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+    white-space: nowrap;
+  }
+  .reward-arch-matrix table thead th .swatch {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--c, var(--muted-color));
+    display: inline-block;
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+  .reward-arch-matrix table tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid color-mix(in oklab, var(--border-color) 60%, transparent);
+    vertical-align: middle;
+    color: var(--text-color);
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+  .reward-arch-matrix table tbody tr:last-child td { border-bottom: 0; }
+  .reward-arch-matrix table tbody tr:hover td {
+    background: color-mix(in oklab, var(--muted-color) 3%, transparent);
+  }
+  .reward-arch-matrix table tbody td.row-name {
+    font-weight: 600;
+    color: var(--text-color);
+    white-space: nowrap;
+  }
+  .reward-arch-matrix code {
+    background: color-mix(in oklab, var(--muted-color) 10%, transparent);
+    border-radius: 3px;
+    padding: 0 5px;
+    font-size: 11px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .reward-arch-matrix .col-tinted-rubric  { background: color-mix(in oklab, #3b82f6 4%, transparent); }
+  .reward-arch-matrix .col-tinted-server  { background: color-mix(in oklab, #a855f7 4%, transparent); }
+  .reward-arch-matrix .col-tinted-verify  { background: color-mix(in oklab, #22c55e 4%, transparent); }
+  .reward-arch-matrix .col-tinted-external{ background: color-mix(in oklab, #f59e0b 4%, transparent); }
+</style>
+<script>
+(() => {
+  const bootstrap = () => {
+    const scriptEl = document.currentScript;
+    let container = scriptEl ? scriptEl.previousElementSibling : null;
+    if (!(container && container.classList && container.classList.contains('reward-arch-matrix'))) {
+      const cands = Array.from(document.querySelectorAll('.reward-arch-matrix'))
+        .filter(el => !(el.dataset && el.dataset.mounted === 'true'));
+      container = cands[cands.length - 1] || null;
+    }
+    if (!container || (container.dataset && container.dataset.mounted === 'true')) return;
+    container.dataset.mounted = 'true';
+
+    const FRAMEWORKS = [
+      { key: 'openenv', name: 'OpenEnv',   color: '#3b82f6', pat: 'rubric' },
+      { key: 'ors',     name: 'ORS',       color: '#a855f7', pat: 'server' },
+      { key: 'nemo',    name: 'NeMo Gym',  color: '#22c55e', pat: 'verify' },
+      { key: 'verifs',  name: 'Verifiers', color: '#ec4899', pat: 'rubric' },
+      { key: 'skyrl',   name: 'SkyRL Gym', color: '#f59e0b', pat: 'external' },
+      { key: 'gem',     name: 'GEM',       color: '#14b8a6', pat: 'external' },
+    ];
+
+    const PATTERN_LABEL = {
+      rubric:   '<span class="ram-pill rubric">Embedded rubric</span>',
+      server:   '<span class="ram-pill server">Server-embedded</span>',
+      verify:   '<span class="ram-pill verify">Post-episode verify</span>',
+      external: '<span class="ram-pill external">External</span>',
+    };
+    const yes = '<span class="ram-pill yes">✓</span>';
+    const no  = '<span class="ram-pill no">—</span>';
+
+    const ROWS = [
+      { name: 'Pattern', cells: {
+        openenv: PATTERN_LABEL.rubric,
+        ors:     PATTERN_LABEL.server,
+        nemo:    PATTERN_LABEL.verify,
+        verifs:  PATTERN_LABEL.rubric,
+        skyrl:   PATTERN_LABEL.external,
+        gem:     PATTERN_LABEL.external,
+      }},
+      { name: 'Who computes', cells: {
+        openenv: 'Env (via <code>Rubric</code>)',
+        ors:     'Env server',
+        nemo:    'Env server',
+        verifs:  'Env (via <code>Rubric</code>)',
+        skyrl:   'User reward fn in <code>step()</code>',
+        gem:     'User reward fn in <code>step()</code>',
+      }},
+      { name: 'When', cells: {
+        openenv: 'Per step (<code>_apply_rubric</code>)',
+        ors:     'Every tool call',
+        nemo:    'On demand (<code>/verify</code>)',
+        verifs:  'Per step',
+        skyrl:   'After episode',
+        gem:     'After episode',
+      }},
+      { name: 'Reward in tool response?', cells: {
+        openenv: yes + ' <code>Observation.reward</code>',
+        ors:     yes + ' <code>ToolOutput.reward</code>',
+        nemo:    no  + ' separate endpoint',
+        verifs:  yes,
+        skyrl:   no,
+        gem:     no,
+      }},
+      { name: 'LLM-as-judge', cells: {
+        openenv: yes + ' <code>LLMJudge</code> rubric',
+        ors:     'In server <code>@tool</code>',
+        nemo:    'In <code>verify()</code>',
+        verifs:  'Via <code>JudgeRubric</code>',
+        skyrl:   'BYO',
+        gem:     'BYO',
+      }},
+      { name: 'Composability', cells: {
+        openenv: 'High · <code>WeightedSum</code>, <code>Sequential</code>, <code>Gate</code>',
+        ors:     'Medium · server decides',
+        nemo:    'High · arbitrary verify logic',
+        verifs:  'High · <code>Rubric</code> system',
+        skyrl:   'High · any reward fn',
+        gem:     'High · any reward fn',
+      }},
+    ];
+
+    const headerCells = FRAMEWORKS.map(f =>
+      `<th class="col-tinted-${f.pat}"><span class="swatch" style="--c:${f.color};"></span>${f.name}</th>`
+    ).join('');
+
+    const bodyHtml = ROWS.map(r => {
+      const cells = FRAMEWORKS.map(f => `<td class="col-tinted-${f.pat}">${r.cells[f.key]}</td>`).join('');
+      return `<tr><td class="row-name">${r.name}</td>${cells}</tr>`;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="reward-arch-matrix__head">
+        <span class="reward-arch-matrix__title">Reward architecture · 6 frameworks</span>
+        <span class="reward-arch-matrix__legend">
+          <span class="ram-pill rubric">Embedded rubric</span>
+          <span class="ram-pill server">Server</span>
+          <span class="ram-pill verify">Verify</span>
+          <span class="ram-pill external">External</span>
+        </span>
+      </div>
+      <div class="reward-arch-matrix__wrap">
+        <table>
+          <thead>
+            <tr><th>Capability</th>${headerCells}</tr>
+          </thead>
+          <tbody>${bodyHtml}</tbody>
+        </table>
+      </div>
+    `;
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+  } else {
+    bootstrap();
+  }
+})();
+</script>

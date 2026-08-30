@@ -1,0 +1,288 @@
+import HtmlEmbed from "../../components/HtmlEmbed.astro";
+
+## Dimensions of comparison
+
+So far we've listed the components and seen which framework covers which. Now we go through them one at a time. Each section picks one component, asks the practical question it raises, and lines up all six frameworks side by side so you can see how each one handles it.
+
+### Dimension 1: Building an RL environment
+
+*What code do I actually write?*
+
+The first thing any environment author runs into is the API surface. What do I subclass, how do I declare a tool, how much boilerplate sits around the actual logic? The same toy environment is written six different ways below; flip between tabs to see how each framework wants you to write it. The runnable end-to-end versions of every snippet (build scripts, server scaffolding, training entrypoints) live in the companion repo, [**RL_Envs_101**](https://github.com/adithya-s-k/RL_Envs_101), so you can clone it and have all six up locally.
+
+<HtmlEmbed src="code-tabs-build-env.html" frameless />
+
+|  | OpenEnv | ORS | NeMo Gym | Verifiers | SkyRL Gym | GEM |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Base class** | `MCPEnvironment` | `ors.Environment` | `SimpleResourcesServer` | None (plain functions) | `BaseTextEnv` | `gem.Env` |
+| **Tool syntax** | `@mcp.tool` | `@tool` + Pydantic input | `app.post("/name")` | `def func(arg: type)` | Inside `step()` | Inside `step()` |
+| **Return type** | `str` | `ToolOutput(blocks, reward, finished)` | `Response(output=str)` | `str` | `BaseTextEnvStepOutput` | `(obs, reward, done, trunc, info)` |
+| **Entry point** | `create_app(Env)` | `Server([Env]).run()` | `Env.run_webserver()` | `vf.ToolEnv(tools=[...])` | `skyrl_gym.register(...)` | `gem.register(...)` |
+
+---
+
+### Dimension 2: Communication & deployment
+
+*Where does it run and how do they talk?*
+
+The most fundamental architectural split: does your environment run as a **separate HTTP server** or **inside the training process**? Everything else, the protocol, the deployment target, what you have to install on the trainer side, falls out of this single choice.
+
+<HtmlEmbed src="d3-comm-deploy.html" frameless />
+
+The two patterns differ on three things that show up in practice:
+
+- **Where it runs.** An HTTP framework lives on its own machine, often a cheap CPU box or a [Hugging Face Space](https://huggingface.co/spaces). The in-process kind shares the training GPU node.
+- **What you install on the trainer side.** HTTP only needs an SDK or `requests`. In-process pulls the full framework package into the training venv.
+- **How it scales.** HTTP scales by adding server replicas behind a load balancer. In-process scales by adding more identical training workers, each with its own copy of the environment.
+
+The table below lines all of that up at a glance.
+
+<HtmlEmbed src="comm-deploy-matrix.html" frameless />
+
+Note: Verifiers integrates with PrimeIntellect's training stack (Prime RL) and their managed environment hub, which hosts community-contributed environments for distributed RL training.
+
+One thing worth flagging: in practice, most environments don't run the heavy work themselves, they delegate it to a sandbox provider like E2B, Modal, or a custom container backend. That changes the scaling story for both shapes. An HTTP server becomes mostly a thin router holding sessions and forwarding tool calls into the sandbox, so adding replicas is cheap. The in-process flavor ends up doing roughly the same thing, the env class is a thin client over the sandbox, so the per-worker footprint is small even when you spin up hundreds of workers. The deployment shape still matters (HTTP isolates dependencies, in-process shares them), but the heavy compute lives behind whichever sandbox you picked.
+
+---
+
+### Dimension 3: Tool & action model
+
+*How does the model interact with the environment?*
+
+All six frameworks ultimately expose the same thing to the model, a list of callable tools with names, descriptions, and typed parameters. What differs is **where the tool definition lives** and **how the trainer discovers it**. HTTP frameworks define tools on the server and ship a discovery endpoint the client hits at runtime. In-process frameworks define tools as Python functions and register them when the env constructs. After discovery, both shapes look identical: send a tool call, get back an observation.
+
+<HtmlEmbed src="d3-tool-discovery.html" frameless />
+
+A few practical things fall out of these differences:
+
+- **Schema portability.** HTTP frameworks ship JSON Schema (MCP, ORS ToolSpec, OpenAPI), which any OpenAI-compatible model knows how to call, so the same tool spec hops between LLMs cleanly. In-process frameworks auto-derive schemas from Python type hints, faster to write but harder to lift into another framework or a model that expects a specific schema dialect.
+- **Authoring cost per tool.** A `@tool` decorator on a Python function is one line. A FastAPI endpoint plus its Pydantic body model is closer to a small file. Multiply by your tool count when you're picking.
+- **Multi-turn looping** is universal across all six. Once tools are wired up, the LLM-side experience is identical: name + typed args in, observation out. The differences live upstream, in how you got that wiring there.
+
+<HtmlEmbed src="tool-action-matrix.html" frameless />
+
+---
+
+### Dimension 4: Reward architecture
+
+*Who decides how good the model's behavior was, and when?*
+
+This is where frameworks differ most philosophically. Four distinct patterns exist. The animation below stacks them on the same trajectory so the timing differences read at a glance.
+
+<HtmlEmbed src="d3-reward-architecture.html" frameless />
+
+**Pattern 1: External reward.** The training script decides. The environment just returns tool outputs (text). A separate reward function compares the result to expected output. The environment returns a reward you wrote, but provides no scoring system or rubric primitives, you write the reward function yourself.
+
+> Used by: **SkyRL Gym**, **GEM**
+
+**Pattern 2: Server-embedded reward.** Every tool response includes a reward. The server evaluates as it goes. The trainer just reads `env.reward`.
+
+> Used by: **ORS**
+
+**Pattern 3: Post-episode verification.** A separate `/verify` endpoint is called after the episode. The server does a holistic evaluation of the full trajectory.
+
+> Used by: **NeMo Gym**
+
+**Pattern 4: Environment-embedded rubric.** The environment has a composable `Rubric` object (modeled after `nn.Module`) that computes rewards from actions and observations. The rubric is called automatically during `step()` and sets `observation.reward`. Supports composition (`WeightedSum`, `Sequential`, `Gate`), LLM-as-judge (`LLMJudge`), and trajectory-level scoring.
+
+> Used by: **OpenEnv**, **Verifiers**
+
+The table below pins each framework to its pattern, with column tinting so frameworks that share a pattern (OpenEnv + Verifiers; SkyRL + GEM) cluster visually without re-ordering the columns.
+
+<HtmlEmbed src="reward-arch-matrix.html" frameless />
+
+#### A note on what's actually inside a reward function
+
+The four patterns above are about *when* the reward is computed and *who owns the code*. What goes *inside* the reward function is a separate question, and three flavors keep showing up across these frameworks: **procedural / verifiable rewards**, **LLM-as-judge rewards**, and **dense (vs sparse) rewards**.
+
+**Procedural (verifiable) rewards** are simple deterministic checks: did the model's final answer match the expected output, did the unit test pass, did the JSON parse, did the math evaluate to the right number. This is the "reinforcement learning with verifiable rewards" (RLVR) pattern that DeepSeek-R1 and others scaled up: a model only earns reward when its output passes a programmatic check, typically a 0/1 binary signal. Scalable, hard to game, and well-suited to math, code, and logic tasks. The catch: it only works where you have a clear ground-truth oracle.
+
+**LLM-as-judge rewards** (sometimes called RLAIF) cover the cases procedural rewards can't: creative writing, open-ended reasoning, summarization quality, agent coherence, anything where "correct" is subjective. A separate language model reads the trajectory and scores it, often guided by a rubric so the judgment is structured (e.g. "rate factual accuracy 1–5, rate clarity 1–5, weight them"). This is what `LLMJudge` and `JudgeRubric` are doing in the `Rubric` systems above. The catch is reward hacking: policies trained against an LLM judge can learn to produce outputs the judge over-rewards but a stricter gold-standard judge would penalize. Recent work pushes back on this with rubric-based decomposition and "thinking judges" (J1-style) that reason before scoring.
+
+**Dense vs sparse** is a separate axis cutting across both of the above. A *sparse* reward fires only at the end of a trajectory: pass/fail, final score. A *dense* reward fires per step, per token, or per intermediate sub-goal, giving the trainer a much richer credit-assignment signal. The four patterns map to this fairly directly: external and post-episode-verify are sparse by default, server-embedded and embedded-rubric can be either depending on how you write them. Embedded `Rubric` is the most natural place to make rewards dense, you compose multiple per-step scoring functions (`WeightedSum`, `Sequential`) and the rubric ships a non-trivial reward at every action. Dense rewards train faster and more stably; sparse rewards are simpler to define and harder to game.
+
+In practice you almost always end up with some mix: a procedural component for the parts you can verify (the unit test passed, the JSON is valid, the answer matches), plus an LLM-judge component for the parts you can't (was the explanation good, did the agent stay on task), composed with weights into a single scalar. The frameworks above just differ on where you write that composition and when it fires.
+
+---
+
+### Dimension 5: Episode control
+
+*Who drives the multi-turn loop, and what tells the episode to stop?*
+
+A multi-turn rollout is just a tight cycle: model generates an action, tool gets called, observation goes back to the model, repeat. Two things have to be decided up front: who runs that cycle (the trainer pulling tokens out of the model and pushing them into the environment, or the environment owning generation itself), and how the cycle knows it's done (a flag on the response, a dedicated terminator tool call, a max-turn cap, or a verifier deciding after the fact). Each framework picks its own answers, and those choices shape how you batch rollouts, how parallelism works, and what kind of training data falls out the other end.
+
+> **Note:** In all the frameworks we tested, the trainer drives the multi-turn loop, it generates, parses tool calls, executes them via the adapter, and re-generates. The environment is passive (it responds to tool calls but doesn't initiate anything). This means the trainer controls episode length, tool-call parsing, and retry logic. Some frameworks we didn't test (Atropos, Verifiers native mode) flip this, in Atropos, the environment owns its own vLLM instance and generates rollouts autonomously; in Verifiers' `env.evaluate()` mode, the framework manages the loop internally. This distinction matters because it changes how you think about batching, parallelism, and resource allocation.
+
+<HtmlEmbed src="d3-episode-control.html" frameless />
+
+The other half of episode control is termination, what signal tells the loop to stop. Each framework picks its own answer: a `done` field on the observation, a `finished` flag on every tool call, a separate `/verify` step after the rollout, a Pythonic `@vf.stop` decorator, a single `done` bool, or `terminated` vs `truncated` from a Gym-style 5-tuple. The table lines them all up.
+
+<HtmlEmbed src="episode-control-matrix.html" frameless />
+
+What this looks like in practice depends on what's exposing the tools. Take a coding-agent environment with a Claude-Code-style tool set: file ops (`read`, `write`, `edit`, `multi_edit`, `ls`, `glob`, `grep`), shell (`bash(command, timeout=30)`), planning (`todo_write(todos)`), and a terminator `submit_solution()`. Two examples show how the trainer-driven vs environment-driven split plays out in that setup:
+
+> **Example 1 — Tool-based control (trainer-driven).** The environment just exposes the tools and the loop ends when the model calls `submit_solution()`, a `final_answer`-style terminator. Every framework in the comparison supports this out of the box and it ports almost identically across all six: trainer drives generation, environment validates each tool call, episode closes when the terminator fires (or `max_completion_length` cuts it off). For most agent-tool environments, this is the path of least resistance.
+
+> **Example 2 — Harness-controlled rollout (env-driven).** Sometimes you don't want the trainer to drive at all. You want a real coding harness, OpenCode, openclaw, Aider, claude code style, running inside a sandbox with the model talking to that harness directly. The harness owns the conversation: managing the file tree, compressing context, retrying on tool failures, knowing when the task is done. The environment just hosts the harness and hands the trajectory back when it finishes. Atropos and `vf.evaluate()` lean this way. It's powerful for benchmark-grade fidelity, but the catch is collecting training-ready data, the harness has to emit the right per-turn record (action, observation, reward, logprobs) for whatever loss your trainer uses, and that's harness-specific work each time.
+
+The practical read: tool-based control is a portable convention across all six frameworks, which is where most real environments live. Harness-controlled rollouts buy you benchmark-grade fidelity but turn data collection into its own problem.
+
+---
+
+### Dimension 6: Tasks & datasets
+
+*Where do the prompts come from, and what comes with them?*
+
+Every rollout starts with a task. The model takes that task as input, acts on the environment across the span of the episode, and the environment scores the result against whatever the task said success looked like. The task is what tells the model *what to do this episode*, the prompt, the input data it operates on, and (for scoring) the expected answer or test that decides whether it succeeded. This is the most varied dimension after reward, the six frameworks land on six different answers for where that task comes from. Some bundle a dataset (Verifiers ships [HF `Dataset`](https://huggingface.co/docs/datasets) integration, GEM has a registry of 24+ built-in environments). Some put the task store on the server (ORS exposes `list_tasks(split)`). Some preprocess JSONL through a CLI (NeMo Gym's `ng_prepare_data`). And two leave it to you (OpenEnv, SkyRL Gym). The cards below trace each path from source to environment.
+
+<HtmlEmbed src="d3-task-flow.html" frameless />
+
+The differences matter when you go from one task to a curated dataset with splits and versions. Frameworks that bundle a dataset abstraction also give you splits and versioning for free. BYO frameworks need you to wire that yourself.
+
+<HtmlEmbed src="task-flow-matrix.html" frameless />
+
+#### A task is more than a row
+
+We say "tasks" rather than "dataset rows" on purpose. A row is one input plus one expected output. A task, especially in agent and coding environments, is a bundle of artifacts that has to land in the sandbox before the rollout can start. [OpenReward's SETA](https://openreward.ai/Eigent/SETA), 1,376 terminal-agent tasks on the [Open Reward Standard](https://docs.openreward.ai), is the cleanest published example: every task ships a `task.yaml` (prompt and metadata), the data files the agent operates on, a `tests/test_outputs.py` harness the environment runs after submission, and a `weights.json` that turns the test outcomes into a scalar reward. [SWE-Bench](https://www.swebench.com/SWE-bench/guides/datasets/) rows go further: each row carries `repo`, `base_commit`, `problem_statement`, and `test_patch`, the environment clones the repo at that commit, applies the test patch, and grades the agent's diff with `FAIL_TO_PASS` / `PASS_TO_PASS`.
+
+These bundles usually live behind the dataset row, in S3, an HF dataset repo, or a tarball. The environment pulls them on episode start, drops them into the sandbox, scores, then tears down. The dataset abstractions in Verifiers, GEM, ORS, and NeMo Gym track the prompt and the answer column cleanly; the file tree and test harness ride alongside as that artifact bundle.
+
+#### Coupling: who owns the task spec
+
+Frameworks split on how strict the task spec is, and that strictness is what lets a task hop between training runs without rewiring.
+
+- **Coupled.** [Verifiers](https://github.com/PrimeIntellect-ai/verifiers/blob/main/docs/environments.md) expects an [HF `Dataset`](https://huggingface.co/docs/datasets) with a `prompt` column and optional `answer` or `info` columns; GEM ships built-in environments with their own loaders; ORS and NeMo Gym pin the schema on the server side. The [Environments Hub](https://www.primeintellect.ai/blog/environments) and [OpenReward](https://openreward.ai) go further and standardise the whole package, the layout, the scoring contract, even the wheel-based packaging, so any task that fits the spec runs in any environment that follows it.
+- **BYO.** OpenEnv and SkyRL Gym leave the dataset up to you. Prompts come in from any source, the environment doesn't look at the schema, but every new source costs a little integration.
+
+> **Note: who owns the data transformation.** Coupling means the environment dictates the spec and you transform your raw data to fit. Concretely:
+>
+> - SWE-Bench JSONL with `{repo, base_commit, problem_statement, test_patch}` into a Verifiers `Dataset` with a `prompt` column and `info` carrying the patch metadata. The mapping is yours, written once.
+> - A Kaggle Q&A dump into OpenReward-style task folders, one per row, each with `task.yaml`, `data/`, and `tests/`. One script fans the JSONL out into the layout.
+> - HumanEval or GSM8K into an environment that already ships a loader for it. No transformation needed, the framework already knows the shape.
+>
+> The payoff for writing the mapping once is that the same environment runs unchanged across every task that fits the spec, and someone else's environments become reusable for your training run instead of one-off scripts.
+
+If you only care about one task, the spec is overhead. If you're training across many tasks or pulling in benchmark suites, the spec is what makes that work without per-task glue.
+
+---
+
+### Dimension 7: Ecosystem & maturity
+
+*Who's behind it and how production-ready is it?*
+
+The frameworks land in very different spots on the maturity curve, who built it, where the community lives, what's already shipped in production. The matrix below pins those facts side by side, with the production-usage column tinted by kind (deployed in production, shipped as a managed platform, or research-stage).
+
+<HtmlEmbed src="ecosystem-matrix.html" frameless />
+
+---
+
+### Dimension 8: Ease of adding new environments
+
+*How hard is it to go from "I have an idea for an environment" to "it's running in training"?*
+
+This matters both for humans writing environments by hand and for AI agents (like Claude) scaffolding them. The friction points are: how much boilerplate, how many files, how many concepts to learn, and how fast you can test.
+
+**By hand:** The chart below plots each framework on the two friction axes (files to create × concepts to learn), with bubble size scaling to time-to-first-test and a solid outline marking frameworks that ship a CLI scaffolder. Bottom-left is the easy quadrant; top-right is the heavy-boilerplate quadrant.
+
+<HtmlEmbed src="d3-effort-author.html" frameless />
+
+<HtmlEmbed src="effort-author-matrix.html" frameless />
+
+**By AI (Claude Code, Cursor, etc.):**
+
+In-process frameworks require fewer files for AI to scaffold, one Python file, no Docker, no server, and pytest feedback is immediate. HTTP frameworks require more files, Docker configuration, and deployment steps. We tested this: Claude scaffolded a complete Wordle environment across all 6 frameworks in a single session. The in-process ones (Verifiers, SkyRL, GEM) completed in minutes; the HTTP ones (ORS, NeMo Gym, OpenEnv) required additional iterations for Dockerfiles and deployment configs.
+
+---
+
+### Dimension 9: Local & cluster setup
+
+*How easy is it to run environments on your own infrastructure?*
+
+**Local development (laptop/desktop):**
+
+The shape of the laptop install differs in two ways: how much you have to install before anything runs, and what kind of state you have to babysit (a server vs. a Python process). The matrix below covers both.
+
+|  | OpenEnv | ORS | NeMo Gym | Verifiers | SkyRL Gym | GEM |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Needs Docker** | ✅ (for production) | ✅ (for production) | ✅ (for production) | — | — | — |
+| **Needs external service** | Depends on backend (e.g., E2B) | Depends on backend | Depends on backend | Depends on backend | Depends on backend | — (pure Python games) |
+| **Deps install** | `pip install openenv-core fastmcp` | `pip install ors-sdk` | `pip install nemo_gym` (from git, pulls Ray) | `pip install verifiers` | `pip install skyrl-gym` | `pip install gem-llm` |
+| **Heavy deps** | FastMCP, FastAPI, Gradio | FastAPI, uvicorn | **Ray, OmegaConf, aiohttp** | Minimal | Minimal | Minimal |
+| **Python version** | ≥3.11 | ≥3.10 | **≥3.12** | ≥3.11 | ≥3.10 | ≥3.10 |
+| **Dep conflicts risk** | Low | Low | **High** (Ray pins many deps) | Low | Low | Low |
+
+**Slurm cluster:**
+
+Once you leave your laptop, the question is who lives where. HTTP frameworks let you put the env on its own (often CPU-only) node and point any number of GPU training nodes at it, with a load balancer fronting a pool of env replicas you can grow. In-process frameworks put trainer and env in the same venv on the same GPU node, which is simpler to operate but means scaling the env is whatever orchestration story your training framework already has.
+
+<HtmlEmbed src="d3-cluster-topology.html" frameless />
+
+|  | HTTP Frameworks | In-Process Frameworks |
+| --- | --- | --- |
+| **Env deployment** | Deploy to HF Spaces or separate node; training nodes just need `requests` | Install framework package in training venv |
+| **GPU usage** | Env server uses no GPUs (can be CPU-only) | Env shares GPU node with training |
+| **Dep isolation** | Clean, server has its own Docker/venv | Must coexist with training deps (TRL, vLLM, DeepSpeed) |
+| **Multi-node** | Server on one node, training on others | Single-node only |
+
+---
+
+### Dimension 10: Scaling & deployment
+
+*How do environments scale from development to production, and what are the concurrency limits?*
+
+RL training generates multiple rollouts per prompt, ideally in parallel, which means interacting with many environments simultaneously. In [GRPO](https://huggingface.co/docs/trl/main/en/grpo_trainer) specifically, that's `num_generations` (typically 4-16) environments per prompt across the batch: with 64 prompts and `num_generations=8`, you have 512 concurrent environment instances per step. This section covers how the two deployment models handle that.
+
+#### Two scaling models
+
+**In-process frameworks** (Verifiers, SkyRL Gym, GEM) create Python objects, startup takes `<1ms`, so 512 or even 10,000 instances are straightforward. Parallelism is handled by the training framework: each worker gets its own environment instance.
+
+The real trade-off is orchestrational, not architectural. If the environment does its own compute (heavy parsing, simulation, in-process logic), it shares CPU with training and scaling means scaling training nodes, expensive GPU work for CPU tasks. But if the environment delegates the actual work to a sandbox or remote service (E2B, Modal, custom HTTP backend), the in-process class is effectively a thin client and the env scales independently of training. The catch is that you own that orchestration: choosing the sandbox provider, managing replicas, handling failover, load-balancing requests. HTTP frameworks bake this into the framework. In-process frameworks leave it to you.
+
+Beyond orchestration, two things stay constant:
+
+- **Dependency conflicts**: environment dependencies must coexist with training dependencies (TRL, vLLM, DeepSpeed, etc.) in the same Python environment. A framework that pins a conflicting version of `numpy` or `torch` can break training.
+- **Fault isolation depends on where the work happens**: a crash in pure in-process env code can take down the training worker; sandboxed execution isolates failures naturally.
+
+**HTTP frameworks** (OpenEnv, ORS, NeMo Gym) run as separate servers handling concurrent sessions. The environment and training scale independently, you can add cheap CPU servers for environments while keeping GPUs focused on training. The [openenv-scaling benchmark](https://github.com/burtenshaw/openenv-scaling) tested how these scale across five infrastructure configurations. Since the server architecture is similar across HTTP frameworks (FastAPI + uvicorn + per-session state), these results are broadly representative.
+
+#### Benchmark results: how containerized environment services scale
+
+The [openenv-scaling benchmark](https://github.com/burtenshaw/openenv-scaling) tested an environment deployed as a FastAPI server in a Docker container, across five infrastructure configurations. OpenEnv, ORS, and NeMo Gym all follow the same shape, a FastAPI app holding per-session state, packaged in the same image used for [HF Spaces](https://huggingface.co/spaces), so these numbers are broadly representative of any environment deployed as a containerized service. The benchmark itself runs OpenEnv's WebSocket mode; the per-protocol differences (WS / SSE / REST) matter less than the container-and-load-balancer story.
+
+Maximum concurrent environments at ≥95% success rate (`wait=1.0s`):
+
+| Infrastructure | Cores | Max Concurrent | Batch/Core |
+| --- | --- | --- | --- |
+| **Multi-node SLURM** (2 nodes + Envoy load balancer) | 96 | **16,384** | 170.7 |
+| **Local uvicorn** (8 workers) | 8 | **2,048** | 256 |
+| **Local Docker** (same image as HF Spaces) | 8 | **2,048** | 256 |
+| **SLURM single-node** (48 workers) | 48 | **512** | 10.7 |
+| **HuggingFace Spaces** (free tier, cpu-basic) | 2 | **128** | 64 |
+
+> Source: [openenv-scaling benchmark](https://github.com/burtenshaw/openenv-scaling). Full results, figures, and raw data in the repo.
+
+![Scaling curves across infrastructures](https://raw.githubusercontent.com/burtenshaw/openenv-scaling/main/experiments/reports/figures/scaling_curves.png)
+
+> **Note on what's being measured:** the benchmark deploys the environment as a long-running **service**: a FastAPI app behind uvicorn, packaged in the same Docker image used for HF Spaces. OpenEnv, ORS, and NeMo Gym all follow this pattern: persistent-session services running in containers, differing only in wire protocol (WS, SSE, REST+cookies). What scales is the *service-in-a-container* shape, not any specific protocol. Verifiers, SkyRL Gym, and GEM take the opposite shape, environment-as-process inside the trainer, which is why they don't appear in this comparison. The infrastructure scaling patterns (local → single-node → multi-node) apply broadly across the three service-shaped frameworks.
+
+#### Latency at max load
+
+Where time is spent at maximum concurrency (`wait=1.0s`). The chart below stacks the three p50 phases per infrastructure, with a ▼ marker for the p99 total. Toggle to the table for the raw numbers.
+
+<HtmlEmbed src="d3-latency-bars.html" frameless />
+
+The multi-node p99 reflects connection queuing at 16,384 concurrent sessions across the Envoy proxy, absolute throughput (518 RPS) is the highest of any configuration.
+
+![Max batch comparison across infrastructures](https://raw.githubusercontent.com/burtenshaw/openenv-scaling/main/experiments/reports/figures/max_batch_comparison.png)
+
+#### Key observations
+
+1. **Docker adds no meaningful overhead**: Local Docker and uvicorn reach the same 2,048 max batch.
+2. **Load balancing configuration matters**: Before fixing Envoy, multi-node achieved only 128 max batch. After: 16,384 (128x improvement).
+3. **[HF Spaces](https://huggingface.co/spaces) caps at ~128 concurrent sessions**: sufficient for development and demos, and convenient since it's also the largest community catalog of pre-built environments to start from.
+4. **The server is rarely the bottleneck**: even a laptop handles 2,048 sessions. The execution backend (sandbox creation, tool execution) dominates per-step latency regardless of framework.
+5. **Horizontal scaling is a load-balancer config problem, not a protocol problem**: the 128 → 16,384 jump came from fixing Envoy's settings, not from changing the wire format. Sticky sessions (which WebSocket forces) make this harder to load-balance; for designs targeting thousands of envs, a stateless-per-request shape with a session ID has fewer footguns.
+
+#### Framework comparison
+
+<HtmlEmbed src="scaling-comparison-matrix.html" frameless />

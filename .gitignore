@@ -219,3 +219,11 @@ __marimo__/
 
 # Reference clones (read-only, not part of this repo)
 reference/
+
+# ── HuggingEnvs ──────────────────────────────────────────────────────────────
+# Node / Vite / Astro build output (slides + articles)
+node_modules/
+dist/
+.astro/
+# Slide deck exports (PDF/PPTX) — published to the Hub, not tracked here
+export/
