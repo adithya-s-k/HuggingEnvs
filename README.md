@@ -1,44 +1,64 @@
 <div align="center">
 
-<img src="./assets/banner.png" alt="HuggingEnvs — open environments for training agents" width="100%">
+<img src="./assets/banner.png" alt="HuggingEnvs — open source RL environments for training LLM agents" width="100%">
 
-# HuggingEnvs
+<h1>HuggingEnvs</h1>
 
-**Open source RL environments for training agents — built, deployed, and trained end to end.**
+<h3>Open source RL environments for LLM agents</h3>
 
-[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hub-HuggingEnvs-yellow)](https://huggingface.co/HuggingEnvs)
-[![Guide](https://img.shields.io/badge/Read-The%20Guide-blue)](https://huggingface.co/spaces/AdithyaSK/rl-environments-guide)
-[![Slides](https://img.shields.io/badge/Watch-The%20Talk-green)](https://huggingface.co/spaces/AdithyaSK/rl-environments-101-slides)
-[![License](https://img.shields.io/badge/License-Apache%202.0-lightgrey)](./LICENSE)
+<p><b>Build&nbsp; ·&nbsp; Deploy&nbsp; ·&nbsp; Train&nbsp; ·&nbsp; Eval&nbsp; — end to end, reproducible, in the open.</b></p>
 
-**[🤗 huggingface.co/HuggingEnvs](https://huggingface.co/HuggingEnvs)** — the environments, datasets, models and demos live on the Hub. Everything reproducible lives here.
+<a href="https://huggingface.co/HuggingEnvs"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-HuggingEnvs-FFD21E?style=for-the-badge&labelColor=1a1a1a" alt="HuggingEnvs on Hugging Face" height="34"></a>
+&nbsp;
+<a href="https://github.com/adithya-s-k/HuggingEnvs/stargazers"><img src="https://img.shields.io/github/stars/adithya-s-k/HuggingEnvs?style=for-the-badge&labelColor=1a1a1a&color=FFD21E" alt="GitHub stars" height="34"></a>
+
+<br><br>
+
+<a href="https://huggingface.co/spaces/AdithyaSK/rl-environments-guide"><img src="https://img.shields.io/badge/%F0%9F%93%96%20The%20Ultimate%20Guide-RL%20Environments-4F46E5?style=for-the-badge&labelColor=1a1a1a" alt="The ultimate guide to RL environments" height="30"></a>
+<a href="https://huggingface.co/spaces/AdithyaSK/rl-environments-101-slides"><img src="https://img.shields.io/badge/%F0%9F%8E%9E%EF%B8%8F%20Slides-RL%20Environments%20101-10B981?style=for-the-badge&labelColor=1a1a1a" alt="RL Environments 101 slides" height="30"></a>
+<a href="https://huggingface.co/spaces/AdithyaSK/scaling-rl-for-llms-amd-ai-dev-day"><img src="https://img.shields.io/badge/%F0%9F%93%88%20Slides-Scaling%20RL%20for%20LLMs-8B5CF6?style=for-the-badge&labelColor=1a1a1a" alt="Scaling RL for LLMs slides" height="30"></a>
+
+<br><br>
+
+<a href="./00-environments-101/envs/"><img src="https://img.shields.io/badge/environments-3-06B6D4?labelColor=1a1a1a" alt="3 environments"></a>
+<a href="./00-environments-101/"><img src="https://img.shields.io/badge/frameworks-6-8B5CF6?labelColor=1a1a1a" alt="6 frameworks"></a>
+<a href="./.claude/skills/"><img src="https://img.shields.io/badge/agent%20skills-5-F59E0B?labelColor=1a1a1a" alt="5 agent skills"></a>
+<a href="./CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-22C55E?labelColor=1a1a1a" alt="PRs welcome"></a>
+<a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-3B82F6?labelColor=1a1a1a" alt="Apache 2.0 license"></a>
 
 </div>
 
 ---
 
-## What this is
+## Why this exists
 
-RL has moved from games to language agents, and the bottleneck moved with it. The algorithm is no
-longer the hard part — the **environment** is: the sandbox that hands an agent a task, lets it act,
-and returns a reward.
+The RL environment ecosystem is moving *fast*. New frameworks land every few weeks, each with its own
+vocabulary for the same handful of ideas, and most of what's written about them is either a launch post
+or a spec. Meanwhile the actual bottleneck in RL for LLMs has quietly shifted: the algorithm isn't the
+hard part any more — **the environment is.**
 
-This repo is a working answer to what that takes. Not a survey. Every environment here runs, every
-rollout here has been executed, and every training curve here came from a job you can launch yourself.
+So we're building the resource we wanted. Open source, end to end, and reproducible: how to *design* an
+environment, how to *build* it, how to *deploy* it, how to *train* against it, and how to *scale* it to
+thousands of concurrent sessions. Real code you can run, not diagrams of code someone else ran.
 
-## How it's split
+Every environment here works. Every rollout has been executed. Every training curve came from a job you
+can launch yourself, in one command, without a GPU of your own.
 
-| | |
-|---|---|
-| **This repo** | Environment source, rollout scripts, training configs, notebooks, article and slide sources — everything you'd want to read, run, fork, or reproduce. |
-| **[🤗 HuggingEnvs](https://huggingface.co/HuggingEnvs)** | The artifacts those produce — deployed environment Spaces, task datasets, trained models, dashboards, and the published articles and decks. |
+<div align="center">
 
-Each project below names the Hub repos it owns, and each Hub card links back to the exact folder here.
+**3** environments&nbsp; · &nbsp;**6** frameworks&nbsp; · &nbsp;**18** implementations&nbsp; · &nbsp;**8** deployed Spaces&nbsp; · &nbsp;**5** agent skills
+
+</div>
+
+**Where things live:** source, recipes and notebooks in this repo · environments, datasets, models and
+demos on **[🤗 huggingface.co/HuggingEnvs](https://huggingface.co/HuggingEnvs)**.
+
+---
 
 ## Projects
 
-Each numbered folder is a self-contained project: its own README, its own environments, its own
-results. They read in order but stand alone.
+Each numbered folder is self-contained — its own README, environments, and results. They read in order
+but stand alone.
 
 <!-- BEGIN:projects -->
 | # | Project | What you get | Status |
@@ -47,25 +67,93 @@ results. They read in order but stand alone.
 | **01** | **[LaTeX OCR](./01-latex-ocr/)** | Train Qwen3-VL-2B to read math images into LaTeX, with a verifiable reward. | 📓 notebook |
 <!-- END:projects -->
 
-## Start here
+---
 
-**Just want to understand environments?** → [The guide](https://huggingface.co/spaces/AdithyaSK/rl-environments-guide) (source in [`content/articles/`](./content/articles/)), then [project 00's README](./00-environments-101/).
+## Articles &amp; talks
 
-**Want to run one?**
+Long-form writing and conference decks. Sources live in [`content/`](./content/); each ships to the Hub
+as a Space.
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+<a href="https://huggingface.co/spaces/AdithyaSK/rl-environments-guide"><img src="./assets/content/guide.png" alt="The ultimate guide to RL environments: building and scaling them in the LLM era"></a>
+
+### [The ultimate guide to RL environments](https://huggingface.co/spaces/AdithyaSK/rl-environments-guide)
+
+![Article](https://img.shields.io/badge/-article-4F46E5) ![Space](https://img.shields.io/badge/-live%20space-FFD21E)
+
+Building and scaling RL environments in the LLM era. The anatomy of RL environment frameworks: how
+they're built, how rewards are wired, and how they scale to thousands of concurrent sessions.
+
+<sub>📂 [`content/articles/rl-environments-guide/`](./content/articles/rl-environments-guide/)</sub>
+
+</td>
+<td width="50%" valign="top">
+
+<a href="https://huggingface.co/spaces/AdithyaSK/rl-environments-101-slides"><img src="./assets/content/rl-environments-101.png" alt="RL Environments 101 — from what is an env to training your own"></a>
+
+### [RL Environments 101](https://huggingface.co/spaces/AdithyaSK/rl-environments-101-slides)
+
+![Talk](https://img.shields.io/badge/-talk-10B981) ![Space](https://img.shields.io/badge/-live%20space-FFD21E)
+
+From "what is an env?" to training your own. RL fundamentals → environment anatomy → OpenEnv →
+training with TRL. The original 30-minute talk.
+
+<sub>📂 [`content/slides/rl-environments-101/`](./content/slides/rl-environments-101/)</sub>
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+<a href="https://huggingface.co/spaces/AdithyaSK/scaling-rl-for-llms-amd-ai-dev-day"><img src="./assets/content/scaling-rl.png" alt="Scaling RL for LLMs — RL environments and RL training, AMD AI Dev Day"></a>
+
+### [Scaling RL for LLMs](https://huggingface.co/spaces/AdithyaSK/scaling-rl-for-llms-amd-ai-dev-day)
+
+![Talk](https://img.shields.io/badge/-talk-10B981) ![Space](https://img.shields.io/badge/-live%20space-FFD21E) ![AMD AI Dev Day](https://img.shields.io/badge/-AMD%20AI%20Dev%20Day-ED1C24)
+
+RL environments and RL training — what an environment actually is, how reward hacking happens, and
+how to build and train against your own. The 20-minute cut.
+
+<sub>📂 [`content/slides/scaling-rl-amd/`](./content/slides/scaling-rl-amd/)</sub>
+
+</td>
+<td width="50%" valign="top">
+
+<img src="./assets/content/multi-harness-training.png" alt="Multi-Harness Training — OpenEnv and Harbor">
+
+### Multi-Harness Training
+
+![Talk](https://img.shields.io/badge/-talk-10B981) ![Not deployed](https://img.shields.io/badge/-not%20deployed-6B7280)
+
+OpenEnv × Harbor — why an environment's failure model decides whether it can be trained against:
+in-process agent loops vs. an HTTP boundary, and what it takes to capture trainable tokens.
+
+<sub>📂 [`content/slides/multi-harness-training/`](./content/slides/multi-harness-training/)</sub>
+
+</td>
+</tr>
+</table>
+
+---
+
+## Quickstart
+
+**Run an environment.** Wordle is pure Python with no external backend — the fastest full rollout:
 
 ```bash
 git clone https://github.com/adithya-s-k/HuggingEnvs
 cd HuggingEnvs
-cp .env.example .env          # HF_TOKEN, and E2B_API_KEY for sandbox-backed envs
+cp .env.example .env          # HF_TOKEN, plus E2B_API_KEY for sandbox-backed envs
 
 cd 00-environments-101/envs/wordle/verifiers
 uv sync && uv run python rollout.py
 ```
 
-Wordle is pure Python with no external backend — the fastest way to see a full rollout.
-
-**Want to train against one?** No GPU or cluster needed — one command spins up a GPU with the
-notebooks loaded:
+**Train a model against one.** No GPU, no cluster, no setup — one command spins up a GPU with the
+notebooks loaded and prints a JupyterLab URL:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/adithya-s-k/HuggingEnvs/main/tools/jupyter_launch.py | python3 -
@@ -73,11 +161,13 @@ curl -sSL https://raw.githubusercontent.com/adithya-s-k/HuggingEnvs/main/tools/j
 
 <sub>Windows (PowerShell): `irm https://raw.githubusercontent.com/adithya-s-k/HuggingEnvs/main/tools/jupyter_launch.py | python -`. Set `FLAVOR=t4-small` for a cheaper GPU. Track jobs at [huggingface.co/settings/jobs](https://huggingface.co/settings/jobs).</sub>
 
-## Build your own — agent skills
+---
 
-Five [SKILL.md](https://github.com/anthropics/skills)-spec agent skills that turn a plain-English
-description into a runnable environment across four frameworks. They work in **any** project, not
-just this one, with Claude Code, Cursor, Codex, OpenCode, Gemini CLI and others.
+## Build your own environment
+
+Five [SKILL.md](https://github.com/anthropics/skills)-spec agent skills turn a plain-English description
+into a runnable RL environment across four frameworks. They work in **any** project — with Claude Code,
+Cursor, Codex, OpenCode, Gemini CLI and others.
 
 ```bash
 npx skills add adithya-s-k/HuggingEnvs
@@ -85,34 +175,73 @@ npx skills add adithya-s-k/HuggingEnvs
 
 | Skill | What it builds |
 |---|---|
-| `rl-env-from-description` | Orchestrator — interviews you, then ports across all four frameworks |
-| `generate-openenv-env` | OpenEnv (Hugging Face) — HTTP + MCP |
-| `generate-ors-env` | OpenReward (ORS) — per-tool-call rewards |
-| `generate-verifiers-env` | Verifiers (Prime Intellect) — in-process + rubrics |
-| `generate-nemo-gym-env` | NeMo Gym (NVIDIA) — HTTP + post-episode `/verify` |
+| **`rl-env-from-description`** | Orchestrator — interviews you, then ports across all four frameworks |
+| `generate-openenv-env` | [OpenEnv](https://github.com/meta-pytorch/OpenEnv) (Hugging Face / Meta) — HTTP + MCP |
+| `generate-ors-env` | [OpenReward](https://openreward.ai) (ORS) — per-tool-call rewards |
+| `generate-verifiers-env` | [Verifiers](https://github.com/PrimeIntellect-ai/verifiers) (Prime Intellect) — in-process + rubrics |
+| `generate-nemo-gym-env` | [NeMo Gym](https://github.com/NVIDIA-NeMo/Gym) (NVIDIA) — HTTP + post-episode `/verify` |
+
+> *"make me an env where the agent plays connect-four"* — that's the whole interface.
+
+---
+
+## Which framework should I use?
+
+The short version. The long version is [project 00](./00-environments-101/) and
+[the guide](https://huggingface.co/spaces/AdithyaSK/rl-environments-guide).
+
+| Framework | Type | Reward model | Deployable | Best for |
+|---|---|---|---|---|
+| **OpenEnv** | HTTP (MCP) | external | ✅ Docker / HF Space | Long-running sandboxes, MCP ecosystem |
+| **ORS** | HTTP (REST+SSE) | per tool call | ✅ Docker / HF Space | Server-decided rewards, OpenReward marketplace |
+| **NeMo Gym** | HTTP (REST) | post-episode `/verify` | ✅ Docker / HF Space | NVIDIA stack, Ray-based scaling |
+| **Verifiers** | in-process | `Rubric` system | ⚙️ | Fast prototyping, bundled datasets |
+| **SkyRL Gym** | in-process | `step()` returns | ⚙️ | Gym-style RL, SkyRL training stack |
+| **GEM** | in-process | `step()` returns | ⚙️ | Gymnasium API, pure-Python games |
+
+**Rule of thumb:** prototype in Verifiers, productionise in OpenEnv or ORS.
+
+---
 
 ## Repository layout
 
 ```
 HuggingEnvs/
-├── 00-environments-101/     3 envs × 6 frameworks
+├── 00-environments-101/     3 environments × 6 frameworks
 ├── 01-latex-ocr/            train a VLM against a served reward
-├── content/                 articles, slides, talk material
-│   ├── articles/            research-article sources (Astro → Docker Space)
-│   └── slides/              decks (Vite → static Space)
-├── tools/                   launcher, deploy, index generation
-├── assets/                  brand + shared images
-└── .claude/skills/          the five agent skills
+├── content/
+│   ├── articles/            long-form sources (Astro → Docker Space)
+│   └── slides/              talk decks (Vite → static Space)
+├── tools/                   launcher, Space deploy, index generation
+├── assets/                  brand + content thumbnails
+└── .claude/skills/          the five environment-authoring agent skills
 ```
 
-Inside a project, the folders always mean the same thing: `envs/` (implementations,
-with shared logic in `core/`), `train/` (configs + launch), `notebooks/`, `results/`.
+Inside a project the folders always mean the same thing: `envs/` (implementations, shared logic in
+`core/`), `train/` (configs + launch), `notebooks/`, `results/`.
+
+---
 
 ## Contributing
 
-New environments, new framework ports, and reproductions that disagree with ours are all welcome.
-See [CONTRIBUTING.md](./CONTRIBUTING.md) — the fastest path is the `rl-env-from-description` skill.
+New environments, new framework ports, and reproductions that disagree with ours are all welcome —
+see **[CONTRIBUTING.md](./CONTRIBUTING.md)**. The fastest path is the `rl-env-from-description` skill.
+
+## Citation
+
+```bibtex
+@misc{huggingenvs,
+  author = {Kolavi, Adithya S},
+  title  = {HuggingEnvs: Open Source RL Environments for LLM Agents},
+  year   = {2026},
+  url    = {https://github.com/adithya-s-k/HuggingEnvs}
+}
+```
 
 ## License
 
 [Apache 2.0](./LICENSE)
+
+<div align="center">
+<sub>Built in the open · <a href="https://huggingface.co/HuggingEnvs">🤗 HuggingEnvs</a> · <a href="https://huggingface.co/AdithyaSK">@AdithyaSK</a></sub>
+</div>

@@ -36,7 +36,15 @@ def main():
 
     title = cfg["title"]
     accent_part = cfg.get("titleAccent") or ""
-    head = title[: -len(accent_part)] if accent_part and title.endswith(accent_part) else title
+    # titleAccent may sit at either end of the title; anywhere else we ignore it
+    # rather than draw the accent twice.
+    lead = ""
+    if accent_part and title.endswith(accent_part):
+        head = title[: -len(accent_part)]
+    elif accent_part and title.startswith(accent_part):
+        lead, head, accent_part = accent_part, title[len(accent_part):], ""
+    else:
+        head, accent_part = title, ""
 
     img = Image.new("RGBA", size, P["bg"] + (255,))
     tile_field(img, P, size)
@@ -44,7 +52,15 @@ def main():
     d = ImageDraw.Draw(img)
 
     f_eyebrow = font(MONO, 20, "Bold")
-    f_title = font(SANS, 92, "Heavy")
+    # Shrink the title until it fits the canvas — a long title used to bleed off
+    # both edges at the fixed 92px.
+    title_size = 92
+    while title_size > 40:
+        f_title = font(SANS, title_size, "Heavy")
+        line_w = text_width(d, lead + head + accent_part, f_title, -2)
+        if line_w <= W - 2 * 72:
+            break
+        title_size -= 4
     f_sub = font(SANS, 32, "Medium")
     f_by = font(MONO, 23, "Regular")
 
@@ -53,16 +69,15 @@ def main():
         w = text_width(d, eyebrow, f_eyebrow, 6)
         draw_tracked(d, ((W - w) / 2, 118), eyebrow, f_eyebrow, P["accent"], 6)
 
-    runs = [(head, f_title, P["white"])]
+    runs = []
+    if lead:
+        runs.append((lead, f_title, P["accent2"]))
+    runs.append((head, f_title, P["white"]))
     if accent_part:
         runs.append((accent_part, f_title, P["accent2"]))
-        glow(
-            img,
-            lambda dd: draw_runs(
-                dd, 186, [(head, f_title, (0, 0, 0, 0)), (accent_part, f_title, P["accent2"])], size, -2
-            ),
-            size,
-        )
+    if lead or accent_part:
+        ghost = [(s_, f_, P["accent2"] if c == P["accent2"] else (0, 0, 0, 0)) for s_, f_, c in runs]
+        glow(img, lambda dd: draw_runs(dd, 186, ghost, size, -2), size)
         d = ImageDraw.Draw(img)
     draw_runs(d, 186, runs, size, -2)
 
