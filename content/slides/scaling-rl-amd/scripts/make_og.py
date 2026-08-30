@@ -119,19 +119,19 @@ def main():
     f_sub = font(SFNS, 34, "Medium")
     f_by = font(MONO, 23, "Regular")
 
-    eyebrow = "HUGGING FACE · RL ENVIRONMENTS"
+    eyebrow = "AMD AI DEV DAY · HUGGING FACE"
     ey_w = text_width(d, eyebrow, f_eyebrow, 6)
     draw_tracked(d, ((W - ey_w) / 2, 118), eyebrow, f_eyebrow, LAVENDER, 6)
 
-    title = [("RL Environments ", f_title, WHITE), ("101", f_title, EMERALD)]
-    glow(img, lambda dd: draw_runs(dd, 186, [("RL Environments ", f_title, (0, 0, 0, 0)), ("101", f_title, EMERALD)], -2))
+    title = [("Scaling RL ", f_title, WHITE), ("for LLMs", f_title, EMERALD)]
+    glow(img, lambda dd: draw_runs(dd, 186, [("Scaling RL ", f_title, (0, 0, 0, 0)), ("for LLMs", f_title, EMERALD)], -2))
     d = ImageDraw.Draw(img)
     draw_runs(d, 186, title, -2)
 
     sub = [
-        ("From ", f_sub, TEXT_MUTED),
-        ("“What Is an Env?”", f_sub, LAVENDER),
-        (" to Training Your Own", f_sub, TEXT_MUTED),
+        ("RL Environments", f_sub, LAVENDER),
+        ("  ·  ", f_sub, TEXT_DIM),
+        ("RL Training", f_sub, LAVENDER),
     ]
     draw_runs(d, 330, sub)
 

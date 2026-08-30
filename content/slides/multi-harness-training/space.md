@@ -1,20 +1,22 @@
 ---
-title: Multi-Harness Training — Slides
+title: Multi-Harness Training
 emoji: 🔀
-colorFrom: blue
-colorTo: indigo
+colorFrom: indigo
+colorTo: purple
 sdk: static
 app_file: index.html
 pinned: false
-license: mit
-short_description: OpenEnv × Harbor — why an env's failure model decides trainability
+short_description: OpenEnv x Harbor - trainable tokens from any coding agent
 ---
 
 # Multi-Harness Training — OpenEnv × Harbor
 
-Talk slides by [Adithya S Kolavi](https://huggingface.co/AdithyaSK).
+Why OpenEnv belongs between a trainer and Harbor, and how a capture proxy turns any
+black-box coding agent (`claude-code`, `codex`, `opencode`, and 34 more) into token ids
+and logprobs you can train on.
 
-Why an environment's failure model decides whether it can be trained against:
-in-process agent loops vs. an HTTP boundary, and what it takes to capture trainable tokens.
+Download: [PDF](./Multi-Harness-Training-OpenEnv-Harbor.pdf) · [PPTX](./Multi-Harness-Training-OpenEnv-Harbor.pptx)
 
-Source: [HuggingEnvs](https://github.com/adithya-s-k/HuggingEnvs) · `content/slides/multi-harness-training/`
+Built with [research-presentation-template](https://github.com/adithya-s-k/research-presentation-template).
+
+Keys: `←/→` navigate · `t` dark/light · `f` fullscreen · `p` print to PDF · `⚙` slide list.

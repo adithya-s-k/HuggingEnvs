@@ -1,12 +1,36 @@
 # Contributing
 
-The most useful contributions here, roughly in order:
+**We are actively looking for new end-to-end recipes.** That's the single most valuable thing you can
+contribute here, and it's what this repo is for.
 
-1. **A new environment** — a task nobody has modelled yet.
+## What an end-to-end recipe is
+
+A complete, reproducible path from *"here is a task"* to *"here is a trained model"*:
+
+1. **An environment** — the task, the tools, the observations, the reward.
+2. **A rollout** that demonstrably works against it, with a trajectory a human can read.
+3. **A training run** — config, launch command, hardware, and roughly what it cost.
+4. **Results** — the curve, and the honest version of it. What worked, what didn't, where the model
+   found a shortcut you didn't intend.
+5. **Artifacts on the Hub** — the environment Space, the task dataset, the trained model.
+
+If you have all five, open a PR adding a new numbered project folder. If you have two or three of
+them, open an issue anyway — a half-finished recipe with real numbers beats a polished one that
+nobody ran. We'd rather help you land it than never see it.
+
+Recipes on domains we don't cover yet are especially welcome: web browsing, SQL and data analysis,
+games, robotics simulators, tool-use over real APIs, multi-agent setups, long-horizon software
+engineering. Different base models and different trainers are welcome too — the point is coverage of
+the *space*, not one blessed stack.
+
+## Everything else that helps
+
+1. **A new environment**, even without the training half.
 2. **A new framework port** of an environment that already exists.
 3. **A reproduction that disagrees with ours.** If you ran a recipe and got a different curve, that's
-   a bug report we want.
+   a bug report we want — please include your config and hardware.
 4. **Fixes to rollouts that broke.** Frameworks move fast; things rot.
+5. **Corrections to the guide or the slides.** If an explanation is wrong or unclear, say so.
 
 ## Repository shape
 
@@ -25,6 +49,23 @@ HuggingEnvs/
 ```
 
 Those folder names mean the same thing in every project. Keep it that way.
+
+## Adding a project
+
+A project is a top-level numbered folder. Copy the shape of an existing one:
+
+```
+NN-<name>/
+├── README.md       what it is, how to run it, what the results were
+├── project.yaml    manifest — Hub links and per-framework status
+├── envs/<env>/     core/ + one folder per framework
+├── train/          config + launch script
+├── notebooks/
+└── results/        curves, and links to the Hub artifacts
+```
+
+Pick the next free number. Register the Hub repos you own in `project.yaml`, then run
+`python3 tools/build_index.py` so the root README picks it up.
 
 ## Adding an environment
 

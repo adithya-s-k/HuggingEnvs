@@ -50,12 +50,26 @@ def load_projects() -> list[dict]:
 
 
 def render_projects_table(projects: list[dict]) -> str:
-    rows = ["| # | Project | What you get | Status |", "|---|---|---|---|"]
+    rows = [
+        "| # | Project | What you get | Envs | Frameworks | Deployed | Status |",
+        "|---|---|---|:--:|:--:|:--:|---|",
+    ]
     for p in projects:
         folder = p["_dir"].name
         num = folder.split("-", 1)[0]
+        envs = p.get("envs") or []
+        frameworks = {f for e in envs for f in (e.get("frameworks") or {})}
+        spaces = {
+            spec["space"]
+            for e in envs
+            for spec in (e.get("frameworks") or {}).values()
+            if spec.get("space")
+        }
         status = STATUS_ICON.get(p.get("status", ""), p.get("status", ""))
-        rows.append(f"| **{num}** | **[{p['title']}](./{folder}/)** | {p['tagline']} | {status} |")
+        rows.append(
+            f"| **{num}** | **[{p['title']}](./{folder}/)** | {p['tagline']} "
+            f"| {len(envs)} | {len(frameworks)} | {len(spaces)} | {status} |"
+        )
     return "\n".join(rows)
 
 

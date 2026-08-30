@@ -25,7 +25,7 @@ Prose lives in `app/src/content/` — `article.mdx`, `chapters/`, `embeds/`, `bi
 |---|---|---|
 | **RL Environments 101** | [`slides/rl-environments-101/`](./slides/rl-environments-101/) | [▶️ Space](https://huggingface.co/spaces/AdithyaSK/rl-environments-101-slides) |
 | **Scaling RL for LLMs** (AMD AI Dev Day) | [`slides/scaling-rl-amd/`](./slides/scaling-rl-amd/) | [▶️ Space](https://huggingface.co/spaces/AdithyaSK/scaling-rl-for-llms-amd-ai-dev-day) |
-| **Multi-Harness Training** (OpenEnv × Harbor) | [`slides/multi-harness-training/`](./slides/multi-harness-training/) | — |
+| **Multi-Harness Training** (OpenEnv × Harbor) | [`slides/multi-harness-training/`](./slides/multi-harness-training/) | [▶️ Space](https://huggingface.co/spaces/AdithyaSK/multi-harness-training-slides) |
 
 React components on a fixed 1280×720 canvas that scales to any projector, dark/light themes,
 arrow-key navigation. All three bind port 5173, so run one at a time.

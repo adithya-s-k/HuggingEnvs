@@ -57,46 +57,85 @@ demos on **[🤗 huggingface.co/HuggingEnvs](https://huggingface.co/HuggingEnvs)
 
 ## Projects
 
-Each numbered folder is self-contained — its own README, environments, and results. They read in order
-but stand alone.
+Each numbered folder is a **self-contained, end-to-end project** — its own environments, notebooks,
+results and README, plus the Hub repos it owns. They read in order but stand alone.
 
 <!-- BEGIN:projects -->
-| # | Project | What you get | Status |
-|---|---|---|---|
-| **00** | **[RL Environments 101](./00-environments-101/)** | Three environments, six frameworks, side by side. | ✅ stable |
-| **01** | **[LaTeX OCR](./01-latex-ocr/)** | Train Qwen3-VL-2B to read math images into LaTeX, with a verifiable reward. | 📓 notebook |
+| # | Project | What you get | Envs | Frameworks | Deployed | Status |
+|---|---|---|:--:|:--:|:--:|---|
+| **00** | **[RL Environments 101](./00-environments-101/)** | Three environments, six frameworks, side by side. | 3 | 6 | 8 | ✅ stable |
+| **01** | **[LaTeX OCR](./01-latex-ocr/)** | Train Qwen3-VL-2B to read math images into LaTeX, with a verifiable reward. | 1 | 1 | 1 | 📓 notebook |
 <!-- END:projects -->
-
----
-
-## Articles &amp; talks
-
-Long-form writing and conference decks. Sources live in [`content/`](./content/); each ships to the Hub
-as a Space.
 
 <table>
 <tr>
 <td width="50%" valign="top">
 
-<a href="https://huggingface.co/spaces/AdithyaSK/rl-environments-guide"><img src="./assets/content/guide.png" alt="The ultimate guide to RL environments: building and scaling them in the LLM era"></a>
+### [00 · RL Environments 101](./00-environments-101/)
 
-### [The ultimate guide to RL environments](https://huggingface.co/spaces/AdithyaSK/rl-environments-guide)
+**One env, six ways.** Three environments, each implemented six times — same logic, six framework
+dialects. Diff any two `server.py` files and the differences *are* the lesson.
 
-![Article](https://img.shields.io/badge/-article-4F46E5) ![Space](https://img.shields.io/badge/-live%20space-FFD21E)
+| Environment | Turns | Tools | Backend |
+|---|---|---|---|
+| [**Jupyter agent**](./00-environments-101/envs/jupyter/) | multi | 4 | E2B sandbox, real code execution |
+| [**Wordle**](./00-environments-101/envs/wordle/) | multi | 1 | pure Python, no backend |
+| [**Desktop**](./00-environments-101/envs/desktop/) | multi | 19 | E2B Desktop, vision-driven |
 
-Building and scaling RL environments in the LLM era. The anatomy of RL environment frameworks: how
-they're built, how rewards are wired, and how they scale to thousands of concurrent sessions.
-
-<sub>📂 [`content/articles/rl-environments-guide/`](./content/articles/rl-environments-guide/)</sub>
+Across `openenv` · `ors` · `nemo_gym` · `verifiers` · `skyrl_gym` · `gem` — 18 implementations, 8 of
+them deployed as Spaces you can hit right now.
 
 </td>
 <td width="50%" valign="top">
 
+### [01 · LaTeX OCR](./01-latex-ocr/)
+
+**The full loop.** Project 00 shows you what an environment *is*; this one takes a single environment
+all the way to a trained model.
+
+Qwen3-VL-2B learns to read rendered math into LaTeX with GRPO, scored by a reward served from a live
+[OpenEnv Space](https://huggingface.co/spaces/AdithyaSK/latex-ocr-env). Correctness is checkable —
+render the prediction, compare — so the reward is honest and there is very little to game.
+
+Runs on a GPU you spin up in [one command](#quickstart). No cluster, no local GPU.
+
+</td>
+</tr>
+</table>
+
+> **More coming.** Each new project is another end-to-end recipe: an environment, a training run, and
+> the artifacts on the Hub. [Proposals and contributions welcome →](./CONTRIBUTING.md)
+
+---
+
+## Articles &amp; talks
+
+Long-form writing and conference talks. Sources live in [`content/`](./content/); each one ships to the
+Hub as a Space.
+
+<table>
+<tr>
+<td width="33%" valign="top">
+
+<a href="https://huggingface.co/spaces/AdithyaSK/rl-environments-guide"><img src="./assets/content/guide.png" alt="The ultimate guide to RL environments: building and scaling them in the LLM era"></a>
+
+#### [The Ultimate Guide to RL Environments](https://huggingface.co/spaces/AdithyaSK/rl-environments-guide)
+
+![Article](https://img.shields.io/badge/-article-4F46E5) ![Live](https://img.shields.io/badge/-live%20space-FFD21E)
+
+Building and scaling RL environments in the LLM era — how frameworks are built, how rewards are
+wired, and how they scale to thousands of concurrent sessions.
+
+<sub>📂 [`content/articles/rl-environments-guide/`](./content/articles/rl-environments-guide/)</sub>
+
+</td>
+<td width="33%" valign="top">
+
 <a href="https://huggingface.co/spaces/AdithyaSK/rl-environments-101-slides"><img src="./assets/content/rl-environments-101.png" alt="RL Environments 101 — from what is an env to training your own"></a>
 
-### [RL Environments 101](https://huggingface.co/spaces/AdithyaSK/rl-environments-101-slides)
+#### [RL Environments 101](https://huggingface.co/spaces/AdithyaSK/rl-environments-101-slides)
 
-![Talk](https://img.shields.io/badge/-talk-10B981) ![Space](https://img.shields.io/badge/-live%20space-FFD21E)
+![Talk](https://img.shields.io/badge/-talk-10B981) ![Live](https://img.shields.io/badge/-live%20space-FFD21E)
 
 From "what is an env?" to training your own. RL fundamentals → environment anatomy → OpenEnv →
 training with TRL. The original 30-minute talk.
@@ -104,35 +143,39 @@ training with TRL. The original 30-minute talk.
 <sub>📂 [`content/slides/rl-environments-101/`](./content/slides/rl-environments-101/)</sub>
 
 </td>
-</tr>
-<tr>
-<td width="50%" valign="top">
+<td width="33%" valign="top">
 
 <a href="https://huggingface.co/spaces/AdithyaSK/scaling-rl-for-llms-amd-ai-dev-day"><img src="./assets/content/scaling-rl.png" alt="Scaling RL for LLMs — RL environments and RL training, AMD AI Dev Day"></a>
 
-### [Scaling RL for LLMs](https://huggingface.co/spaces/AdithyaSK/scaling-rl-for-llms-amd-ai-dev-day)
+#### [Scaling RL for LLMs](https://huggingface.co/spaces/AdithyaSK/scaling-rl-for-llms-amd-ai-dev-day)
 
-![Talk](https://img.shields.io/badge/-talk-10B981) ![Space](https://img.shields.io/badge/-live%20space-FFD21E) ![AMD AI Dev Day](https://img.shields.io/badge/-AMD%20AI%20Dev%20Day-ED1C24)
+![Talk](https://img.shields.io/badge/-talk-10B981) ![Live](https://img.shields.io/badge/-live%20space-FFD21E) ![AMD AI Dev Day](https://img.shields.io/badge/-AMD%20AI%20Dev%20Day-ED1C24)
 
-RL environments and RL training — what an environment actually is, how reward hacking happens, and
-how to build and train against your own. The 20-minute cut.
+What an environment actually is, how reward hacking happens, and how to build and train against your
+own. The 20-minute cut, for AMD AI Dev Day.
 
 <sub>📂 [`content/slides/scaling-rl-amd/`](./content/slides/scaling-rl-amd/)</sub>
 
 </td>
-<td width="50%" valign="top">
+</tr>
+<tr>
+<td width="33%" valign="top">
 
-<img src="./assets/content/multi-harness-training.png" alt="Multi-Harness Training — OpenEnv and Harbor">
+<a href="https://huggingface.co/spaces/AdithyaSK/multi-harness-training-slides"><img src="./assets/content/multi-harness-training.png" alt="Multi-Harness Training — OpenEnv and Harbor"></a>
 
-### Multi-Harness Training
+#### [Multi-Harness Training](https://huggingface.co/spaces/AdithyaSK/multi-harness-training-slides)
 
-![Talk](https://img.shields.io/badge/-talk-10B981) ![Not deployed](https://img.shields.io/badge/-not%20deployed-6B7280)
+![Talk](https://img.shields.io/badge/-talk-10B981) ![Live](https://img.shields.io/badge/-live%20space-FFD21E)
 
 OpenEnv × Harbor — why an environment's failure model decides whether it can be trained against:
 in-process agent loops vs. an HTTP boundary, and what it takes to capture trainable tokens.
 
 <sub>📂 [`content/slides/multi-harness-training/`](./content/slides/multi-harness-training/)</sub>
 
+</td>
+<td width="33%" valign="top">
+</td>
+<td width="33%" valign="top">
 </td>
 </tr>
 </table>
@@ -185,24 +228,6 @@ npx skills add adithya-s-k/HuggingEnvs
 
 ---
 
-## Which framework should I use?
-
-The short version. The long version is [project 00](./00-environments-101/) and
-[the guide](https://huggingface.co/spaces/AdithyaSK/rl-environments-guide).
-
-| Framework | Type | Reward model | Deployable | Best for |
-|---|---|---|---|---|
-| **OpenEnv** | HTTP (MCP) | external | ✅ Docker / HF Space | Long-running sandboxes, MCP ecosystem |
-| **ORS** | HTTP (REST+SSE) | per tool call | ✅ Docker / HF Space | Server-decided rewards, OpenReward marketplace |
-| **NeMo Gym** | HTTP (REST) | post-episode `/verify` | ✅ Docker / HF Space | NVIDIA stack, Ray-based scaling |
-| **Verifiers** | in-process | `Rubric` system | ⚙️ | Fast prototyping, bundled datasets |
-| **SkyRL Gym** | in-process | `step()` returns | ⚙️ | Gym-style RL, SkyRL training stack |
-| **GEM** | in-process | `step()` returns | ⚙️ | Gymnasium API, pure-Python games |
-
-**Rule of thumb:** prototype in Verifiers, productionise in OpenEnv or ORS.
-
----
-
 ## Repository layout
 
 ```
@@ -224,8 +249,16 @@ Inside a project the folders always mean the same thing: `envs/` (implementation
 
 ## Contributing
 
-New environments, new framework ports, and reproductions that disagree with ours are all welcome —
-see **[CONTRIBUTING.md](./CONTRIBUTING.md)**. The fastest path is the `rl-env-from-description` skill.
+**We're actively looking for new end-to-end recipes** — a task, an environment, a training run, and
+honest results. Domains we don't cover yet are especially welcome: web browsing, SQL, games,
+robotics sims, tool-use over real APIs, long-horizon software engineering.
+
+Half-finished counts. A recipe with real numbers and a gap beats a polished one nobody ran — open an
+issue and we'll help you land it. New framework ports, reproductions that *disagree* with ours, and
+corrections to the guide are all just as welcome.
+
+See **[CONTRIBUTING.md](./CONTRIBUTING.md)**. The fastest path to a new environment is the
+`rl-env-from-description` skill.
 
 ## Citation
 

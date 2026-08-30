@@ -89,18 +89,25 @@ What is implemented and verified, per env and framework. Generated from `project
 | **desktop** | 19 | `e2b-desktop` | ✅ | ✅ | ⚙️ deployed | ✅ | ✅ | ✅ |
 <!-- END:matrix -->
 
-## Framework Cheat Sheet
+## Which framework should I use?
 
-| Framework  | Type             | Tool syntax            | Reward model     | Deployable | Best for |
-|------------|------------------|------------------------|------------------|------------|----------|
-| **OpenEnv**    | HTTP (MCP)       | `@mcp.tool`            | External         | ✅ Docker / HF Space | Long-running sandboxes; MCP ecosystem |
-| **ORS**        | HTTP (REST+SSE)  | `@tool` + Pydantic     | Per-tool-call    | ✅ Docker / HF Space / OpenReward | Server-decided rewards; OpenReward marketplace |
-| **NeMo Gym**   | HTTP (REST)      | `app.post()`           | Post-episode `/verify` | ✅ Docker / HF Space | NVIDIA stack; Ray-based scaling |
-| **Verifiers**  | in-process       | plain Python `def`     | `Rubric` system  | ⚙️          | Fast prototyping; bundled datasets |
-| **SkyRL Gym**  | in-process       | inside `step()`        | `step()` returns | ⚙️          | Gym-style RL; SkyRL training stack |
-| **GEM**        | in-process       | inside `step()`        | `step()` returns | ⚙️          | Gymnasium API; pure-Python games |
+The cheat sheet keeps the `Tool syntax` column, which is where the six frameworks differ most in
+day-to-day code.
 
-HTTP frameworks (OpenEnv, ORS, NeMo Gym) wrap a remote server. In-process frameworks (Verifiers, SkyRL, GEM) run the env class in the same Python process as the trainer or rollout script.
+| Framework | Type | Tool syntax | Reward model | Deployable | Best for |
+|---|---|---|---|---|---|
+| **OpenEnv** | HTTP (MCP) | `@mcp.tool` | external | ✅ Docker / HF Space | Long-running sandboxes; MCP ecosystem |
+| **ORS** | HTTP (REST+SSE) | `@tool` + Pydantic | per tool call | ✅ Docker / HF Space / OpenReward | Server-decided rewards; OpenReward marketplace |
+| **NeMo Gym** | HTTP (REST) | `app.post()` | post-episode `/verify` | ✅ Docker / HF Space | NVIDIA stack; Ray-based scaling |
+| **Verifiers** | in-process | plain Python `def` | `Rubric` system | ⚙️ | Fast prototyping; bundled datasets |
+| **SkyRL Gym** | in-process | inside `step()` | `step()` returns | ⚙️ | Gym-style RL; SkyRL training stack |
+| **GEM** | in-process | inside `step()` | `step()` returns | ⚙️ | Gymnasium API; pure-Python games |
+
+HTTP frameworks (OpenEnv, ORS, NeMo Gym) wrap a remote server. In-process frameworks (Verifiers,
+SkyRL, GEM) run the env class in the same Python process as the trainer or rollout script.
+
+**Rule of thumb:** prototype in Verifiers, productionise in OpenEnv or ORS. The long version is the
+rest of this page and [the guide](https://huggingface.co/spaces/AdithyaSK/rl-environments-guide).
 
 ---
 
