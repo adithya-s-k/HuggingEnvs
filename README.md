@@ -8,23 +8,10 @@
 
 <p><b>Build&nbsp; ·&nbsp; Deploy&nbsp; ·&nbsp; Train&nbsp; ·&nbsp; Eval&nbsp; — end to end, reproducible, in the open.</b></p>
 
-<a href="https://huggingface.co/HuggingEnvs"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-HuggingEnvs-FFD21E?style=for-the-badge&labelColor=1a1a1a" alt="HuggingEnvs on Hugging Face" height="34"></a>
-&nbsp;
-<a href="https://github.com/adithya-s-k/HuggingEnvs/stargazers"><img src="https://img.shields.io/github/stars/adithya-s-k/HuggingEnvs?style=for-the-badge&labelColor=1a1a1a&color=FFD21E" alt="GitHub stars" height="34"></a>
-
-<br><br>
-
-<a href="https://huggingface.co/spaces/AdithyaSK/rl-environments-guide"><img src="https://img.shields.io/badge/%F0%9F%93%96%20The%20Ultimate%20Guide-RL%20Environments-4F46E5?style=for-the-badge&labelColor=1a1a1a" alt="The ultimate guide to RL environments" height="30"></a>
-<a href="https://huggingface.co/spaces/AdithyaSK/rl-environments-101-slides"><img src="https://img.shields.io/badge/%F0%9F%8E%9E%EF%B8%8F%20Slides-RL%20Environments%20101-10B981?style=for-the-badge&labelColor=1a1a1a" alt="RL Environments 101 slides" height="30"></a>
-<a href="https://huggingface.co/spaces/AdithyaSK/scaling-rl-for-llms-amd-ai-dev-day"><img src="https://img.shields.io/badge/%F0%9F%93%88%20Slides-Scaling%20RL%20for%20LLMs-8B5CF6?style=for-the-badge&labelColor=1a1a1a" alt="Scaling RL for LLMs slides" height="30"></a>
-
-<br><br>
-
-<a href="./00-environments-101/envs/"><img src="https://img.shields.io/badge/environments-3-06B6D4?labelColor=1a1a1a" alt="3 environments"></a>
-<a href="./00-environments-101/"><img src="https://img.shields.io/badge/frameworks-6-8B5CF6?labelColor=1a1a1a" alt="6 frameworks"></a>
-<a href="./.claude/skills/"><img src="https://img.shields.io/badge/agent%20skills-5-F59E0B?labelColor=1a1a1a" alt="5 agent skills"></a>
-<a href="./CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-22C55E?labelColor=1a1a1a" alt="PRs welcome"></a>
-<a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-3B82F6?labelColor=1a1a1a" alt="Apache 2.0 license"></a>
+<a href="https://huggingface.co/HuggingEnvs"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-HuggingEnvs-FFD21E?style=for-the-badge&labelColor=1a1a1a" alt="HuggingEnvs on Hugging Face" height="32"></a>
+<a href="https://huggingface.co/spaces/AdithyaSK/rl-environments-guide"><img src="https://img.shields.io/badge/%F0%9F%93%96-Read%20the%20Guide-4F46E5?style=for-the-badge&labelColor=1a1a1a" alt="The ultimate guide to RL environments" height="32"></a>
+<a href="https://github.com/adithya-s-k/HuggingEnvs/stargazers"><img src="https://img.shields.io/github/stars/adithya-s-k/HuggingEnvs?style=for-the-badge&labelColor=1a1a1a&color=FFD21E" alt="GitHub stars" height="32"></a>
+<a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-3B82F6?style=for-the-badge&labelColor=1a1a1a" alt="Apache 2.0 license" height="32"></a>
 
 </div>
 
@@ -60,18 +47,7 @@ demos on **[🤗 huggingface.co/HuggingEnvs](https://huggingface.co/HuggingEnvs)
 Each numbered folder is a **self-contained, end-to-end project** — its own environments, notebooks,
 results and README, plus the Hub repos it owns. They read in order but stand alone.
 
-<!-- BEGIN:projects -->
-| # | Project | What you get | Envs | Frameworks | Deployed | Status |
-|---|---|---|:--:|:--:|:--:|---|
-| **00** | **[RL Environments 101](./00-environments-101/)** | Three environments, six frameworks, side by side. | 3 | 6 | 8 | ✅ stable |
-| **01** | **[LaTeX OCR](./01-latex-ocr/)** | Train Qwen3-VL-2B to read math images into LaTeX, with a verifiable reward. | 1 | 1 | 1 | 📓 notebook |
-<!-- END:projects -->
-
-<table>
-<tr>
-<td width="50%" valign="top">
-
-### [00 · RL Environments 101](./00-environments-101/)
+### [00 · RL Environments 101](./00-environments-101/) &nbsp;<sub>3 environments · 6 frameworks · 8 live Spaces</sub>
 
 **One env, six ways.** Three environments, each implemented six times — same logic, six framework
 dialects. Diff any two `server.py` files and the differences *are* the lesson.
@@ -85,23 +61,15 @@ dialects. Diff any two `server.py` files and the differences *are* the lesson.
 Across `openenv` · `ors` · `nemo_gym` · `verifiers` · `skyrl_gym` · `gem` — 18 implementations, 8 of
 them deployed as Spaces you can hit right now.
 
-</td>
-<td width="50%" valign="top">
-
-### [01 · LaTeX OCR](./01-latex-ocr/)
+### [01 · LaTeX OCR](./01-latex-ocr/) &nbsp;<sub>train a VLM against a served reward</sub>
 
 **The full loop.** Project 00 shows you what an environment *is*; this one takes a single environment
 all the way to a trained model.
 
 Qwen3-VL-2B learns to read rendered math into LaTeX with GRPO, scored by a reward served from a live
 [OpenEnv Space](https://huggingface.co/spaces/AdithyaSK/latex-ocr-env). Correctness is checkable —
-render the prediction, compare — so the reward is honest and there is very little to game.
-
-Runs on a GPU you spin up in [one command](#quickstart). No cluster, no local GPU.
-
-</td>
-</tr>
-</table>
+render the prediction, compare — so the reward is honest and there is very little to game. Runs on a
+GPU you spin up in [one command](#quickstart); no cluster, no local GPU.
 
 > **More coming.** Each new project is another end-to-end recipe: an environment, a training run, and
 > the artifacts on the Hub. [Proposals and contributions welcome →](./CONTRIBUTING.md)
