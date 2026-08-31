@@ -5,7 +5,7 @@
 Their CONTRIBUTING asks for this and gives the reason: if a person cannot read a
 trajectory and tell whether the model did well, neither can a reward function.
 
-    uv run rollout.py                      # against the published Space
+    uv run rollout.py https://<you>-watercolour-env.hf.space
     uv run rollout.py http://localhost:8000
 
 Needs `HF_TOKEN` for the pairwise judge, and the env needs its HPSv3 Space up.
@@ -37,7 +37,9 @@ if _HERE not in sys.path:
 
 from client import WatercolourEnv  # noqa: E402
 
-DEFAULT = "https://huggingenvs-watercolour-env.hf.space"
+# No default Space to point at: the environment needs paid hardware, so there is
+# no instance of it left running. Deploy your own and pass its URL.
+DEFAULT = None
 
 # A sketch that uses only the ten allowed brush methods and paints a passable
 # flower. Hand-written rather than generated, so this file does not need a model.
@@ -71,6 +73,11 @@ function draw() {
 
 def main() -> None:
     base = sys.argv[1] if len(sys.argv) > 1 else DEFAULT
+    if not base:
+        raise SystemExit(
+            "pass the URL of your environment Space, e.g.\n"
+            "  uv run rollout.py https://<you>-watercolour-env.hf.space"
+        )
     print(f"env: {base}\n")
     with WatercolourEnv(base_url=base, message_timeout_s=300.0).sync() as env:
         obs = env.reset(subject="a peach hibiscus", references=4, seed=0)

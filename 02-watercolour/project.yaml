@@ -6,8 +6,6 @@ status: trained   # env, training and results done. Two sibling runs still in pr
 
 hub:
   org: HuggingEnvs
-  spaces:
-    - HuggingEnvs/watercolour-env
   datasets:
     - HuggingEnvs/watercolour-reference-pool
     - HuggingEnvs/watercolour-rollouts-hps-only
@@ -20,4 +18,4 @@ envs:
     summary: "Single-turn code -> painting. The agent writes a p5.brush sketch, headless Chromium renders it, and the render is scored by an aesthetic preference model plus a pairwise judge against a reference pool."
     backend: http
     frameworks:
-      openenv: {transport: http-mcp, space: HuggingEnvs/watercolour-env, verified: true}
+      openenv: {transport: http-mcp, verified: true}

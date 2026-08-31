@@ -84,7 +84,7 @@ you have not built a pool, you have collected images.
 
 ```bash
 hf jobs uv run train/watercolour_grpo.py --flavor h200 --timeout 24h --secrets HF_TOKEN -- \
-  --env-url https://huggingenvs-watercolour-env.hf.space \
+  --env-url https://<you>-watercolour-env.hf.space \
   --model Qwen/Qwen3.5-35B-A3B --lora --all-linear --bf16 --gradient-checkpointing \
   --subject 'a peach hibiscus' --references 4 \
   --top-p 0.95 --top-k 20 \
@@ -100,12 +100,19 @@ hf jobs uv run train/watercolour_grpo.py --flavor h200 --timeout 24h --secrets H
 
 `HPSv3` is not published as a running Space, because it needs a GPU and there is no
 free tier that fits a 7B. The four files that are the whole thing live in
-`envs/watercolour/hpsv3/`: upload them to a new Space with `sdk: docker` and GPU
-hardware, then point the environment at it.
+`envs/watercolour/hpsv3/`, and `tools/deploy.py` ships them:
+
+```bash
+python3 tools/deploy.py 02-watercolour/envs/watercolour/hpsv3 <you>/watercolour-hpsv3
+```
+
+Then give the Space GPU hardware and point the environment at it:
 
 ```
-WATERCOLOUR_HPSV3_URL=https://<your-space>.hf.space
+WATERCOLOUR_HPSV3_URL=https://<you>-watercolour-hpsv3.hf.space
 ```
+
+The environment itself deploys the same way, from `envs/watercolour/openenv/`.
 
 The env Space must also be running on paid hardware and have `HF_TOKEN` set. Without
 the scorer the reward loses its 0.30 (or 0.90) silently, and without the token the
@@ -175,7 +182,7 @@ Everything is in the
 
 | artifact | what it is |
 |---|---|
-| [`watercolour-env`](https://huggingface.co/spaces/HuggingEnvs/watercolour-env) | the environment. **Duplicate it with `cpu-upgrade`**, it cannot render on free hardware |
+| `envs/watercolour/openenv/` | the environment, deployed with `tools/deploy.py`. Needs `cpu-upgrade`, it cannot render on free hardware |
 | [`watercolour-reference-pool`](https://huggingface.co/datasets/HuggingEnvs/watercolour-reference-pool) | the 178 paintings that define the reward, with the sketch behind each |
 | [`watercolour-grpo-hps-only`](https://huggingface.co/HuggingEnvs/watercolour-grpo-hps-only) | the trained adapter. **Read the card**: the obvious way to load it fails silently |
 | [`watercolour-rollouts-hps-only`](https://huggingface.co/datasets/HuggingEnvs/watercolour-rollouts-hps-only) | every rollout of the run: 470 paintings, sketches and rewards, by step |
