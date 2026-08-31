@@ -17,6 +17,7 @@ model, which is the gap this fills.
 |---|---|
 | `envs/watercolour/core/` | the gate, the renderer, the two judges, the reward, the domains |
 | `envs/watercolour/openenv/` | the OpenEnv port: client, models, environment, app, Dockerfile |
+| `envs/watercolour/hpsv3/` | the HPSv3 scorer as its own deployable Space. **Deploy this first** |
 | `train/watercolour_grpo.py` | the GRPO trainer |
 | `train/pool_photos.py` → `pool_generate.py` → `pool_rate.py` | how the reference pool was built, in order |
 | `train/pool_calibrate.py` | sorts candidates by how often the policy already beats them |
@@ -45,7 +46,7 @@ and you have changed what the agent is rewarded for, without touching code.
 | piece | hardware | why |
 |---|---|---|
 | the trainer | 1x **H200** | a 35B with LoRA and 8 generations per step |
-| HPSv3 | 1x **a100-large** Space | a 7B preference model, one Space of its own |
+| HPSv3 | 1x **a100-large** Space | a 7B preference model. Deploy `envs/watercolour/hpsv3/` |
 | the pairwise judge | HF inference quota | `Qwen/Qwen3-VL-30B-A3B-Instruct` through the router |
 | the env | **cpu-upgrade** Space | headless Chromium. `cpu-basic` cannot render in time |
 
@@ -95,8 +96,21 @@ hf jobs uv run train/watercolour_grpo.py --flavor h200 --timeout 24h --secrets H
   --run-tag hps-only --out <your-org>/watercolour-grpo-hps-only --push-to-hub
 ```
 
-The env Space must be running on paid hardware and have `HF_TOKEN` set, or the
-judge is dead and the reward loses 0.60 of its weight silently.
+### Before that, deploy the scorer
+
+`HPSv3` is not published as a running Space, because it needs a GPU and there is no
+free tier that fits a 7B. The four files that are the whole thing live in
+`envs/watercolour/hpsv3/`: upload them to a new Space with `sdk: docker` and GPU
+hardware, then point the environment at it.
+
+```
+WATERCOLOUR_HPSV3_URL=https://<your-space>.hf.space
+```
+
+The env Space must also be running on paid hardware and have `HF_TOKEN` set. Without
+the scorer the reward loses its 0.30 (or 0.90) silently, and without the token the
+pairwise judge loses its 0.60. Both failures show up in the breakdown rather than as
+an error, so check one rollout before starting a run.
 
 **The `uv` header pins no versions** (`trl`, `peft`, `transformers`, `torch`), so a
 run today resolves different ones than ours did. That is a real reproducibility gap.
@@ -165,7 +179,7 @@ Everything is in the
 | [`watercolour-reference-pool`](https://huggingface.co/datasets/HuggingEnvs/watercolour-reference-pool) | the 178 paintings that define the reward, with the sketch behind each |
 | [`watercolour-grpo-hps-only`](https://huggingface.co/HuggingEnvs/watercolour-grpo-hps-only) | the trained adapter. **Read the card**: the obvious way to load it fails silently |
 | [`watercolour-rollouts-hps-only`](https://huggingface.co/datasets/HuggingEnvs/watercolour-rollouts-hps-only) | every rollout of the run: 470 paintings, sketches and rewards, by step |
-| [HPSv3](https://huggingface.co/MizzenAI/HPSv3) | the preference model. Needs its own GPU Space, see `envs/watercolour/core/quality.py` |
+| [HPSv3](https://huggingface.co/MizzenAI/HPSv3) | the preference model itself. The Space that serves it is `envs/watercolour/hpsv3/` in this repo, not a published Space: it needs a GPU and would sit there costing money |
 | `results/curve-hps-only.csv` | the training curve as data. The trackio Spaces will be switched off, so it lives in the repo |
 
 Nothing here depends on a Space being switched on. The curves are CSV, the rollouts

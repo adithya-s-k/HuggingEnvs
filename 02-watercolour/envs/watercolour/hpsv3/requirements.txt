@@ -1,0 +1,12 @@
+# The pin is HPSv3's own and it is real: its model class rejects how transformers
+# 5.x constructs models. Nothing else here needs a newer one.
+transformers==4.45.2
+hpsv3
+torch
+torchvision
+# Declared by hpsv3's imports but missing from its metadata, found the hard way.
+matplotlib
+tensorboard
+fastapi
+uvicorn[standard]
+pillow
