@@ -93,8 +93,24 @@ hf jobs uv run train/watercolour_grpo.py --flavor h200 --timeout 24h --secrets H
   --steps 60 --n-episodes 240 --num-generations 8 \
   --per-device-batch-size 1 --gradient-accumulation-steps 8 \
   --max-completion-length 8192 --probe-samples 40 --film \
-  --run-tag hps-only --out <your-org>/watercolour-grpo-hps-only --push-to-hub
+  --run-tag hps-only --out <you>/watercolour-grpo-hps-only --push-to-hub
 ```
+
+The three runs use that same command. **What changes is two environment variables on
+the env Space, and the `--run-tag`:**
+
+| run | `WATERCOLOUR_JUDGE_WEIGHT` | `WATERCOLOUR_QUALITY_WEIGHT` | `--run-tag` | `--steps` |
+|---|---|---|---|---|
+| `hps-only` | `0.00` | `0.90` | `hps-only` | 60 |
+| `judge-led` | `0.60` | `0.30` | `judge-led` | 200 |
+| `hps-led` | `0.30` | `0.60` | `hps-led` | 200 |
+
+`judge-led` is the split Narreddi's write-up converged on. `hps-only` switches the
+pairwise judge off entirely, which is why it is the cheapest to reproduce: no
+inference quota for the judge, though HPSv3 still has to be up.
+
+Weights are read at import, so **restart the env Space after changing them** or it
+keeps scoring with the old ones.
 
 ### Before that, deploy the scorer
 
@@ -132,9 +148,18 @@ Three runs, differing only in how the reward splits:
 | `judge-led` | 0.60 | 0.30 | in progress | |
 | `hps-led` | 0.30 | 0.60 | in progress | |
 
-The two in progress are 200 step runs. Their curves, hours and totals land in
-`results/` when they finish, and this table gets filled in then. The numbers below
-describe `hps-only`.
+The two in progress are 200 step runs. The numbers below describe `hps-only`.
+
+When they finish, these are the names they land under. Nothing else changes:
+
+| run | adapter | rollouts | curve |
+|---|---|---|---|
+| `hps-only` | [`watercolour-grpo-hps-only`](https://huggingface.co/HuggingEnvs/watercolour-grpo-hps-only) | [`watercolour-rollouts-hps-only`](https://huggingface.co/datasets/HuggingEnvs/watercolour-rollouts-hps-only) | `results/curve-hps-only.csv` |
+| `judge-led` | `HuggingEnvs/watercolour-grpo-judge-led` | `HuggingEnvs/watercolour-rollouts-judge-led` | `results/curve-judge-led.csv` |
+| `hps-led` | `HuggingEnvs/watercolour-grpo-hps-led` | `HuggingEnvs/watercolour-rollouts-hps-led` | `results/curve-hps-led.csv` |
+
+The two pending are written without links on purpose: they do not exist yet, and a
+dead link is worse than a name. `train/publish.py` creates them from a finished run.
 
 `hps-only` went from 0.579 to 0.710 mean group reward across its three thirds.
 `frac_reward_zero_std` stayed at 0.000 for all 60 steps, so no step lost its
