@@ -11,6 +11,10 @@ code"](https://surya.website/rling-qwen-to-paint-with-code)
 His results look better than these. His write-up ships no dataset, scripts or
 model, which is the gap this fills.
 
+The full story, from the reward design to what the three runs actually learned, is
+in the blog post: [Training a coding model to paint watercolours with TRL and
+OpenEnv](https://huggingface.co/blog/train-to-paint-with-code).
+
 ## What is here
 
 | | |
