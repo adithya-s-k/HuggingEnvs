@@ -2,15 +2,25 @@ name: watercolour
 title: "Watercolour"
 tagline: "Train Qwen3.5-35B-A3B to paint watercolours by writing p5.brush sketches, rewarded by an aesthetic preference model."
 order: 2
-status: trained   # env, training and results done. Two sibling runs still in progress
+status: trained   # three reward mixes trained and compared, every artifact published
 
 hub:
   org: HuggingEnvs
+  spaces:
+    - HuggingEnvs/watercolour-env
+    - HuggingEnvs/watercolour-hpsv3
+    - HuggingEnvs/watercolour-trackio-hps-only
+    - HuggingEnvs/watercolour-trackio-judge-led
+    - HuggingEnvs/watercolour-trackio-hps-led
   datasets:
     - HuggingEnvs/watercolour-reference-pool
     - HuggingEnvs/watercolour-rollouts-hps-only
+    - HuggingEnvs/watercolour-rollouts-judge-led
+    - HuggingEnvs/watercolour-rollouts-hps-led
   models:
     - HuggingEnvs/watercolour-grpo-hps-only
+    - HuggingEnvs/watercolour-grpo-judge-led
+    - HuggingEnvs/watercolour-grpo-hps-led
   collection: HuggingEnvs/paint-with-code-6a955b79d63f67f1631d9be6
 
 envs:
