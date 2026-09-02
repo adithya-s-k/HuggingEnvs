@@ -30,7 +30,7 @@ per candidate. What comes out is a difficulty ladder measured against this polic
 rather than a ranking of taste.
 
     python examples/watercolour_pool_calibrate.py \\
-        --candidates envs/watercolour_env/server/reference_pool/candidates \\
+        --candidates pool_candidates \\
         --paintings watch/repo/film/v3-coverage \\
         --samples 6
 
@@ -51,9 +51,9 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from envs.watercolour_env.server.domains import get_domain  # noqa: E402
-from envs.watercolour_env.server.gate import MIN_PAINT_FRACTION  # noqa: E402
-from envs.watercolour_env.server.pairwise_judge import (  # noqa: E402
+from envs.watercolour.core.domains import get_domain  # noqa: E402
+from envs.watercolour.core.gate import MIN_PAINT_FRACTION  # noqa: E402
+from envs.watercolour.core.pairwise_judge import (  # noqa: E402
     DEFAULT_JUDGE_MODEL,
     HFVisionClient,
     PairwiseJudge,
@@ -188,7 +188,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     ap.add_argument(
         "--candidates",
-        default=str(ROOT / "envs/watercolour_env/server/reference_pool/candidates"),
+        default=str(ROOT / "pool_candidates"),
     )
     ap.add_argument(
         "--paintings",

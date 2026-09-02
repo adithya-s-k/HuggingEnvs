@@ -41,7 +41,7 @@ import urllib.parse
 import webbrowser
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-POOL = ROOT / "envs/watercolour_env/server/reference_pool"
+POOL = ROOT / "pool"
 CANDIDATES = POOL / "candidates"
 # `meh` is a rung, not a grade. Narreddi rated into love, okay and nope for a 35B
 # policy; a 4B needs one more step below, because with two tiers everything that is

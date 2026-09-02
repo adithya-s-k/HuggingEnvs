@@ -8,7 +8,7 @@ The chain from `pool_photos.py` to `watercolour_grpo.py` produces files on disk 
 a repo full of PNGs. This is the last step, and it existed only as ad-hoc commands
 until someone tried to follow the recipe end to end and found it missing.
 
-    uv run publish.py pool   --pool ../envs/watercolour/core/reference_pool --org YOURORG
+    uv run publish.py pool   --pool pool --photos pool_photos/manifest.json --org YOURORG
     uv run publish.py rollouts --run YOURACCOUNT/watercolour-grpo-myrun --tag hps-only --org YOURORG
 
 `pool` reads the manifest the rating step wrote and ships the `love` and `okay`
@@ -39,6 +39,9 @@ def publish_pool(args) -> None:
     """Ship the rated pool as an imagefolder dataset."""
     pool = pathlib.Path(args.pool)
     manifest = json.loads((pool / "tiers.json").read_text())
+    photos = {}
+    if args.photos:
+        photos = {x["file"]: x for x in json.loads(pathlib.Path(args.photos).read_text())}
 
     out = pathlib.Path(args.out)
     (out / "images").mkdir(parents=True, exist_ok=True)
@@ -54,17 +57,29 @@ def publish_pool(args) -> None:
         shutil.copy(png, out / "images" / png.name)
         if js.exists():
             shutil.copy(js, out / "sources" / js.name)
+        photo = photos.get(entry.get("photo"))
         rows.append({
             "file_name": f"images/{png.name}",
             "source_file": f"sources/{js.name}" if js.exists() else None,
             "tier": entry["tier"],
             "subject": entry.get("subject"),
             "generator_model": entry.get("model"),
+            "refinement_round": entry.get("round"),
+            "hpsv3_mu": entry.get("hpsv3_mu"),
             "paint_coverage": entry.get("paint_fraction"),
+            "reference_photo": entry.get("photo") if photo else None,
+            "reference_photo_licence": photo["licence"] if photo else None,
+            "reference_photo_attribution": photo["attribution"] if photo else None,
+            "reference_photo_url": photo["observation_url"] if photo else None,
         })
     with (out / "metadata.jsonl").open("w") as fh:
         for r in rows:
             fh.write(json.dumps(r, ensure_ascii=False) + "\n")
+    if photos:
+        used = sorted({r["reference_photo"] for r in rows if r["reference_photo"]})
+        (out / "photo_attribution.json").write_text(
+            json.dumps([photos[f] for f in used], indent=1, ensure_ascii=False)
+        )
 
     print(f"{len(rows)} references, tiers: {dict(collections.Counter(r['tier'] for r in rows))}")
     _upload(out, f"{args.org}/watercolour-reference-pool", "dataset", args.dry_run,
@@ -155,6 +170,7 @@ def main() -> None:
 
     p = sub.add_parser("pool")
     p.add_argument("--pool", required=True, help="directory the rating step wrote")
+    p.add_argument("--photos", help="manifest.json from pool_photos.py, for provenance")
     p.add_argument("--out", default="/tmp/pool-dataset")
     p.set_defaults(fn=publish_pool)
 

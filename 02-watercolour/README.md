@@ -57,8 +57,8 @@ and you have changed what the agent is rewarded for, without touching code.
 ### What one run costs
 
 ```
-60 steps    17h46m on one H200      (measured, the run below)
-200 steps   about 63 h              (extrapolated at the same pace)
+60 steps    17h46m on one H200      (measured, hps-only)
+110 steps   32h15m and 34h49m       (measured, hps-led and judge-led)
 ```
 
 Plus, **for the whole duration of the run**, an `a100-large` Space for HPSv3 and a
@@ -118,9 +118,11 @@ keeps scoring with the old ones.
 
 ### Before that, deploy the scorer
 
-`HPSv3` is not published as a running Space, because it needs a GPU and there is no
-free tier that fits a 7B. The four files that are the whole thing live in
-`envs/watercolour/hpsv3/`, and `tools/deploy.py` ships them:
+A paused copy is published at
+[`HuggingEnvs/watercolour-hpsv3`](https://huggingface.co/spaces/HuggingEnvs/watercolour-hpsv3):
+duplicate it and give your copy `a100-large` hardware. It sits paused because a 7B
+needs a GPU and there is no free tier that fits one. The four files that are the
+whole thing also live in `envs/watercolour/hpsv3/`, and `tools/deploy.py` ships them:
 
 ```bash
 python3 tools/deploy.py 02-watercolour/envs/watercolour/hpsv3 <you>/watercolour-hpsv3

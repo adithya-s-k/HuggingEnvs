@@ -1,337 +1,284 @@
-# SPDX-License-Identifier: BSD-3-Clause
-
 # /// script
 # requires-python = ">=3.10"
-# dependencies = [
-#     "huggingface-hub",
-#     "playwright",
-#     "pillow",
-#     "numpy",
-# ]
+# dependencies = ["huggingface_hub", "pillow", "playwright", "requests"]
 # ///
+"""Generate reference paintings by refining each candidate against a photograph.
 
-"""Generate candidate paintings for the reference pool.
+This is the loop that produced the published pool. A text-only generator writes a
+sketch, the render is shown to a vision judge next to a real photograph of the
+subject, the judge says in plain words what the painting would need, and the
+generator rewrites the whole sketch with that feedback. Three rounds per candidate.
+The generators never see the photograph: the judge sees it and turns it into words,
+which is why a photograph with a hand or a label in it is still usable.
 
-**Known shape issue.** This generates every candidate and only then renders them
-all, so the first painting lands on disk after the last API call rather than after
-the first. The rating page is built to pick paintings up as they appear, and this
-script defeats that: with fifty candidates the wait before there is anything to
-rate is the whole generation phase.
+**Every round of every candidate is kept.** HPSv3 put the peak at round 1 rather
+than round 2 in five of seven cases measured, and one candidate fell from +6.92 to
++0.15 between rounds, so keeping only the last round would keep the worse painting
+about half the time. Tiering happens afterwards, by hand, over everything:
+`pool_rate.py` reads the output directory directly.
 
-Interleaving the two would fix it, since the browser pool sits idle through
-generation and the network sits idle through rendering. The fix is a straight
-swap of the two phases for a producer feeding a consumer queue.
+Four model families rather than one, because a pool from a single model is a pool
+in a single style. The four below are the ones that produced a valid sketch every
+time in a reliability check; two other candidates were dropped for spending their
+whole budget on reasoning traces or not surviving concurrency.
 
-The pool is the reward function, so what goes in it decides what the policy
-learns. Narreddi's write-up is explicit that theirs is **all model output**:
-"we could not source enough human made examples since the library is a niche
-tool artists use". Theirs came from frontier models iterating against reference
-photographs under a VLM judge, then hand-rated one at a time into love, okay and
-nope, ending at 581 references from 1,664 generations.
+Scoring along the way is HPSv3's, through the same Space the training reward uses
+(`--hpsv3-url`). Vision judges were tried for this and rejected: two different ones
+marked twenty-one visibly different paintings all 7 out of 10, while HPSv3 spread
+the same paintings over eight points in an order that matches the eye. The score is
+metadata for the later rating pass, not a filter: nothing is discarded here.
 
-This script does the generating. The rating is the part that needs a person, and
-[`watercolour_pool_rate.py`](watercolour_pool_rate.py) does that.
+    python train/pool_photos.py --out pool_photos
+    python train/pool_generate.py --photos pool_photos --out pool_candidates \\
+        --hpsv3-url https://<you>-watercolour-hpsv3.hf.space
+    python train/pool_rate.py serve --directory pool_candidates
 
-**The pool has to span a quality range, not just be good.** That is the whole
-reason this exists. Six uniformly decent references measured here produced a
-reward of exactly zero on every rollout: a small model loses every comparison, a
-constant term carries no gradient, and GRPO sees nothing to learn from. Their
-pool works because it holds 117 love-tier alongside 266 merely okay, so a
-mediocre painting can beat the weak end and lose to the strong one. So this
-generates deliberately across a spread of models and temperatures rather than
-trying to make every candidate good.
-
-    python examples/watercolour_pool_generate.py --per-model 20
-    python examples/watercolour_pool_rate.py
+The run writes `progress.html` in the output directory, a self-refreshing page with
+every painting so far, best first. Stopping is safe: everything finished is already
+on disk.
 """
-
 from __future__ import annotations
 
 import argparse
 import asyncio
+import base64
+import html
+import io
 import json
 import pathlib
 import random
+import statistics
 import sys
 import time
+
+import requests
+from huggingface_hub import AsyncInferenceClient, get_token
+from PIL import Image
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from envs.watercolour_env.server.gate import MIN_PAINT_FRACTION  # noqa: E402
-from envs.watercolour_env.server.prompt import system_prompt  # noqa: E402
-from envs.watercolour_env.server.render import (  # noqa: E402
-    close_shared_renderer,
-    RenderError,
-    shared_renderer,
-)
-from envs.watercolour_env.server.sketch_source import (  # noqa: E402
-    extract_sketch,
-    inspect_source,
-    SourceError,
-)
-from envs.watercolour_env.server.tasks import SUBJECTS  # noqa: E402
+from envs.watercolour.core.domains import get_domain  # noqa: E402
+from envs.watercolour.core.prompt import system_prompt  # noqa: E402
+from envs.watercolour.core.render import close_shared_renderer, shared_renderer  # noqa: E402
+from envs.watercolour.core.sketch_source import SourceError, extract_sketch  # noqa: E402
 
-# The four families that generated the published reference pool. Different
-# families paint in different styles, and a pool from a single model is a pool
-# in a single style. All four passed a reliability check before making the cut
-# (a valid sketch three times out of three under concurrency); two other
-# candidates were dropped for failing it.
-DEFAULT_MODELS = (
-    "zai-org/GLM-5.2",
-    "moonshotai/Kimi-K3",
-    "Qwen/Qwen3-Coder-Next",
-    "Qwen/Qwen3.5-122B-A10B",
-)
+# `enable_thinking: False` where the model otherwise burns its budget on a
+# reasoning trace and returns empty content. Measured on three subjects each:
+# all four produce a sketch three times out of three under concurrency.
+NO_THINK = {"chat_template_kwargs": {"enable_thinking": False}}
+GENERATORS = [
+    ("moonshotai/Kimi-K3", NO_THINK),
+    ("Qwen/Qwen3.5-122B-A10B", NO_THINK),
+    ("Qwen/Qwen3-Coder-Next", None),
+    ("zai-org/GLM-5.2", None),
+]
+VISION = "Qwen/Qwen3-VL-30B-A3B-Instruct"
 
-# Sampled per candidate. High temperatures widen the spread, which is the point.
-TEMPERATURES = (0.6, 0.9, 1.1)
+CRITIQUE = """You are looking at two images. The first is a photograph of a flower. The second
+is a watercolour painting made by writing code, which is trying to capture the flower in the
+photograph.
 
-# Per-call ceiling. `InferenceClient` does not time out by default, and a single
-# stalled request then hangs the whole run: one call that never comes back can
-# hold an established socket for half an hour with nothing written. A generation
-# pass is a few hundred sequential calls, so any one of them has to be allowed to
-# fail rather than to block the rest.
-CALL_TIMEOUT_S = 180.0
+Judge only the bloom. Ignore the photograph's background, and any hands, labels, pots or other
+objects in it: the painting is meant to show the flower alone on plain paper.
+
+Say what the painting would need to change to read more like that flower as a loose watercolour.
+Be concrete and visual: colours, how many petals and their shape, how the centre reads, the
+leaves and stem, how much of the frame the flower fills. Do not mention code, methods, scores or
+judges. At most five sentences. If the painting is already a good loose watercolour of that
+flower, say so in one sentence and nothing else."""
 
 
-def generate_one(client, model: str, subject: str, temperature: float, max_tokens: int):
-    """Ask one model for one sketch.
-
-    Returns `(reply, why)`: the text and `None` when it worked, or `None` and a
-    short reason when it did not. The two failure modes are worth telling apart,
-    which an earlier version did not: a raised exception looks nothing like a
-    reasoning model that spends its whole budget thinking and returns empty
-    content, and only one of those is worth retrying.
-
-    Every failure is swallowed on purpose. One model being unavailable, rate
-    limited, slow or silent should cost its own candidate and nothing else.
-    """
-    try:
-        response = client.chat_completion(
-            model=model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            messages=[
-                {"role": "system", "content": system_prompt()},
-                {"role": "user", "content": f"Paint {subject} in loose watercolour."},
-            ],
-        )
-        choice = response.choices[0]
-        text = choice.message.content or ""
-        if not text.strip():
-            # A reasoning model with thinking on: GLM-5.2 burned all 2400 tokens
-            # on `reasoning_content`, came back with `finish_reason: length` and
-            # empty content, and never wrote a sketch. Ten calls, ten silences,
-            # a minute each.
-            thinking = getattr(choice.message, "reasoning_content", "") or ""
-            return None, (
-                f"empty content, finish={choice.finish_reason}"
-                + (f", {len(thinking)} chars of thinking" if thinking else "")
-            )
-        return text, None
-    except Exception as exc:
-        return None, f"{type(exc).__name__}: {str(exc)[:70]}"
+def data_uri(data: bytes, mime: str = "image/png") -> str:
+    return f"data:{mime};base64," + base64.b64encode(data).decode()
 
 
-async def render_all(candidates, out_dir: pathlib.Path, start_index: int = 0):
-    """Paint every candidate and keep the ones that put paint on the canvas.
+def photo_uri(path: pathlib.Path) -> str:
+    """The photograph, downscaled so the request stays small."""
+    im = Image.open(path).convert("RGB")
+    im.thumbnail((640, 640))
+    buf = io.BytesIO()
+    im.save(buf, "JPEG", quality=85)
+    return data_uri(buf.getvalue(), "image/jpeg")
 
-    Rendering is concurrent across the browser pool, which is worth roughly 2x
-    and no more: software rasterisation is CPU-bound. At twenty to two hundred
-    seconds for a rich sketch, generating a few hundred candidates is an
-    overnight job rather than a coffee break, and that is a fact about the medium
-    rather than about this script.
-    """
-    renderer = shared_renderer()
-    out_dir.mkdir(parents=True, exist_ok=True)
 
-    finished = [0]
-
-    async def one(offset, candidate):
-        index = start_index + offset
-        # The source is written before the verdict, for both outcomes. Diagnosing
-        # why five sketches in a row came back blank was impossible with only the
-        # kept ones on disk, and the answer was in the discarded source: the model
-        # emitted the translate and then painted at negative coordinates.
-        (out_dir / f"cand_{index:04d}.js").write_text(candidate["source"])
+def hpsv3_score(url: str | None, png: bytes) -> float:
+    if not url:
+        return float("nan")
+    for _ in range(2):
         try:
-            render = await renderer.render(candidate["source"])
-        except RenderError as exc:
-            return {**candidate, "kept": False, "why": f"render failed: {exc}"}
-        if render.paint_fraction < MIN_PAINT_FRACTION:
-            return {
-                **candidate,
-                "kept": False,
-                "why": "blank canvas",
-                "js_errors": render.errors[:2],
-            }
-        finished[0] += 1
-        print(
-            f"    painted {finished[0]}/{len(candidates)} "
-            f"({render.elapsed_ms / 1000:.0f}s, coverage {render.paint_fraction:.3f})",
-            flush=True,
-        )
-        name = f"cand_{index:04d}.png"
-        (out_dir / name).write_bytes(render.png)
-        return {
-            **candidate,
-            "kept": True,
-            "png": name,
-            "paint_fraction": round(render.paint_fraction, 4),
-            "finished": render.finished,
-            "elapsed_ms": render.elapsed_ms,
-            "js_errors": render.errors[:2],
-        }
+            r = requests.post(f"{url.rstrip('/')}/score",
+                              json={"png_base64": base64.b64encode(png).decode()}, timeout=60)
+            r.raise_for_status()
+            return float(r.json()["mu"])
+        except Exception:
+            time.sleep(2)
+    return float("nan")
 
-    results = await asyncio.gather(
-        *(one(i, c) for i, c in enumerate(candidates)), return_exceptions=True
+
+async def generate(client, model: str, extra, messages: list[dict]) -> str | None:
+    """One sketch, or None if the reply had no code in it."""
+    kw = {"extra_body": extra} if extra else {}
+    try:
+        reply = await client.chat_completion(
+            model=model, max_tokens=4096, temperature=0.9, messages=messages, **kw
+        )
+    except Exception as exc:
+        print(f"      {model.split('/')[-1]}: generation failed {type(exc).__name__}", flush=True)
+        return None
+    try:
+        return extract_sketch(reply.choices[0].message.content or "")
+    except SourceError:
+        return None
+
+
+async def critique(client, photo: str, png: bytes) -> str:
+    """What the painting would need, in the judge's words."""
+    content = [
+        {"type": "text", "text": CRITIQUE},
+        {"type": "image_url", "image_url": {"url": photo}},
+        {"type": "image_url", "image_url": {"url": data_uri(png)}},
+    ]
+    reply = await client.chat_completion(
+        model=VISION, messages=[{"role": "user", "content": content}],
+        max_tokens=320, temperature=0.2,
     )
+    return (reply.choices[0].message.content or "").strip()
+
+
+async def candidate(client, renderer, index: int, model: str, extra,
+                    photo: pathlib.Path, subject: str, rounds: int,
+                    out: pathlib.Path, hpsv3_url: str | None,
+                    done: list[dict], gate: asyncio.Semaphore) -> None:
+    """Generate, render, critique and regenerate, `rounds` times."""
+    async with gate:
+        fu = photo_uri(photo)
+        messages = [
+            {"role": "system", "content": system_prompt(get_domain())},
+            {"role": "user", "content": f"Paint {subject} in loose watercolour."},
+        ]
+        for r in range(rounds):
+            sketch = await generate(client, model, extra, messages)
+            if not sketch:
+                return
+            try:
+                render = await renderer.render(sketch)
+            except Exception:
+                return
+            name = f"c{index:04d}_r{r}"
+            (out / f"{name}.png").write_bytes(render.png)
+            (out / f"{name}.js").write_text(sketch)
+            mu = await asyncio.to_thread(hpsv3_score, hpsv3_url, render.png)
+            done.append({
+                "png": f"{name}.png",
+                "kept": True,
+                "model": model.split("/")[-1],
+                "subject": subject,
+                "round": r,
+                "hpsv3_mu": mu,
+                "photo": photo.name,
+                "paint_fraction": render.paint_fraction,
+                "errors": [str(e)[:90] for e in render.errors][:3],
+            })
+            if r < rounds - 1:
+                words = await critique(client, fu, render.png)
+                if not words:
+                    return
+                messages = messages + [
+                    {"role": "assistant", "content": f"```javascript\n{sketch}\n```"},
+                    {"role": "user", "content":
+                     f"Here is what your painting needs:\n\n{words}\n\n"
+                     "Write the whole sketch again with those changes. "
+                     "Same rules, same methods."},
+                ]
+
+
+def write_page(out: pathlib.Path, done: list[dict], planned: int) -> None:
+    """Rewrite the progress page from everything finished so far, best first."""
+    alive = sorted((d for d in done), key=lambda d: -(d["hpsv3_mu"] if d["hpsv3_mu"] == d["hpsv3_mu"] else -99))
+    by_model: dict[str, list[float]] = {}
+    for d in alive:
+        if d["hpsv3_mu"] == d["hpsv3_mu"]:
+            by_model.setdefault(d["model"], []).append(d["hpsv3_mu"])
+    rows = "".join(
+        f"<tr><td>{html.escape(m)}</td><td>{len(v)}</td>"
+        f"<td>{statistics.mean(v):+.2f}</td><td>{max(v):+.2f}</td></tr>"
+        for m, v in sorted(by_model.items(), key=lambda x: -statistics.mean(x[1])))
+    cards = "".join(
+        f'<figure><img loading="lazy" src="{d["png"]}" alt="{d["png"]}">'
+        f'<figcaption><b>{d["hpsv3_mu"]:+.2f}</b> <span>{html.escape(d["model"][:14])} '
+        f'r{d["round"]} · paint {d["paint_fraction"]:.2f}</span></figcaption></figure>'
+        for d in alive[:400])
+    (out / "progress.html").write_text(f"""<!doctype html><meta charset="utf-8">
+<meta http-equiv="refresh" content="45"><title>Pool, generating</title>
+<style>
+body{{background:#faf7f2;color:#20201d;font:400 15px/1.5 system-ui,sans-serif;margin:0;padding:0 0 4rem;}}
+header{{padding:1.2rem 1.4rem;border-bottom:1px solid #e3ddd2;}}
+h1{{font:600 1.15rem/1.2 system-ui;margin:0 0 .5rem;}} p{{color:#6d6a62;font-size:.87rem;margin:.3rem 0;}}
+table{{border-collapse:collapse;font-size:.85rem;margin:.8rem 0 0;font-variant-numeric:tabular-nums;}}
+th,td{{text-align:left;padding:.25rem .9rem .25rem 0;border-bottom:1px solid #e3ddd2;}}
+main{{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.7rem;padding:1.2rem 1.4rem;}}
+figure{{margin:0;background:#fff;border:1px solid #e3ddd2;border-radius:6px;overflow:hidden;}}
+img{{display:block;width:100%;height:150px;object-fit:contain;background:#fff;}}
+figcaption{{padding:.3rem .45rem;font-size:.72rem;color:#6d6a62;display:flex;gap:.4rem;}}
+</style>
+<header><h1>Pool, generating</h1>
+<p><b>{len(alive)}</b> paintings of <b>{planned}</b> planned, ordered by HPSv3, best first.
+The page reloads itself every 45 seconds.</p>
+<table><tr><th>model</th><th>n</th><th>mean</th><th>best</th></tr>{rows}</table>
+</header><main>{cards}</main>""")
+
+
+async def run(args) -> None:
+    out = pathlib.Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    photos_dir = pathlib.Path(args.photos)
+    manifest = json.loads((photos_dir / "manifest.json").read_text())
+    rnd = random.Random(args.seed)
+    jobs = []
+    domain = get_domain()
+    for i in range(args.candidates):
+        model, extra = GENERATORS[i % len(GENERATORS)]
+        photo = photos_dir / manifest[rnd.randrange(len(manifest))]["file"]
+        jobs.append((i, model, extra, photo, domain.subjects[i % len(domain.subjects)]))
+    print(f"{args.candidates} candidates x {args.rounds} rounds over {len(manifest)} photographs, "
+          f"{len(GENERATORS)} models, concurrency {args.concurrency}", flush=True)
+    if not args.hpsv3_url:
+        print("no --hpsv3-url: paintings will carry no score, which only affects the progress page")
+
+    done: list[dict] = []
+    renderer = shared_renderer()
+    gate = asyncio.Semaphore(args.concurrency)
+    async with AsyncInferenceClient(api_key=get_token(), timeout=400) as client:
+        for start in range(0, len(jobs), args.batch):
+            batch = jobs[start:start + args.batch]
+            await asyncio.gather(*(
+                candidate(client, renderer, i, m, e, p, s, args.rounds, out,
+                          args.hpsv3_url, done, gate)
+                for i, m, e, p, s in batch))
+            write_page(out, done, args.candidates * args.rounds)
+            (out / "candidates.json").write_text(json.dumps(done, indent=1))
+            print(f"  candidates {min(start + len(batch), args.candidates)}/{args.candidates}   "
+                  f"{len(done)} paintings", flush=True)
     await close_shared_renderer()
-    return [r for r in results if isinstance(r, dict)]
+    (out / "candidates.json").write_text(json.dumps(done, indent=1))
+    print(f"\ndone: {len(done)} paintings in {out}. Rate them with pool_rate.py.")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    ap.add_argument(
-        "--models",
-        nargs="+",
-        default=list(DEFAULT_MODELS),
-        help="Generate from each of these. A spread of sizes on purpose: the "
-        "small ones fill the weak end of the pool, which is the end a policy "
-        "can beat while it is still learning.",
-    )
-    ap.add_argument("--per-model", type=int, default=15, help="Candidates per model.")
-    ap.add_argument(
-        "--subject",
-        default="a peach hibiscus",
-        help="Pin the subject rather than sampling. Pinned by default, and it "
-        "matters more than it looks: the policy is trained on one subject, so a "
-        "pool spread over twelve of them makes almost every comparison "
-        "cross-subject and asks the judge to absorb variance that is not about "
-        "painting at all. Narreddi's pool is one subject varying by colour, which "
-        "is what 'grouped by colour' in their write-up means. Pass 'sample' to "
-        "draw from the catalogue instead.",
-    )
-    ap.add_argument("--max-tokens", type=int, default=2400)
+    ap.add_argument("--photos", required=True,
+                    help="Directory from pool_photos.py: photographs plus manifest.json.")
+    ap.add_argument("--out", required=True, help="Directory for paintings, sketches and metadata.")
+    ap.add_argument("--candidates", type=int, default=500)
+    ap.add_argument("--rounds", type=int, default=3)
+    ap.add_argument("--hpsv3-url", help="The HPSv3 scorer Space. Optional but recommended.")
+    ap.add_argument("--concurrency", type=int, default=4)
+    ap.add_argument("--batch", type=int, default=25,
+                    help="Progress page and manifest are rewritten after each batch.")
     ap.add_argument("--seed", type=int, default=0)
-    ap.add_argument(
-        "--start-index",
-        type=int,
-        default=0,
-        help="First candidate number. Offsetting lets a second batch write into "
-        "the same directory as a run already in flight without overwriting it, "
-        "which is how you get something rateable while the slow models are still "
-        "being waited on.",
-    )
-    ap.add_argument(
-        "--out",
-        default=str(ROOT / "envs/watercolour_env/server/reference_pool/candidates"),
-        help="Where the rendered candidates land, for the rating pass to read.",
-    )
     args = ap.parse_args()
-
-    from huggingface_hub import InferenceClient
-
-    client = InferenceClient(timeout=CALL_TIMEOUT_S)
-    rng = random.Random(args.seed)
-    out_dir = pathlib.Path(args.out)
-
-    # Flushed on every line. Generation is a few hundred sequential API calls
-    # followed by renders that take seconds to minutes each, so a run is tens of
-    # minutes long: without flushing, a pipe swallows every progress line and
-    # there is no way to tell a slow run from a hung one.
-    def log(message: str) -> None:
-        print(message, flush=True)
-
-    total = len(args.models) * args.per_model
-    done = 0
-    candidates = []
-    started_generating = time.perf_counter()
-    for model in args.models:
-        log(f"  {model}")
-        for _ in range(args.per_model):
-            done += 1
-            subject = rng.choice(SUBJECTS) if args.subject == "sample" else args.subject
-            temperature = rng.choice(TEMPERATURES)
-            reply, why = generate_one(
-                client, model, subject, temperature, args.max_tokens
-            )
-            elapsed = time.perf_counter() - started_generating
-            eta = elapsed / done * (total - done)
-            log(
-                f"    {done}/{total} {subject[:24]:24s} temp {temperature} "
-                f"{'ok' if reply else 'FAIL: ' + (why or '?')} "
-                f"[{elapsed / 60:.0f}m, ~{eta / 60:.0f}m left]"
-            )
-            if reply is None:
-                continue
-            try:
-                source = extract_sketch(reply)
-            except SourceError:
-                continue
-            report = inspect_source(source)
-            # Rejected before rendering for the same reasons the environment's
-            # gate would reject them, so the pool cannot contain a painting the
-            # policy would be punished for producing.
-            if report.bare_primitives or report.external_access or not report.webgl:
-                continue
-            candidates.append(
-                {
-                    "model": model,
-                    "subject": subject,
-                    "temperature": temperature,
-                    "source": source,
-                    "brush_calls": len(report.painting_calls)
-                    + len(report.supporting_calls),
-                    "unknown_calls": report.unknown_calls,
-                }
-            )
-    log(
-        f"\n{len(candidates)} candidates survived source inspection. Rendering now,"
-        " which is the slow half: a plain sketch paints in under a second and a"
-        " rich one takes minutes, four at a time."
-    )
-
-    started = time.perf_counter()
-    rendered = asyncio.run(render_all(candidates, out_dir, args.start_index))
-    kept = [r for r in rendered if r["kept"]]
-    for r in rendered:
-        r.pop("source", None)
-    # Merged rather than overwritten. A second batch writes into the same
-    # directory with an index offset, and clobbering the manifest would strip the
-    # first batch's paintings of their model, subject and coverage while leaving
-    # the images themselves in place.
-    manifest = out_dir / "candidates.json"
-    existing = json.loads(manifest.read_text()) if manifest.exists() else []
-    by_png = {c.get("png"): c for c in existing if c.get("png")}
-    for r in rendered:
-        if r.get("png"):
-            by_png[r["png"]] = r
-    unnamed = [c for c in existing if not c.get("png")] + [
-        r for r in rendered if not r.get("png")
-    ]
-    manifest.write_text(
-        json.dumps(sorted(by_png.values(), key=lambda c: c["png"]) + unnamed, indent=2)
-    )
-
-    log(
-        f"{len(kept)} painted, {len(rendered) - len(kept)} discarded, "
-        f"{time.perf_counter() - started:.0f}s"
-    )
-    if kept:
-        coverage = sorted(r["paint_fraction"] for r in kept)
-        log(
-            f"coverage {coverage[0]:.3f} to {coverage[-1]:.3f}, "
-            f"median {coverage[len(coverage) // 2]:.3f}"
-        )
-        by_model = {}
-        for r in kept:
-            by_model.setdefault(r["model"], 0)
-            by_model[r["model"]] += 1
-        for model, n in by_model.items():
-            log(f"  {model}: {n}")
-    log(f"\nnow rate them:\n  python examples/watercolour_pool_rate.py --dir {out_dir}")
+    asyncio.run(run(args))
 
 
 if __name__ == "__main__":
