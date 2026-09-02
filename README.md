@@ -33,7 +33,7 @@ can launch yourself, in one command, without a GPU of your own.
 
 <div align="center">
 
-**3** environments&nbsp; · &nbsp;**6** frameworks&nbsp; · &nbsp;**18** implementations&nbsp; · &nbsp;**8** deployed Spaces&nbsp; · &nbsp;**5** agent skills
+**4** environments&nbsp; · &nbsp;**6** frameworks&nbsp; · &nbsp;**19** implementations&nbsp; · &nbsp;**10** deployed Spaces&nbsp; · &nbsp;**5** agent skills
 
 </div>
 
@@ -70,6 +70,18 @@ Qwen3-VL-2B learns to read rendered math into LaTeX with GRPO, scored by a rewar
 [OpenEnv Space](https://huggingface.co/spaces/AdithyaSK/latex-ocr-env). Correctness is checkable —
 render the prediction, compare — so the reward is honest and there is very little to game. Runs on a
 GPU you spin up in [one command](#quickstart); no cluster, no local GPU.
+
+### [02 · Watercolour](./02-watercolour/) &nbsp;<sub>train against an aesthetic reward</sub>
+
+**RL over taste.** Project 01 trains against a verifiable reward. This one asks what happens when
+there is no correct answer at all.
+
+Qwen3.5-35B-A3B learns to paint watercolours by writing
+[p5.brush](https://github.com/acamposuribe/p5.brush) sketches. Headless Chromium renders each sketch,
+and the render is scored by an aesthetic preference model plus a VLM judge comparing it against a
+hand-rated reference pool, so the reward is somebody's taste. Three reward mixes trained and
+compared, every artifact published, and the full story in
+[the blog post](https://huggingface.co/blog/train-to-paint-with-code).
 
 > **More coming.** Each new project is another end-to-end recipe: an environment, a training run, and
 > the artifacts on the Hub. [Proposals and contributions welcome →](./CONTRIBUTING.md)
