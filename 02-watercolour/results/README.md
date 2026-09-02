@@ -5,9 +5,13 @@ Curves as data, not as a screenshot of a dashboard.
 ## Why the numbers live here
 
 Training metrics went to [trackio](https://github.com/gradio-app/trackio), one Space
-and one bucket per run. **Those Spaces will be shut down**, and a dashboard that is
-switched off is not a result. So the per-step series are exported here as CSV,
-versioned alongside the code that produced them.
+and one bucket per run. The live dashboards are published in the org:
+[`watercolour-trackio-judge-led`](https://huggingface.co/spaces/HuggingEnvs/watercolour-trackio-judge-led),
+[`watercolour-trackio-hps-led`](https://huggingface.co/spaces/HuggingEnvs/watercolour-trackio-hps-led)
+and
+[`watercolour-trackio-hps-only`](https://huggingface.co/spaces/HuggingEnvs/watercolour-trackio-hps-only).
+A dashboard can be paused or moved, so the per-step series are also exported here as
+CSV, versioned alongside the code that produced them.
 
 ## Files
 

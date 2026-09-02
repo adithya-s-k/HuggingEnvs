@@ -19,9 +19,8 @@ script defeats that: with fifty candidates the wait before there is anything to
 rate is the whole generation phase.
 
 Interleaving the two would fix it, since the browser pool sits idle through
-generation and the network sits idle through rendering. Left as it is for now
-because a run in flight is worth more than a tidier one, and the fix is a
-straight swap of the two phases for a producer feeding a consumer queue.
+generation and the network sits idle through rendering. The fix is a straight
+swap of the two phases for a producer feeding a consumer queue.
 
 The pool is the reward function, so what goes in it decides what the policy
 learns. Narreddi's write-up is explicit that theirs is **all model output**:
@@ -89,9 +88,8 @@ DEFAULT_MODELS = (
 TEMPERATURES = (0.6, 0.9, 1.1)
 
 # Per-call ceiling. `InferenceClient` does not time out by default, and a single
-# stalled request then hangs the whole run: the first attempt at this sat for
-# twenty-nine minutes on an established socket with 1.6 seconds of CPU to show
-# for it, having written nothing, because one call never came back. A generation
+# stalled request then hangs the whole run: one call that never comes back can
+# hold an established socket for half an hour with nothing written. A generation
 # pass is a few hundred sequential calls, so any one of them has to be allowed to
 # fail rather than to block the rest.
 CALL_TIMEOUT_S = 180.0

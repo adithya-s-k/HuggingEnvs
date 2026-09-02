@@ -233,7 +233,7 @@ def make_reward_func(
         index = next(call)
         rewards, best, drawn = [], [], []
         sin_puntuar: list[int] = []
-        piezas: dict[str, list[float]] = {}
+        parts: dict[str, list[float]] = {}
         for position, completion in enumerate(completions):
             try:
                 # The seed goes on `reset`, because OpenEnv's client drops
@@ -303,11 +303,11 @@ def make_reward_func(
             # The browser failing is not the sketch failing. `render_unavailable` says
             # the canvas never appeared and nothing errored, which scored zero and
             # dragged the whole group; see `GateResult.render_unavailable`.
-            incompleto = observation.get("render_unavailable") or (
+            incomplete = observation.get("render_unavailable") or (
                 observation.get("gate_passed")
                 and (not observation.get("quality_scored", True) or falta_juez)
             )
-            if incompleto:
+            if incomplete:
                 sin_puntuar.append(position)
                 rewards.append(None)
             else:
@@ -323,9 +323,9 @@ def make_reward_func(
             # answering "which term is moving the reward" meant reconstructing them
             # by difference from the film filenames. That produced impossible
             # negative judge scores and a wrong conclusion stated out loud.
-            for clave in ("judge_score", "quality_score", "length_score", "paint_fraction"):
-                if not incompleto and observation.get(clave) is not None:
-                    piezas.setdefault(clave, []).append(float(observation[clave]))
+            for key in ("judge_score", "quality_score", "length_score", "paint_fraction"):
+                if not incomplete and observation.get(key) is not None:
+                    parts.setdefault(key, []).append(float(observation[key]))
             if not observation.get("gate_passed"):
                 # The text too, not just the code. A 40-sample probe of the base
                 # model finds no source rejection while training rejects 30% of
@@ -359,7 +359,7 @@ def make_reward_func(
                     # Without the marker every contact sheet reads those as terrible
                     # paintings that scored 0.065, which is how four perfectly good
                     # flowers ended up filed as reward failures.
-                    marca = "_none" if incompleto else ""
+                    marca = "_none" if incomplete else ""
                     name = f"c{index:04d}_g{position:02d}_r{reward:.3f}{marca}.png"
                     path = film / name
                     path.write_bytes(base64.b64decode(image))
@@ -405,29 +405,29 @@ def make_reward_func(
                 flush=True,
             )
 
-        if piezas:
+        if parts:
             import statistics as _st
 
             # Mean *and* spread, per component. GRPO subtracts the group mean, so a term
             # with a big mean and no spread inside the group contributes exactly nothing
-            # to the gradient however much weight it carries. Logging only the mean is
-            # what made "which term is moving the reward" unanswerable for a whole day.
-            partes = {}
-            for k, v in piezas.items():
+            # to the gradient however much weight it carries. The mean alone cannot
+            # answer "which term is moving the reward".
+            stats = {}
+            for k, v in parts.items():
                 if not v:
                     continue
-                partes[k] = _st.mean(v)
-                partes[f"{k}__disp"] = _st.pstdev(v) if len(v) > 1 else 0.0
-                partes[f"{k}__min"] = min(v)
-                partes[f"{k}__max"] = max(v)
+                stats[k] = _st.mean(v)
+                stats[f"{k}__disp"] = _st.pstdev(v) if len(v) > 1 else 0.0
+                stats[f"{k}__min"] = min(v)
+                stats[f"{k}__max"] = max(v)
             print(
-                f"    call {index} desglose: "
+                f"    call {index} breakdown: "
                 + "  ".join(
-                    f"{k.replace('_score', '')} {partes[k]:.3f}"
-                    f"±{partes[k + '__disp']:.3f}"
-                    f"[{partes[k + '__min']:.2f},{partes[k + '__max']:.2f}]"
-                    for k in sorted(piezas)
-                    if k in partes
+                    f"{k.replace('_score', '')} {stats[k]:.3f}"
+                    f"±{stats[k + '__disp']:.3f}"
+                    f"[{stats[k + '__min']:.2f},{stats[k + '__max']:.2f}]"
+                    for k in sorted(parts)
+                    if k in stats
                 )
                 + f"   rollouts {len(rewards)}",
                 flush=True,
@@ -435,19 +435,19 @@ def make_reward_func(
             # The tier each drawn reference came from, because the same twelve paintings
             # scored 1 to 10 zeros out of twelve depending only on which references they
             # faced, and nothing recorded which ones those were.
-            gradas = [r.split("_")[0] for d in drawn if d for r in d]
-            if gradas:
+            tiers = [r.split("_")[0] for d in drawn if d for r in d]
+            if tiers:
                 import collections as _co
 
                 print(
-                    f"    call {index} referencias: "
-                    + "  ".join(f"{k} {v}" for k, v in sorted(_co.Counter(gradas).items())),
+                    f"    call {index} references: "
+                    + "  ".join(f"{k} {v}" for k, v in sorted(_co.Counter(tiers).items())),
                     flush=True,
                 )
             try:
                 import trackio
 
-                trackio.log({f"parte/{k}": v for k, v in partes.items()}, step=index)
+                trackio.log({f"reward/{k}": v for k, v in stats.items()}, step=index)
             except Exception:
                 pass
 

@@ -144,26 +144,26 @@ Three runs, differing only in how the reward splits:
 
 | run | judge | HPSv3 | steps | reward slope |
 |---|---|---|---|---|
-| `hps-only` | 0.00 | 0.90 | 60 | **t = +6.41** |
-| `judge-led` | 0.60 | 0.30 | in progress | |
-| `hps-led` | 0.30 | 0.60 | in progress | |
+| `hps-only` | 0.00 | 0.90 | 60 | t = +6.41 |
+| `judge-led` | 0.60 | 0.30 | 110 | t = +10.5 |
+| `hps-led` | 0.30 | 0.60 | 110 | **t = +15.6** |
 
-The two in progress are 200 step runs. The numbers below describe `hps-only`.
-
-When they finish, these are the names they land under. Nothing else changes:
+The judge runs were launched for 200 steps and stopped at 110, still climbing.
+All three learn, and `frac_reward_zero_std` stayed at 0.000 in every run, so no
+step ever lost its gradient. The full per-step numbers, per run, are in
+[`results/`](results/), and every artifact of every run:
 
 | run | adapter | rollouts | curve |
 |---|---|---|---|
 | `hps-only` | [`watercolour-grpo-hps-only`](https://huggingface.co/HuggingEnvs/watercolour-grpo-hps-only) | [`watercolour-rollouts-hps-only`](https://huggingface.co/datasets/HuggingEnvs/watercolour-rollouts-hps-only) | `results/curve-hps-only.csv` |
-| `judge-led` | `HuggingEnvs/watercolour-grpo-judge-led` | `HuggingEnvs/watercolour-rollouts-judge-led` | `results/curve-judge-led.csv` |
-| `hps-led` | `HuggingEnvs/watercolour-grpo-hps-led` | `HuggingEnvs/watercolour-rollouts-hps-led` | `results/curve-hps-led.csv` |
+| `judge-led` | [`watercolour-grpo-judge-led`](https://huggingface.co/HuggingEnvs/watercolour-grpo-judge-led) | [`watercolour-rollouts-judge-led`](https://huggingface.co/datasets/HuggingEnvs/watercolour-rollouts-judge-led) | `results/curve-judge-led.csv` |
+| `hps-led` | [`watercolour-grpo-hps-led`](https://huggingface.co/HuggingEnvs/watercolour-grpo-hps-led) | [`watercolour-rollouts-hps-led`](https://huggingface.co/datasets/HuggingEnvs/watercolour-rollouts-hps-led) | `results/curve-hps-led.csv` |
 
-The two pending are written without links on purpose: they do not exist yet, and a
-dead link is worse than a name. `train/publish.py` creates them from a finished run.
-
-`hps-only` went from 0.579 to 0.710 mean group reward across its three thirds.
-`frac_reward_zero_std` stayed at 0.000 for all 60 steps, so no step lost its
-gradient.
+The section below reads the validation run, `hps-only`, in detail. It is the
+simplest of the three (one dense generic signal, judge off), so its mechanics are
+the cleanest to decompose. The judge runs change the picture in one specific way:
+with the judge on, the top of the distribution moves too, and paint coverage
+roughly doubles where `hps-only` barely moved it. Their cards carry the numbers.
 
 ### The honest version
 
@@ -172,7 +172,7 @@ Decomposed: +0.0290 of the rise comes from failing less often, +0.0017 from the
 paintings that did render being better. Rollouts scoring under 0.3 fall from 33 to
 11 across the run while the best of each group barely moves.
 
-**Sixteen earlier runs were flat.** Three separate experiments on the reward
+**Earlier runs were flat.** Three separate experiments on the reward
 (removing the judge, changing the pool, removing renderer noise) all produced the
 same line. The bottleneck was the optimiser step, not the signal: a sanity task with
 no browser and no judges rose 4.4x in 13 steps at lr 3e-4 and did not move at 2e-5.
@@ -211,8 +211,10 @@ Everything is in the
 | [`watercolour-reference-pool`](https://huggingface.co/datasets/HuggingEnvs/watercolour-reference-pool) | the 178 paintings that define the reward, with the sketch behind each |
 | [`watercolour-grpo-hps-only`](https://huggingface.co/HuggingEnvs/watercolour-grpo-hps-only) | the trained adapter. **Read the card**: the obvious way to load it fails silently |
 | [`watercolour-rollouts-hps-only`](https://huggingface.co/datasets/HuggingEnvs/watercolour-rollouts-hps-only) | every rollout of the run: 470 paintings, sketches and rewards, by step |
-| [HPSv3](https://huggingface.co/MizzenAI/HPSv3) | the preference model itself. The Space that serves it is `envs/watercolour/hpsv3/` in this repo, not a published Space: it needs a GPU and would sit there costing money |
-| `results/curve-hps-only.csv` | the training curve as data. The trackio Spaces will be switched off, so it lives in the repo |
+| [`watercolour-grpo-judge-led`](https://huggingface.co/HuggingEnvs/watercolour-grpo-judge-led) · [`watercolour-grpo-hps-led`](https://huggingface.co/HuggingEnvs/watercolour-grpo-hps-led) | the sibling adapters, with their rollouts datasets linked from each card |
+| [`watercolour-hpsv3`](https://huggingface.co/spaces/HuggingEnvs/watercolour-hpsv3) | the scorer Space, paused on free hardware. Duplicate it on `a100-large` for a run. The model itself is [HPSv3](https://huggingface.co/MizzenAI/HPSv3) |
+| [`watercolour-trackio-judge-led`](https://huggingface.co/spaces/HuggingEnvs/watercolour-trackio-judge-led) · [`hps-led`](https://huggingface.co/spaces/HuggingEnvs/watercolour-trackio-hps-led) · [`hps-only`](https://huggingface.co/spaces/HuggingEnvs/watercolour-trackio-hps-only) | the live training dashboards, one per run |
+| `results/curve-*.csv` | the training curves as data, one CSV per run, so nothing depends on a Space staying up |
 
 Nothing here depends on a Space being switched on. The curves are CSV, the rollouts
 are a dataset, the pool is a dataset, and the environment is a Dockerfile.

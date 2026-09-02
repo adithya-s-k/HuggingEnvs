@@ -38,49 +38,33 @@ FILM = re.compile(r"^c(\d{4})_g(\d{2})_r([\d.]+)(_none)?\.png$")
 def publish_pool(args) -> None:
     """Ship the rated pool as an imagefolder dataset."""
     pool = pathlib.Path(args.pool)
-    manifest = json.loads((pool / "manifest_v2.json").read_text())
-    photos = {}
-    if args.photos:
-        photos = {x["file"]: x for x in json.loads(pathlib.Path(args.photos).read_text())}
+    manifest = json.loads((pool / "tiers.json").read_text())
 
     out = pathlib.Path(args.out)
     (out / "images").mkdir(parents=True, exist_ok=True)
     (out / "sources").mkdir(parents=True, exist_ok=True)
     rows = []
     for entry in manifest:
-        if entry.get("grada") not in ("love", "okay"):
+        if entry.get("tier") not in ("love", "okay"):
             continue
-        png = pool / entry["fichero"]
+        png = pool / entry["file"]
         js = pool / "sources" / f"{png.stem}.js"
         if not png.exists():
             continue
         shutil.copy(png, out / "images" / png.name)
         if js.exists():
             shutil.copy(js, out / "sources" / js.name)
-        photo = photos.get(entry.get("foto"))
         rows.append({
             "file_name": f"images/{png.name}",
             "source_file": f"sources/{js.name}" if js.exists() else None,
-            "tier": entry["grada"],
+            "tier": entry["tier"],
             "subject": entry.get("subject"),
-            "generator_model": entry.get("modelo"),
-            "refinement_round": entry.get("ronda"),
-            "hpsv3_mu": entry.get("mu"),
-            "paint_coverage": entry.get("pigmento"),
-            "gate_errors": entry.get("errores"),
-            "reference_photo": entry.get("foto") if photo else None,
-            "reference_photo_licence": photo["licence"] if photo else None,
-            "reference_photo_attribution": photo["attribution"] if photo else None,
-            "reference_photo_url": photo["observation_url"] if photo else None,
+            "generator_model": entry.get("model"),
+            "paint_coverage": entry.get("paint_fraction"),
         })
     with (out / "metadata.jsonl").open("w") as fh:
         for r in rows:
             fh.write(json.dumps(r, ensure_ascii=False) + "\n")
-    if photos:
-        usadas = sorted({r["reference_photo"] for r in rows if r["reference_photo"]})
-        (out / "photo_attribution.json").write_text(
-            json.dumps([photos[f] for f in usadas], indent=1, ensure_ascii=False)
-        )
 
     print(f"{len(rows)} references, tiers: {dict(collections.Counter(r['tier'] for r in rows))}")
     _upload(out, f"{args.org}/watercolour-reference-pool", "dataset", args.dry_run,
@@ -93,9 +77,9 @@ def publish_rollouts(args) -> None:
                                         allow_patterns=["film/c*"])) / "film"
     log = pathlib.Path(args.log).read_text(errors="ignore") if args.log else ""
     step_reward = [float(x) for x in re.findall(r"'reward': '([\d.eE+-]+)'", log)]
-    # per-step group means of each reward term, from the trainer's desglose lines
+    # per-step group means of each reward term, from the trainer's breakdown lines
     group_terms = re.findall(
-        r"desglose: judge ([\d.]+)\u00b1[\d.]+\[[\d.,]+\]\s+length ([\d.]+)\u00b1[\d.]+"
+        r"breakdown: judge ([\d.]+)\u00b1[\d.]+\[[\d.,]+\]\s+length ([\d.]+)\u00b1[\d.]+"
         r"\[[\d.,]+\]\s+paint_fraction ([\d.]+)\u00b1[\d.]+\[[\d.,]+\]\s+quality ([\d.]+)",
         log,
     )
@@ -171,7 +155,6 @@ def main() -> None:
 
     p = sub.add_parser("pool")
     p.add_argument("--pool", required=True, help="directory the rating step wrote")
-    p.add_argument("--photos", help="manifest.json from pool_photos.py, for provenance")
     p.add_argument("--out", default="/tmp/pool-dataset")
     p.set_defaults(fn=publish_pool)
 
