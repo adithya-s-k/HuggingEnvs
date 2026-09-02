@@ -1,0 +1,21 @@
+name: watercolour
+title: "Watercolour"
+tagline: "Train Qwen3.5-35B-A3B to paint watercolours by writing p5.brush sketches, rewarded by an aesthetic preference model."
+order: 2
+status: trained   # env, training and results done. Two sibling runs still in progress
+
+hub:
+  org: HuggingEnvs
+  datasets:
+    - HuggingEnvs/watercolour-reference-pool
+    - HuggingEnvs/watercolour-rollouts-hps-only
+  models:
+    - HuggingEnvs/watercolour-grpo-hps-only
+  collection: HuggingEnvs/paint-with-code-6a955b79d63f67f1631d9be6
+
+envs:
+  - name: watercolour
+    summary: "Single-turn code -> painting. The agent writes a p5.brush sketch, headless Chromium renders it, and the render is scored by an aesthetic preference model plus a pairwise judge against a reference pool."
+    backend: http
+    frameworks:
+      openenv: {transport: http-mcp, verified: true}

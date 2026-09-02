@@ -1,0 +1,125 @@
+spec_version: 1
+name: watercolour_env
+type: space
+runtime: fastapi
+app: server.app:app
+port: 8000
+
+description: >
+  Blind watercolour painting. The model is asked for a p5.brush sketch and never
+  sees the result, so it has to hold a composition in its head and emit code for
+  it. The sketch is painted in a headless browser and weighed against a pool of
+  reference paintings by a vision judge, which is asked which of two paintings is
+  the better watercolour rather than to rate one in the abstract.
+version: "0.1.0"
+
+# Environment configuration defaults, overridable via constructor arguments.
+environment:
+  subject: null          # pin the subject, or null to sample
+  enable_judge: true     # false scores on gate admission alone, with no vision calls
+  references: 2          # references per submission; cost is two vision calls each
+  return_image: false    # include the painting in the observation
+
+# Public Space variables, applied by `openenv push`.
+variables:
+  WATERCOLOUR_JUDGE_MODEL: Qwen/Qwen3-VL-30B-A3B-Instruct
+
+# Secrets never live in this file. Pass them at push time, where the value is
+# not logged:
+#
+#   openenv push envs/watercolour_env --secret HF_TOKEN=hf_...
+#
+# HF_TOKEN enables the judge. Without it the Space still runs, scores on gate
+# admission alone, and sets judged=false on every observation so a harness can
+# tell "painted badly" from "nobody looked at it".
+#
+# WATERCOLOUR_DISABLE_JUDGE=1 forces gate-only scoring even when a token is
+# present.
+
+# The gate is free and runs first. Only what clears it reaches the judge, so a
+# run against a model producing garbage stays cheap.
+rubric:
+  type: sequential
+  name: WatercolourRubric
+  # Weights from the final rubric in Narreddi's write-up. HPSv3 (0.30) is not
+  # implemented, so the maximum here is 0.70 rather than 1.0. Left unnormalised
+  # on purpose: renormalising would silently rebalance what remains.
+  layers:
+    - name: gate
+      weight: 0.05
+      cost: free
+      description: >
+        Source inspection and rendering. Rejects replies with no sketch,
+        truncated source, a non-WEBGL canvas, painting with bare p5 primitives
+        instead of the library, loading an external image, writing the answer as
+        text, and canvases that came back blank. Failing it scores zero outright.
+        Clearing it earns 0.05 on its own, which is the only term a policy can
+        earn before it paints well, and so the only reward variance a GRPO group
+        has on day one.
+    - name: length
+      weight: 0.05
+      cost: free
+      description: >
+        Binary check that the sketch is neither a stub nor a runaway. Their
+        target was around 3,000 tokens, reflecting a much larger model writing
+        13,500-token sketches; measured here a 4B writes 234 to 293 tokens and
+        the reference paintings run 202 to 315, so the band is calibrated to
+        those and this term is close to constant with a small model.
+    - name: judge
+      weight: 0.60
+      cost: two vision calls per reference
+      description: >
+        Comparative scoring against a sampled reference pool. Each comparison
+        runs in both presentation orders, because both judges measured picked
+        whichever image came first whenever they had no real preference. Winning
+        both orders scores one, losing both scores zero, and a split scores half.
+    - name: hpsv3
+      weight: 0.30
+      cost: not implemented
+      description: >
+        A human preference model, carrying 0.30 in the original rubric and absent
+        here. It scores a painting on its own rather than against a reference, so
+        it is what gives a policy something to climb before it can beat anything
+        in the pool, and its absence is the first thing to suspect if the reward
+        sits flat at the floor.
+
+        Not implemented because it is an infrastructure decision rather than a
+        few lines of code. MizzenAI/HPSv3 is a 7B Qwen2.5-VL fine-tune weighing
+        16.6 GB, it is served by its own `hpsv3` package rather than through a
+        standard text-generation endpoint, and it is on no inference provider. It
+        will not fit beside a 4B LoRA run on a 24 GB card and it is far too slow
+        to run on a CPU Space, so adding it means either a bigger training
+        flavour or a second GPU service for the environment to call.
+
+        The cheaper thing to try first is a reference pool that spans a quality
+        range, since a pool with a floor gives a small policy something to beat
+        without any of that. If the reward is still flat with a tiered pool, this
+        is the answer and the cost above is what it costs.
+
+# Anti-gaming rules enforced before any scoring happens.
+gate_violations:
+  - no_sketch_in_response
+  - truncated
+  - missing_entry_points
+  - not_webgl
+  - external_access
+  - text_label
+  - bare_primitives
+  - no_painting_calls
+  - render_failed
+  - blank_canvas
+
+metrics:
+  reward:
+    - reward/total
+    - reward/judge
+  render:
+    - render/paint_fraction
+    - render/finished
+    - render/elapsed_ms
+  judge:
+    - judge/score
+    - judge/unavailable
+  episode:
+    - episode/task_id
+    - episode/gate_passed
