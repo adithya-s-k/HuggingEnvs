@@ -11,7 +11,7 @@ long reference documentation makes models hallucinate APIs, while a short
 opinionated allowlist constrains output better than the spec does.
 
 The measurements taken here before adopting that are consistent with it. With a
-full 25-method reference in context a 4B model emitted ten to thirteen real
+full 25-method reference in context a small model emitted ten to thirteen real
 `brush.*` calls and no bare p5 primitives, which looked like a success, and then
 three of four sketches died at runtime on API misuse: an invented `brush.noLoop`,
 a painting call before any `brush.set`, and the method name `wash` passed as a
@@ -60,7 +60,7 @@ different convention reasons about space in a different frame than the one its
 reward was built on.
 
 Adopting their translate needed a second sentence, and finding out cost five blank
-canvases out of five. A 4B copies the `translate` from the skeleton and then paints
+canvases out of five. A small model copies the `translate` from the skeleton and then paints
 at negative coordinates anyway, because centred coordinates are what a p5 sketch
 usually uses: it holds both conventions at once and everything lands off canvas.
 Their trained model learned the convention; an untrained one has to be told where
@@ -104,7 +104,7 @@ here: build each petal from eight vertices at alternating radii, run the second
 glaze along the petal rather than pooling it centrally, put damp blooms on the
 petals rather than one wide circle behind them, draw the stem as a filled taper
 because a line has no body, and keep the staminal column short enough to stay
-inside the flower. All five are real, and all five made a 4B worse. Added to the
+inside the flower. All five are real, and all five made a small policy worse. Added to the
 prompt they raised coverage from 0.027 to 0.479 while the paintings became large
 off-centre blobs and blank canvases, which is what happens when advice a model
 cannot execute lengthens the prompt it has to follow. They belong in the notes for

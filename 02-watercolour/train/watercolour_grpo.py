@@ -10,7 +10,7 @@
 #     "datasets",
 #     "torch",
 #     "transformers",
-#     # Only needed above the 4B this started on. `Qwen3.5-35B-A3B` is a
+#     # Only needed for the larger multimodal models. `Qwen3.5-35B-A3B` is a
 #     # multimodal MoE (`Qwen3_5MoeForConditionalGeneration`, processor
 #     # `Qwen3VLProcessor`), so `AutoProcessor` resolves a video processor whose
 #     # backends are not in transformers itself. Without these the run dies in
@@ -260,8 +260,8 @@ def make_reward_func(
                 # one persistent websocket and `_ensure_connected` only
                 # reconnects when the socket came from another event loop, so a
                 # socket closed by the far end stays cached and every later call
-                # raises `ConnectionClosedError` forever. That killed v21b at
-                # step 46 and v21c at step 57: the Space answered `/reset` in
+                # raises `ConnectionClosedError` forever. That killed two 14-hour
+                # runs mid-flight: their Space answered `/reset` in
                 # 0.3s from outside while the job could not reach it at all.
                 # Dropping the client here forces the next call to build a fresh
                 # one.
@@ -296,7 +296,7 @@ def make_reward_func(
             # With `JUDGE_WEIGHT` at zero the pairwise term contributes nothing to the
             # reward, so discarding the rollout over it threw away a painting that had
             # already paid for its generation, its render and its HPSv3 call: one of
-            # v20's six unscored rollouts went that way.
+            # A finished run's six unscored rollouts went that way.
             falta_juez = not observation.get("judged", True) and (
                 observation.get("judge_weight", 1.0) > 0.0
             )
@@ -729,7 +729,7 @@ def main() -> None:
     ap.add_argument(
         "--model",
         default="Qwen/Qwen3-4B-Instruct-2507",
-        help="4B rather than something smaller. Measured: with the API "
+        help="A 4B default rather than something smaller. Measured: with the API "
         "reference in context a 4B emits ten to thirteen real brush calls and "
         "no bare p5 primitives, so the gate is passable and the reward has "
         "variance. Smaller models were not measured and the pelican run at "
@@ -866,10 +866,10 @@ def main() -> None:
         "well, taking the adapter from 8.4M trainable parameters to 941.9M. Costs "
         "roughly twice the wall clock per step.",
     )
-    # Off by default so every run before this one still reproduces. A 4B trains
+    # Off by default so existing configs still reproduce. A 4B trains
     # fine on the defaults; a 35B does not, because full precision puts 140GB of
     # weights on a card that has 141GB in total.
-    # Off by default. A run of the 4B converged to one tiny stereotyped flower and
+    # Off by default. A small policy can converge to one tiny stereotyped flower and
     # repeated it: visual diversity between the eight paintings of a group fell to
     # 0.016, which is inside the 0.005-0.015 that two renders of the *same* code
     # differ by from p5.brush's own noise. Its reward still rose, because a
@@ -896,7 +896,7 @@ def main() -> None:
         action="store_true",
         help="Trade compute for activation memory. Required above roughly 10B.",
     )
-    ap.add_argument("--out", default="watercolour-grpo-Qwen3-4B")
+    ap.add_argument("--out", default="watercolour-grpo-run")
     ap.add_argument(
         "--push-to-hub",
         action="store_true",
@@ -961,7 +961,7 @@ def main() -> None:
     if args.probe_samples and not args.cordura:
         # The before-probe has to sample from whatever training is about to continue
         # from, not from the base model. With `--resume-adapter` pointing at a run
-        # that already trained, sampling `args.model` would measure the untrained 4B
+        # that already trained, sampling `args.model` would measure the untrained base
         # and the before-and-after would then report every step ever taken instead of
         # the ones this run adds, which is the one thing resuming exists to isolate.
         texts = sample_completions(

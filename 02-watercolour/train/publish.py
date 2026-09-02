@@ -9,7 +9,7 @@ a repo full of PNGs. This is the last step, and it existed only as ad-hoc comman
 until someone tried to follow the recipe end to end and found it missing.
 
     uv run publish.py pool   --pool ../envs/watercolour/core/reference_pool --org YOURORG
-    uv run publish.py rollouts --run sergiopaniego/watercolour-grpo-v20 --tag hps-only --org YOURORG
+    uv run publish.py rollouts --run YOURACCOUNT/watercolour-grpo-myrun --tag hps-only --org YOURORG
 
 `pool` reads the manifest the rating step wrote and ships the `love` and `okay`
 tiers with their sketches and the photograph provenance for each. `rollouts` pulls
@@ -93,6 +93,12 @@ def publish_rollouts(args) -> None:
                                         allow_patterns=["film/c*"])) / "film"
     log = pathlib.Path(args.log).read_text(errors="ignore") if args.log else ""
     step_reward = [float(x) for x in re.findall(r"'reward': '([\d.eE+-]+)'", log)]
+    # per-step group means of each reward term, from the trainer's desglose lines
+    group_terms = re.findall(
+        r"desglose: judge ([\d.]+)\u00b1[\d.]+\[[\d.,]+\]\s+length ([\d.]+)\u00b1[\d.]+"
+        r"\[[\d.,]+\]\s+paint_fraction ([\d.]+)\u00b1[\d.]+\[[\d.,]+\]\s+quality ([\d.]+)",
+        log,
+    )
 
     out = pathlib.Path(args.out)
     (out / "images").mkdir(parents=True, exist_ok=True)
@@ -101,6 +107,8 @@ def publish_rollouts(args) -> None:
     for png in sorted(src.glob("*.png")):
         m = FILM.match(png.name)
         if not m or m.group(4):  # `_none` marks a rollout nothing could score
+            continue
+        if args.max_step is not None and int(m.group(1)) > args.max_step:
             continue
         js = src / f"{png.stem}.js"
         if not js.exists():
@@ -127,6 +135,10 @@ def publish_rollouts(args) -> None:
             "n_fill_calls": used["fill"],
             "brush_methods_used": sorted(k for k, v in used.items() if v),
             "step_group_reward": step_reward[step] if step < len(step_reward) else None,
+            "group_judge_mean": float(group_terms[step][0]) if step < len(group_terms) else None,
+            "group_length_mean": float(group_terms[step][1]) if step < len(group_terms) else None,
+            "group_paint_mean": float(group_terms[step][2]) if step < len(group_terms) else None,
+            "group_quality_mean": float(group_terms[step][3]) if step < len(group_terms) else None,
         })
     with (out / "metadata.jsonl").open("w") as fh:
         for r in rows:
@@ -167,6 +179,8 @@ def main() -> None:
     p.add_argument("--run", required=True, help="the model repo a run pushed to")
     p.add_argument("--tag", required=True, help="hps-only, judge-led, hps-led")
     p.add_argument("--log", help="the job log, for the per-step group reward")
+    p.add_argument("--max-step", type=int, default=None,
+                   help="drop rollouts past this step (a run cancelled after its last checkpoint)")
     p.add_argument("--judge-weight", type=float, default=0.0)
     p.add_argument("--hpsv3-weight", type=float, default=0.9)
     p.add_argument("--out", default="/tmp/rollouts-dataset")

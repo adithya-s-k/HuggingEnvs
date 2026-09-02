@@ -63,7 +63,7 @@ QUALITY_WEIGHT = float(os.environ.get("WATERCOLOUR_QUALITY_WEIGHT", 0.30))
 # code length ramp targeting around 3,000 tokens" and sketches that "compressed
 # from 13,500 tokens to under 2,000", so elaboration is something their reward
 # pulls towards. The band this replaces returned one for anything between 150 and
-# 1200 tokens, and measured output sits inside it: a 4B writes 570 to 1256 tokens
+# 1200 tokens, and measured output sits inside it: small models write 570 to 1256 tokens
 # and a VLM 700 to 1300. A term that is one for every rollout contributes nothing
 # to a GRPO group, so the only signal about elaboration in the whole rubric was
 # doing no work.
@@ -91,7 +91,7 @@ def length_score(source: str) -> float:
     Examples:
 
     ```python
-    >>> length_score("x" * 4 * 600)  # what a 4B writes today
+    >>> length_score("x" * 4 * 600)  # a typical sketch length
     0.16
     >>> length_score("x" * 4 * 3000)  # the target
     1.0

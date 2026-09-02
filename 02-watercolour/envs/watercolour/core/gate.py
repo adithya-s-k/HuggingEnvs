@@ -13,7 +13,7 @@ composition while dodging the medium the task is about. `external_access`
 catches loading somebody else's painting, which is the only way to score well
 without painting at all.
 
-The paint floor is calibrated against measured renders: real sketches from a 4B
+The paint floor is calibrated against measured renders: real sketches from small models
 model covered 2.6% to 5.0% of the canvas, a sketch that errored before painting
 covered 0.07%, and an empty canvas covers 0%. The floor sits between them.
 """

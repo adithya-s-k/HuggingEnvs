@@ -73,14 +73,16 @@ from envs.watercolour_env.server.sketch_source import (  # noqa: E402
 )
 from envs.watercolour_env.server.tasks import SUBJECTS  # noqa: E402
 
-# A spread rather than a shortlist of the best. The small model is here to
-# populate the weak end of the pool, which is the end that gives a policy
-# something it can actually beat on day one.
+# The four families that generated the published reference pool. Different
+# families paint in different styles, and a pool from a single model is a pool
+# in a single style. All four passed a reliability check before making the cut
+# (a valid sketch three times out of three under concurrency); two other
+# candidates were dropped for failing it.
 DEFAULT_MODELS = (
-    "Qwen/Qwen3-4B-Instruct-2507",
-    "Qwen/Qwen3-Coder-30B-A3B-Instruct",
-    "deepseek-ai/DeepSeek-V3.2",
-    "moonshotai/Kimi-K2-Instruct",
+    "zai-org/GLM-5.2",
+    "moonshotai/Kimi-K3",
+    "Qwen/Qwen3-Coder-Next",
+    "Qwen/Qwen3.5-122B-A10B",
 )
 
 # Sampled per candidate. High temperatures widen the spread, which is the point.

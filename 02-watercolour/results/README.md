@@ -13,8 +13,11 @@ versioned alongside the code that produced them.
 
 | file | what it is |
 |---|---|
-| `curve-hps-only.csv` | every metric, per step, for the `hps-only` run. 60 steps, 14 columns |
-| `fig-flat-controls-vs-hps-only.png` | the same run against the three flat controls that came before it |
+| `curve-hps-only.csv` | every metric, per step, for the `hps-only` run. 60 steps |
+| `curve-judge-led.csv` | the same, for the `judge-led` run. 110 steps |
+| `curve-hps-led.csv` | the same, for the `hps-led` run. 110 steps |
+| `VERSIONS.md` | the package versions the uv header resolved around launch day |
+| `fig-flat-controls-vs-hps-only.png` | `hps-only` against the three flat controls that came before it |
 
 Columns: `reward`, `reward_std`, `frac_reward_zero_std`, `entropy`, `loss`,
 `grad_norm`, `learning_rate`, `step_time`, `completions/mean_length`,
@@ -33,20 +36,19 @@ print([round(statistics.mean(r[i*k:(i+1)*k]), 3) for i in range(3)])
 # [0.578, 0.634, 0.701]
 ```
 
-Slope over all 60 steps is +0.0035 per step, **t = +6.41**. Over the last 15 it is
-+0.0084, steeper than the run as a whole, so it was cut by the step counter.
+Slope over all 60 steps is +0.0035 per step, **t = +6.41**. The judge runs: `judge-led`
+0.451 / 0.647 / 0.721 across thirds (t = +10.5), `hps-led` 0.573 / 0.740 / 0.815
+(t = +15.6), both over 110 steps and both still inching upward when stopped.
 
-`frac_reward_zero_std` is 0.000 in all 60 rows: no step ever lost its gradient.
-
-## Not here yet
-
-Two sibling runs are still training, `judge-led` and `hps-led`. Their curves, their
-step timings and their totals go here when they finish. Until then the numbers in the
-project README describe `hps-only` only.
+`frac_reward_zero_std` is 0.000 in every row of all three runs: no group ever collapsed
+to identical rewards, the GRPO failure mode that kills the gradient.
 
 ## Per-rollout data
 
 The curve is the group mean. Every individual rollout, with its sketch, its reward
-and its step, is in
-[`watercolour-rollouts-hps-only`](https://huggingface.co/datasets/HuggingEnvs/watercolour-rollouts-hps-only).
-Anything asserted about this run is recomputable from those 470 rows.
+and its step, is in the rollouts datasets:
+[`watercolour-rollouts-hps-only`](https://huggingface.co/datasets/HuggingEnvs/watercolour-rollouts-hps-only),
+[`watercolour-rollouts-judge-led`](https://huggingface.co/datasets/HuggingEnvs/watercolour-rollouts-judge-led)
+and
+[`watercolour-rollouts-hps-led`](https://huggingface.co/datasets/HuggingEnvs/watercolour-rollouts-hps-led).
+Anything asserted about a run is recomputable from its rows.

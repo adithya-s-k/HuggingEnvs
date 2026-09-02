@@ -84,7 +84,7 @@ Three numbers matter more than any adjective:
     # flower, and both verdicts are order-invariant. Their write-up uses
     # medium-only criteria, which works for a 35B because almost everything it
     # emits already reads as the subject, so the structure gate is passed by
-    # default. At 4B it is not, and omitting it hands the judge a well-painted
+    # default. For a small policy it is not, and omitting it hands the judge a well-painted
     # non-flower with nothing to hold against it.
     # Style only, and the flowerness clause that used to open this is gone on
     # purpose. The template's next line says "Ignore what the paintings depict",

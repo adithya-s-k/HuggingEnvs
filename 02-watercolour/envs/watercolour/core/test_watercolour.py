@@ -698,7 +698,7 @@ class TestLengthRamp:
     def test_writing_more_always_pays_up_to_the_target(self):
         # The point of the change. The band this replaced returned one for
         # everything between 150 and 1200 tokens, and measured output sits inside
-        # it: a 4B writes 570 to 1256 tokens and a VLM 700 to 1300. A term that is
+        # it: small models write 570 to 1256 tokens and a VLM 700 to 1300. A term that is
         # one for every rollout adds nothing to a GRPO group, so the only signal
         # about elaboration in the rubric was doing no work at all.
         marks = [length_score("x" * 4 * n) for n in (200, 600, 1200, 2000, 3000)]

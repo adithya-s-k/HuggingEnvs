@@ -23,7 +23,7 @@ So the judge model is asked for an absolute mark instead. Validated before being
 wired in, five paintings per group, temperature zero:
 
     pool love   9.0    pool okay   8.4    pool meh   7.4
-    a VLM's own untrained output   3.4     a 4B's    6.2
+    a VLM's own untrained output   3.4     a small model's    6.2
 
 Monotonic across the tiers, and the part that matters is the bottom: our own
 paintings came back 1, 1, 3, 6, 6 where the pairwise judge had given all of them
