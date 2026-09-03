@@ -9,6 +9,7 @@ hub:
   spaces:
     - HuggingEnvs/watercolour-env
     - HuggingEnvs/watercolour-hpsv3
+    - HuggingEnvs/watercolour-gallery
     - HuggingEnvs/watercolour-trackio-hps-only
     - HuggingEnvs/watercolour-trackio-judge-led
     - HuggingEnvs/watercolour-trackio-hps-led
