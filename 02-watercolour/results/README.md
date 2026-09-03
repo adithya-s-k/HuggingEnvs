@@ -23,6 +23,8 @@ CSV, versioned alongside the code that produced them.
 | `VERSIONS.md` | the package versions the uv header resolved around launch day |
 | `fig-flat-controls-vs-hps-only.png` | `hps-only` against the three flat controls that came before it |
 
+Every painting of every run is browsable in [the gallery Space](https://huggingface.co/spaces/HuggingEnvs/watercolour-gallery), by step and by reward, with the sketch that made each one.
+
 Columns: `reward`, `reward_std`, `frac_reward_zero_std`, `entropy`, `loss`,
 `grad_norm`, `learning_rate`, `step_time`, `completions/mean_length`,
 `clipped_ratio`, and the group means of each reward term (`judge_mean`,
