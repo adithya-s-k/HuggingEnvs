@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openenv-geoguesser-env"
+# Bumped whenever the packaged client changes. uv treats a requirement as
+# satisfied when an installed distribution matches the version, ignoring the git
+# revision the spec asked for, so a same-version rebuild is invisible to a
+# cached environment: a fixed client sat unused through three job runs.
+version = "0.1.4"
+description = "GeoGuessr-style visual geolocation environment for OpenEnv"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    # Core OpenEnv dependencies (required for server functionality).
+    "openenv>=0.3.1",
+    "fastapi>=0.115.0",
+    "pydantic>=2.0.0",
+    "uvicorn>=0.24.0",
+    "fastmcp>=2.0.0",
+    # Environment-specific: panorama reprojection and the offline guess map.
+    "pillow>=10.0.0",
+    "numpy>=1.24.0",
+    "matplotlib>=3.7.0",
+]
+
+[project.optional-dependencies]
+ui = ["gradio>=4.0.0"]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[project.scripts]
+server = "geoguesser_env.server.app:main"
+
+# Mapped the way every other environment in the repo maps itself: the env
+# directory becomes a top-level `geoguesser_env` package, so an installed copy
+# exposes `geoguesser_env.client` and `geoguesser_env.models`. Packaging only
+# `server` made the environment unusable as a dependency -- a training script
+# could pip-install it and still not import the client.
+[tool.setuptools]
+include-package-data = true
+packages = [
+    "geoguesser_env",
+    "geoguesser_env.server",
+    "geoguesser_env.server.backends",
+    "geoguesser_env.server.render",
+]
+package-dir = { "geoguesser_env" = ".", "geoguesser_env.server" = "server", "geoguesser_env.server.backends" = "server/backends", "geoguesser_env.server.render" = "server/render" }
+
+# The map renderer and the reverse geocoder read these at runtime, so an install
+# without them is code that cannot pin, guess or name a country -- which is how
+# it failed: `look` worked and `pin` raised FileNotFoundError on the countries
+# outline. 40 MB of coastlines, places, roads, rivers and urban areas.
+#
+# `data/geo/osm_cache` is deliberately not listed. It is 331 MB of fetched
+# Overpass responses that the environment regenerates on demand, and shipping a
+# cache in a wheel would be eight times the size of the data it caches.
+[tool.setuptools.package-data]
+geoguesser_env = [
+    "data/geo/*.geojson",
+    "data/geo/detail/*.json",
+    "openenv.yaml",
+]

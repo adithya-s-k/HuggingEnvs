@@ -1,0 +1,42 @@
+# Panorama bytes are a runtime cache, not source. They are re-fetchable from
+# the task index, which is committed.
+data/panos/
+data/geo/detail/
+data/geo/osm_cache/
+rollouts/
+
+# The harvested sequence pool: 254 MB of upstream metadata, rebuildable with
+# scripts/harvest_tiles.py and not source.
+data/pool/
+
+# Intermediate build output. eval/train are carved from it by split_tasks.py.
+tasks/pool_offline_5k.jsonl
+
+# The training index is ~20 MB and lives in the Storage Bucket alongside the
+# imagery. The eval index stays committed: it is small, and a frozen benchmark
+# belongs in version control where changes to it are visible in review.
+tasks/train_pano_v3.jsonl
+
+# Superseded eval sets, kept locally until the v3 split is deployed.
+tasks/eval_pano_v1.jsonl
+tasks/eval_pano_v2.jsonl
+tasks/eval_balanced_trial.jsonl
+
+# Endpoint configs hold live gradio.live tunnel URLs, which are publicly
+# reachable by anyone who has them. models.example.json is the committed
+# template; the real ones stay local.
+# Any endpoint config, not just the two original names. These hold live
+# gradio.live tunnel URLs, which are publicly reachable by whoever has them,
+# and this repository is public. models.example.json is the committed template.
+models.json
+small_models.json
+sweep_models.json
+*_models.json
+*.local.json
+
+# setuptools artifacts. These matter more than usual here: the deploy script
+# uploads this directory to a Space that is then pip-installed, and a committed
+# build/lib/ shadows the real sources during the build -- a stale client.py in
+# build/ was served to three Jobs while the fixed one sat beside it.
+build/
+*.egg-info/
