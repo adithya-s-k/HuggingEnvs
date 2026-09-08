@@ -1,0 +1,49 @@
+# Project manifest. `tools/build_index.py` renders the root README table and the
+# per-project status matrix from this file; `tools/deploy.py` reads the `hub` keys.
+name: geoguesser
+title: "GeoGuesser"
+tagline: "Drop a VLM at a random street corner on Earth and score it on kilometres of error."
+order: 3
+status: stable   # env, evals and three GRPO runs; 21 arms scored at pass@4
+
+hub:
+  org: HuggingEnvs
+  spaces:
+    - HuggingEnvs/geoguesser-env
+  datasets:
+    - HuggingEnvs/geoguesser-tasks
+  buckets:
+    - HuggingEnvs/geoguesser-panos
+    - AdithyaSK/geoguesser-runs      # training checkpoints, one dir per run
+    - HuggingEnvs/geoguesser-trackio-bucket   # unified dashboard, scalars only
+    - AdithyaSK/geoguesser-trackio-run1       # run 1 metrics + 6.8 GB of rollout media
+    - AdithyaSK/geoguesser-trackio-run23      # runs 2-3 metrics + 35 GB of media
+  models:
+    - HuggingEnvs/geoguesser-qwen3.5-4b-grpo      # run 1
+    - HuggingEnvs/geoguesser-qwen3.5-4b-grpo-v3   # run 3, self-published at step 300
+  trackio:
+    - HuggingEnvs/geoguesser-trackio              # all four runs, one axis
+    - HuggingEnvs/geoguesser-grpo-trackio         # run 1, with rollout galleries
+    - HuggingEnvs/geoguesser-grpo-v2-trackio      # runs 2 and 3, with galleries
+
+envs:
+  - name: geoguesser
+    summary: "Multi-turn visual geolocation — look, zoom, walk, pin a candidate, then commit."
+    backend: mapillary-panoramas
+    tools: 11   # look pan zoom move place_pin view_map list_pins clear_pins measure reverse_geocode submit_guess
+    frameworks:
+      openenv:
+        transport: http-mcp
+        space: HuggingEnvs/geoguesser-env
+        verified: true
+
+# Headline result, so the write-up and the manifest cannot drift apart.
+# All 21 arms scored on the same 200 eval tasks at pass@4 (800 episodes each),
+# rewards recomputed from raw distances through eval/geoeval.py (the curve at the top of the file).
+results:
+  eval: "200 tasks x pass@4, pinned reference curve"
+  best_trained: "run 1 ckpt1000 — 0.6445, median error 662 km, 0.5% non-submission"
+  untrained_base: "Qwen3.5-4B — 0.4825, median 1226 km, 29.5% non-submission"
+  beats: 8    # of 9 off-the-shelf models, paired per task
+  loses_to:
+    - "claude-sonnet-5 (0.6952, -0.0508 [-0.0917, -0.0099])"
