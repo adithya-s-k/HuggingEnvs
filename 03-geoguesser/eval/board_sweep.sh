@@ -32,7 +32,9 @@ SP="${SP:-$HERE/results}"
 # below, never sourced: the '|' in a Mapillary key is a shell pipe.
 ENV_FILE="${GEO_ENV_FILE:-}"
 if [ -z "$ENV_FILE" ]; then
-  for c in "$HERE/../.env" "$HERE/../../.env" "$HERE/../../../OpenEnv/.env"; do
+  # Repo-relative only. A path into a sibling checkout on one machine is not a
+  # default anyone else can use; set GEO_ENV_FILE if your keys live elsewhere.
+  for c in "$HERE/../.env" "$HERE/../../.env"; do
     [ -f "$c" ] && { ENV_FILE="$c"; break; }
   done
 fi

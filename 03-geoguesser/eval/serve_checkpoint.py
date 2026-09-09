@@ -193,6 +193,33 @@ def open_tunnel(port: int) -> str:
     ).rstrip("/")
 
 
+def _assert_adapter_shapes(base: str, adapters: list[tuple[str, str]]) -> None:
+    """
+    Refuse an adapter whose own config names a different base model.
+
+    Args:
+        base (`str`):
+            The base model id being served.
+        adapters (`list[tuple[str, str]]`):
+            `(name, path)` pairs as passed to vLLM.
+
+    Raises:
+        RuntimeError: If an adapter declares a different `base_model_name_or_path`.
+    """
+    for name, path in adapters:
+        config = pathlib.Path(path) / "adapter_config.json"
+        if not config.exists():
+            logger.warning("%s: no adapter_config.json at %s, cannot verify", name, path)
+            continue
+        declared = json.loads(config.read_text()).get("base_model_name_or_path")
+        if declared and declared != base:
+            raise RuntimeError(
+                f"adapter {name!r} was trained on {declared!r} but the server is "
+                f"serving {base!r}. Serving it anyway produces plausible nonsense."
+            )
+        logger.info("%s: base %s, verified", name, declared or "unknown")
+
+
 def main() -> None:
     """Serve, expose, announce, and hold the tunnel open."""
     adapters = parse_adapters(ADAPTERS)
@@ -207,6 +234,25 @@ def main() -> None:
     )
     try:
         served = wait_until_ready(server, SERVER_TIMEOUT_S)
+
+        # The check the docs claimed existed and did not. vLLM accepts a 2B
+        # adapter on a 4B base, logs `Loaded new LoRA adapter` and answers
+        # anyway, which is how four of run 2's checkpoint scores turned out to
+        # be nonsense that looked ordinary. Refuse rather than serve.
+        missing = [name for name, _ in adapters if name not in served]
+        if MODEL not in served:
+            raise RuntimeError(
+                f"the server does not list the requested base {MODEL!r}; "
+                f"it serves {served}"
+            )
+        if missing:
+            raise RuntimeError(
+                f"adapter(s) {missing} were requested but are not served; "
+                f"the server lists {served}. An adapter trained on a different "
+                "base is the usual cause, and vLLM will not always say so."
+            )
+        _assert_adapter_shapes(MODEL, adapters)
+
         public = open_tunnel(PORT)
         # Announced on one greppable line each, so the caller can pull them out
         # of the job log without parsing vLLM's own output.

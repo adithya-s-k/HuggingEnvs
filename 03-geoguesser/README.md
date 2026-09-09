@@ -21,6 +21,8 @@
 
 A Qwen3.5-4B LoRA scores **0.6445**. It places second of eleven, ahead of gpt-5.4-mini, haiku-4.5 and every Qwen3.5 up to 397B. It loses to claude-sonnet-5 by 0.0508.
 
+Every score in this README is on the *training* reward curve, `min(1, 0.5·e^(-d/1492.7) + 0.5·e^(-d/5000)) × (1 - min(cost, 0.2))`, recomputed from each episode's raw distance. That is not GeoGuessr's own curve, which the environment serves and which floors at zero past roughly 3,500 km; the two differ by more than 10x on the same guess. Mixing them is a mistake this project made once and now has a test against.
+
 | model | mean-of-4 | best-of-4 | median error |
 |---|---:|---:|---:|
 | claude-sonnet-5 | 0.6952 | 0.8397 | 324 km |

@@ -30,7 +30,12 @@ import matplotlib
 matplotlib.use("Agg")
 
 import matplotlib.patheffects as path_effects  # noqa: E402
-import matplotlib.pyplot as plt  # noqa: E402
+# Deliberately not pyplot: OpenEnv runs concurrent sessions' steps on a shared
+# thread pool, and pyplot's figure manager is global mutable state. A Figure the
+# caller owns, with its own Agg canvas, is thread-safe and needs no `plt.close`
+# to avoid leaking figures.
+from matplotlib.backends.backend_agg import FigureCanvasAgg  # noqa: E402
+from matplotlib.figure import Figure  # noqa: E402
 from matplotlib.collections import LineCollection  # noqa: E402
 from matplotlib.patches import Polygon as MplPolygon  # noqa: E402
 from matplotlib.path import Path as MplPath  # noqa: E402
@@ -771,8 +776,10 @@ def render_map(
     Returns:
         `PIL.Image.Image`: The two-panel map.
     """
-    fig, (world, zoom) = plt.subplots(
-        1, 2, figsize=(10.2, 3.9), dpi=dpi, gridspec_kw={"width_ratios": [1.55, 1]}
+    fig = Figure(figsize=(10.2, 3.9), dpi=dpi)
+    FigureCanvasAgg(fig)
+    world, zoom = fig.subplots(
+        1, 2, gridspec_kw={"width_ratios": [1.55, 1]}
     )
 
     _draw_land(world, 0.35)
@@ -819,6 +826,5 @@ def render_map(
     fig.tight_layout(pad=0.6)
     buf = io.BytesIO()
     fig.savefig(buf, format="png", facecolor="white")
-    plt.close(fig)
     buf.seek(0)
     return Image.open(buf).convert("RGB")

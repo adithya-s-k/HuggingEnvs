@@ -44,7 +44,7 @@ Cut run 1 at step 250. Steps 250 to 1000 produced no measurable change across 19
 
 Some routed providers cap images per request, and a 12-turn visual episode exceeds it. deepinfra allows 4, so a simulation there stops after 4 looks with `At most 4 image(s) may be provided in one prompt`. That is a provider limit rather than an environment bug, and it does not affect training, which serves the model itself. Use a local vLLM if you want a full-length simulated episode.
 
-The full set of traps, and what each failure looked like before it was understood, is in the [HF Jobs field manual](https://claude.ai/code/artifact/500ad1f0-0e91-4a24-a66b-fa331fef9e90).
+The full set of traps, and what each failure looked like before it was understood, is in [`LEARNINGS.md`](../LEARNINGS.md) and [`REPRODUCE.md`](../REPRODUCE.md).
 
 ## Watching a run
 

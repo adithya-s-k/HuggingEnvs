@@ -56,7 +56,13 @@ from .render.minimap import (
     street_fetch_failed,
 )
 from .render.pano import to_base64
-from .scoring import action_cost, compute_reward, haversine_km, verdict
+from .scoring import (
+    action_cost,
+    compute_reward,
+    haversine_km,
+    MAX_COST_FRACTION,
+    verdict,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -562,8 +568,17 @@ class GeoGuesserEnvironment(MCPEnvironment):
             index = task_index
         n = self._backend.n_tasks
         if index is not None:
-            chosen = int(index) % n
+            # An explicit index is an address, so a bad one is an error rather
+            # than something to wrap: silently scoring task 100 when the harness
+            # asked for task 500 is a measurement bug you cannot see.
+            chosen = int(index)
+            if not 0 <= chosen < n:
+                raise IndexError(
+                    f"task index {chosen} out of range for split "
+                    f"{self._split!r} with {n} tasks"
+                )
         elif seed is not None:
+            # A seed is not an address, so wrapping is the point.
             chosen = int(seed) % n
         else:
             chosen = self._rng.randrange(n)
@@ -926,9 +941,13 @@ class GeoGuesserEnvironment(MCPEnvironment):
 
         truth_place = locate(true_lat, true_lon)
         guess_place = locate(lat, lon)
-        country_hit = bool(
-            truth_place.country and truth_place.country == guess_place.country
-        )
+        # The task index carries the country the imagery was harvested under, so
+        # prefer it over reverse-geocoding the truth: Natural Earth 110m
+        # resolves to None for a point a few metres offshore, and 1 of the 200
+        # eval truths does exactly that, which made that task unwinnable in
+        # country_only mode and had its reveal say "open water".
+        truth_country = self._task.country or truth_place.country
+        country_hit = bool(truth_country and truth_country == guess_place.country)
         region_hit = bool(
             truth_place.subregion and truth_place.subregion == guess_place.subregion
         )
@@ -961,9 +980,10 @@ class GeoGuesserEnvironment(MCPEnvironment):
         observation.feedback = (
             f"{verdict(distance)} - {distance:.0f} km away. True location "
             f"{true_lat:.4f}, {true_lon:.4f} "
-            f"({truth_place.country or 'open water'}). "
+            f"({truth_country or 'open water'}). "
             + (
-                f"Score {score:.3f} scaled by {1 - min(cost, 0.5):.2f} "
+                f"Score {score:.3f} scaled by "
+                f"{1 - min(cost, MAX_COST_FRACTION):.2f} "
                 f"action cost = {reward:.3f}."
                 if self._cost_mode == "multiply"
                 else f"Score {score:.3f} minus {cost:.2f} action cost = {reward:.3f}."

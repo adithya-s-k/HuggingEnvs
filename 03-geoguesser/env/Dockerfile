@@ -71,7 +71,7 @@ ENV GEOGUESSER_TASKS_EVAL=/data/tasks/eval_pano_v3.jsonl \
     GEOGUESSER_DEFAULT_SPLIT=train \
     GEOGUESSER_CACHE=/data/panos \
     GEOGUESSER_ALLOW_FETCH=0 \
-    GEOGUESSER_STREET_DETAIL=1 \
+    GEOGUESSER_STREET_DETAIL=0 \
     GEOGUESSER_INDEX=/app/geoguesser_env/tasks/eval_pano_v3.jsonl
 
 # Overpass results cache here, on the container's own writable disk, which is

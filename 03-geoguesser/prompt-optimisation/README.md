@@ -1,5 +1,9 @@
 # Prompt optimisation with GEPA
 
+**These prompts are not what the board was scored with.** `eval/run_passes.sh` never passes
+`--prompt`, so every arm in `results/summaries/` ran the harness's default prompt. Treat what is
+here as an experiment in prompt optimisation, not as part of the reported results.
+
 A prompt a frontier model follows regardless is not doing much work. A 2B model that emits prose instead of JSON, or explores until its turn budget is gone, is failing for reasons a prompt can fix. So the search targets the small self-hosted models, one run per model.
 
 | | |

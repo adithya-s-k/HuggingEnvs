@@ -4,7 +4,7 @@ Every number here is mean-of-4 over the same 200 eval tasks, paired per task, re
 
 ## The headline
 
-A 4B LoRA beats eight of nine off-the-shelf models and loses only to Sonnet 5. The best checkpoint is step 1000, but step 200 is statistically indistinguishable from it, 0.6393 against 0.6445, so the useful run is 200 steps long.
+A 4B LoRA beats eight of nine off-the-shelf models and loses only to Sonnet 5. The best checkpoint is step 1000, but step 200 is statistically indistinguishable from it: 0.6393 against 0.6445, a paired delta of +0.0052 with a 95% CI of [-0.0066, +0.0170] (`results/summaries/run1-vs-ckpt200.txt`). So the useful run is 200 steps long.
 
 | arm | score | median error | never submitted |
 |---|---:|---:|---:|
@@ -74,7 +74,7 @@ Six measurement bugs, each of which produced plausible results rather than error
 | Dead tunnel | ckpt75 regressing to 0.4475 | 13% of requests got an HTML 404 recorded as an empty reply, so the episode burned its turns and scored 0 |
 | Two reward scales | run 2 deltas incomparable to run 1's | the stored reward is the environment's; `geoeval report` recomputes through the pinned curve. Same guess: 0.0107 against 0.135 |
 | No base arm | deltas read across sweeps | the same frozen base scored 0.465–0.500 between sweeps, wider than most differences being claimed |
-| Mismatched `k` | run 1 tying Sonnet 5 | baselines at pass@1 read Sonnet 0.6798; at pass@4, 0.6952. The tie became a real loss |
+| Comparing across `k` | run 1 tying Sonnet 5 | baselines at pass@1 read Sonnet 0.6798; at pass@4, 0.6952. Mean-of-k is unbiased in k, so that gap is single-pass sampling noise (SE about 0.02 at n=200) rather than a k artefact. Only best-of-k depends on k. Either way: compare arms measured with the same number of passes |
 | Concurrent sweeps | `k = 1.8` with `PASSES=1` | two sweeps writing one directory. Arithmetically impossible, and the only tell |
 
 Three guards exist because of these, all verified against known-bad data. The endpoint is asked what it is serving and the sweep refuses on a mismatch. Any sweep with more than 2% of turns lacking a `finish_reason` is discarded and retried. One sweep per output directory is enforced by a lock.

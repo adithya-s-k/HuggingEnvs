@@ -17,6 +17,8 @@ Plain-text output of `eval/geoeval.py report`, one file per sweep. These are the
 
 Each file carries both averages, because they answer different questions: mean-of-k is how the policy does on a typical attempt, best-of-k is pass@k proper and says whether the ability is there at all. Where a base arm is present it also prints per-task paired deltas with 95% confidence intervals. Use those, not a difference of two means.
 
+The interval is a paired normal approximation: the per-task difference against the base arm, sample standard deviation, `z = 1.96`, and no correction for the number of arms being compared. With 16 comparisons in a sweep, read a single "SIGNIFICANT" verdict accordingly. Per-checkpoint gains here are about +0.008, which is inside the +/- 0.011 standard error at 200 tasks, so individual checkpoints cannot be ranked, only trends across several.
+
 ## raw/, not in git
 
 1.3 GB of episode records across 30 sweeps, gitignored. Layout:

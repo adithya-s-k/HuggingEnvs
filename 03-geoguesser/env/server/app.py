@@ -33,7 +33,10 @@ logger = logging.getLogger(__name__)
 
 _ROOT = pathlib.Path(__file__).resolve().parents[1]
 
-INDEX_PATH = os.getenv("GEOGUESSER_INDEX", str(_ROOT / "tasks" / "pano_v1.jsonl"))
+# Fallback index, used only when no named split resolves. It is the eval split
+# on purpose: the legacy `pano_v1.jsonl` predates the contamination rule and has
+# a task 603 m from an eval start, so it is a demo index, never a train split.
+INDEX_PATH = os.getenv("GEOGUESSER_INDEX", str(_ROOT / "tasks" / "eval_pano_v3.jsonl"))
 CACHE_DIR = os.getenv("GEOGUESSER_CACHE", str(_ROOT / "data" / "panos"))
 # Named splits, as (environment variable, repo-relative default). Each is
 # optional and a split whose file is absent is simply not offered, so the same
@@ -58,7 +61,17 @@ HIDE_IDENTITY = os.getenv("GEOGUESSER_HIDE_IDENTITY", "0") in {"1", "true", "Tru
 ALLOW_FETCH = os.getenv("GEOGUESSER_ALLOW_FETCH", "1") in {"1", "true", "True"}
 HIRES_ZOOM = os.getenv("GEOGUESSER_HIRES_ZOOM", "1") in {"1", "true", "True"}
 REVEAL_MAP = os.getenv("GEOGUESSER_REVEAL_MAP", "1") in {"1", "true", "True"}
-STREET_DETAIL = os.getenv("GEOGUESSER_STREET_DETAIL", "1") in {"1", "true", "True"}
+# The browser game needs the raw panorama and the task's coordinates; a training
+# deployment does not, and serving them unauthenticated next to the agent's own
+# endpoint means any harness holding the env URL can read the answer without
+# playing. On by default so the public Space stays playable, and REPRODUCE.md
+# tells you to turn it off for a training Space.
+PLAY_ROUTES = os.getenv("GEOGUESSER_PLAY_ROUTES", "1") in {"1", "true", "True"}
+# Off by default, which is what the README says and what a training deployment
+# wants: the overlay is fetched from Overpass per agent pin, so it cannot be
+# pre-warmed and it puts a network call in the middle of a rollout. The image
+# and the play Space turn it on explicitly.
+STREET_DETAIL = os.getenv("GEOGUESSER_STREET_DETAIL", "0") in {"1", "true", "True"}
 MAX_CONCURRENT = int(os.getenv("MAX_CONCURRENT_ENVS", "4"))
 
 
@@ -190,6 +203,10 @@ def _attach_play_routes(application) -> None:
     exposed here because these routes exist for a human playing a round in
     their own browser; the agent's observations still withhold it until it
     guesses.
+
+    That also makes these routes an oracle for anything that can reach the URL,
+    so they are gated on `GEOGUESSER_PLAY_ROUTES`. Leave them on for a Space
+    people play, turn them off for one a trainer points at.
     """
     from fastapi import HTTPException, Query
     from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
@@ -318,10 +335,16 @@ def _attach_play_routes(application) -> None:
 
 app = _build_app()
 
-try:
-    _attach_play_routes(app)
-except Exception as exc:  # pragma: no cover - index may be absent in CI
-    logger.warning("play routes unavailable: %r", exc)
+if PLAY_ROUTES:
+    try:
+        _attach_play_routes(app)
+    except Exception as exc:  # pragma: no cover - index may be absent in CI
+        logger.warning("play routes unavailable: %r", exc)
+else:
+    logger.info(
+        "play routes disabled (GEOGUESSER_PLAY_ROUTES=0): no raw panoramas, and "
+        "no task coordinates over HTTP"
+    )
 
 
 def main(host: str = "0.0.0.0", port: int = 8000) -> None:

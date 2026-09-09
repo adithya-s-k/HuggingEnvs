@@ -43,6 +43,10 @@ What it is doing is recognising the region from the first frame and committing t
 
 The uncomfortable part is not that it guesses. It is that deliberation was making a 4B model *worse*, and the training found that out before I did.
 
+<Note variant="warning">
+One qualification I owe you on the turn count. Training drives the environment through native tool calls and keeps the whole image history in context; the eval harness sends JSON in text and shows only the current image. Every arm on the board is measured the same way, so the comparison is fair, but the **1.1 turns** is measured under a protocol the checkpoint never trained on. The behaviour is real, the exact number is protocol-dependent.
+</Note>
+
 #### Was it reward hacking?
 
 When a policy stops doing the task and scores better, the first assumption should be reward hacking. I spent a day trying to find the exploit. The candidates were the pin loop leaking target information, the task identity being visible in an observation, prompt or metadata leaking the answer, and plain memorisation of the training split.

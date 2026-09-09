@@ -13,11 +13,11 @@ openenv>=0.3.1
 # Image handling for the panorama and minimap frames.
 pillow>=10.0.0
 
-# Aggregation. report_passes.py computes paired confidence intervals.
+# Aggregation. `geoeval.py report` computes the paired confidence intervals.
 numpy>=1.26.0
 
-# Optional -- only for the two side tools, not for running an eval:
-#   gepa      prompt optimisation      (eval/optimise_prompt.py)
-#   gradio    local endpoint probing   (eval/probe_endpoints.py)
+# Optional -- only for the side tools, not for running an eval:
+#   gepa      prompt optimisation      (prompt-optimisation/optimise_prompt.py)
+#   gradio    local endpoint probing   (`geoeval.py probe`)
 # gepa>=0.0.6
 # gradio>=5.0.0

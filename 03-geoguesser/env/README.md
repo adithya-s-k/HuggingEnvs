@@ -95,7 +95,10 @@ Everything is an environment variable, so a Space and a local server are configu
 | `GEOGUESSER_DEFAULT_SPLIT` | first available | `train` or `eval`. Unset picks `train` if present, else whatever resolved |
 | `GEOGUESSER_VIEW_SIZE` | `640` | rendered frame, px |
 | `GEOGUESSER_ALLOW_FETCH` | `1` | `0` makes a cache miss an error instead of a fetch |
-| `GEOGUESSER_STREET_DETAIL` | off | roads and place names on the minimap |
+| `GEOGUESSER_INDEX` | eval split | fallback task index. `tasks/pano_v1.jsonl` is a 100-task demo index that predates the contamination rule and holds a task 603 m from an eval start, so never train on it |
+| `GEOGUESSER_STREET_DETAIL` | off | roads and place names on the minimap. Fetched from Overpass per pin, so it puts a network call inside a rollout |
+| `GEOGUESSER_PLAY_ROUTES` | on | the browser game's routes. They serve raw panoramas and a task's coordinates over plain HTTP, so set `0` on a Space a trainer points at |
+| `GEOGUESSER_HIDE_IDENTITY` | off | strips `attribution`, `sequence_id` and `task_id` from observation metadata. The training harness never forwards metadata, so this matters only for a harness that does |
 | `GEOGUESSER_REWARD_SHAPE` | `geoguessr` | reward curve |
 | `GEOGUESSER_COST_MODE` | `subtract` | how the action cost is applied |
 

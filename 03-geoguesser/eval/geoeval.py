@@ -330,6 +330,25 @@ def parse_action(reply: str) -> dict[str, Any] | None:
     return None
 
 
+# What `to_wire_action` can translate, and therefore what the prompt is allowed
+# to advertise. `pan` is deliberately absent from the prompt's list: it works,
+# but `look` covers it and two ways to turn confuses small models.
+HARNESS_TOOLS = frozenset(
+    {
+        "look",
+        "pan",
+        "zoom",
+        "move",
+        "place_pin",
+        "pin",
+        "view_map",
+        "measure",
+        "submit_guess",
+        "guess",
+    }
+)
+
+
 def to_wire_action(spec: dict[str, Any]) -> dict[str, Any]:
     """
     Translate a model's action object into the environment's wire action.
@@ -349,6 +368,17 @@ def to_wire_action(spec: dict[str, Any]) -> dict[str, Any]:
         KeyError: When a required coordinate is missing.
     """
     kind = str(spec.get("action", "")).lower()
+    # The prompt advertises the environment's own tool names, which are the MCP
+    # ones, while the wire schema uses shorter ops. A model that copies the
+    # advertised name used to get a ValueError and burn its turn, so translate.
+    kind = {
+        "place_pin": "pin",
+        "submit_guess": "guess",
+        # `reverse_geocode` is `view_map` by another name: both take a
+        # coordinate and answer with what is there. `list_pins` is not, so it
+        # is left to fail rather than translated into something else.
+        "reverse_geocode": "view_map",
+    }.get(kind, kind)
     if kind == "look":
         return {
             "op": "look",
@@ -374,7 +404,17 @@ def to_wire_action(spec: dict[str, Any]) -> dict[str, Any]:
             "span_deg": float(spec.get("span_deg", 7.0)),
         }
     if kind == "measure":
-        return {"op": "measure", "lat": float(spec["lat"]), "lon": float(spec["lon"])}
+        # Two points, named lat_a/lon_a/lat_b/lon_b on the wire. This used to
+        # send a single lat/lon, which the environment rejected outright.
+        if "lat_a" in spec:
+            return {
+                "op": "measure",
+                "lat_a": float(spec["lat_a"]),
+                "lon_a": float(spec["lon_a"]),
+                "lat_b": float(spec["lat_b"]),
+                "lon_b": float(spec["lon_b"]),
+            }
+        raise KeyError("measure needs lat_a, lon_a, lat_b and lon_b")
     if kind == "guess":
         action: dict[str, Any] = {"op": "guess"}
         if spec.get("response") is not None:
@@ -1155,7 +1195,13 @@ def run_episode(
             template = getattr(args, "prompt_text", None) or PROMPTS[args.prompt]
             prompt = template.format(
                 max_turns=remaining,
-                tools=", ".join(field(observation, "available_tools") or []),
+                # Only the tools this harness can translate: advertising a
+                # name `to_wire_action` rejects costs the model a turn.
+                tools=", ".join(
+                    tool
+                    for tool in (field(observation, "available_tools") or [])
+                    if tool in HARNESS_TOOLS
+                ),
             )
             if transcript:
                 prompt += "\n\nWhat has happened so far:\n" + "\n".join(transcript[-8:])
@@ -1833,14 +1879,22 @@ def _main_report() -> None:
     if getattr(args, "env", None) and getattr(args, "base_url", None) is None:
         args.base_url = resolve_env_url(args.env)
 
-    rows = [
-        r
-        for root in args.roots
-        for r in load(root)
-        if (r.get("outcome") or {}).get("reward") is not None
-    ]
+    loaded = [r for root in args.roots for r in load(root)]
+    rows = [r for r in loaded if (r.get("outcome") or {}).get("reward") is not None]
     if not rows:
         raise SystemExit(f"no scored episodes under {args.roots}")
+
+    # An episode whose record has no reward never reached the scorer: an env
+    # error, a dead tunnel, a killed shard. Dropping them quietly makes an arm
+    # look like it has fewer episodes than the sweep claims, so report it.
+    dropped = len(loaded) - len(rows)
+    if dropped:
+        per_arm: dict[str, int] = {}
+        for r in loaded:
+            if (r.get("outcome") or {}).get("reward") is None:
+                per_arm[r.get("model_name", "?")] = per_arm.get(r.get("model_name", "?"), 0) + 1
+        detail = ", ".join(f"{k} {v}" for k, v in sorted(per_arm.items()))
+        print(f"note: dropped {dropped} unscored episode(s) with no reward ({detail})")
 
     # arm -> task -> list of per-attempt training rewards
     by: dict[str, dict[int, list[float]]] = collections.defaultdict(
@@ -1904,14 +1958,25 @@ def _main_report() -> None:
     head = (
         f"\n{'arm':22} {'turns':>6} {'looks':>6} {'moves':>6} {'pins':>5} "
         f"{'cost':>6} {'country%':>9} {'<=200km':>8} {'<=750km':>8} "
-        f"{'zero%':>6} {'forced%':>8} {'tok_out':>8}"
+        f"{'env_floor%':>11} {'no_guess%':>10} {'forced%':>8} {'tok_out':>8}"
     )
     print(head)
     print("-" * len(head))
     for arm in ranked:
+        # `env_floor%` is the share of episodes the *environment's own* curve
+        # floored at exactly 0.0, which is any guess past roughly 3,300 km at a
+        # typical action cost. It is not non-submission: an episode that never
+        # produced a usable guess shows up in `no_guess%`, and one the harness
+        # had to cut short in `forced%`. Conflating the first with the last is a
+        # mistake this project made in print, so the columns are separate now.
         zero = (
             100.0
             * sum(1 for o in behaviour[arm] if o.get("reward") == 0)
+            / len(behaviour[arm])
+        )
+        no_guess = (
+            100.0
+            * sum(1 for o in behaviour[arm] if o.get("distance_km") is None)
             / len(behaviour[arm])
         )
         print(
@@ -1919,7 +1984,7 @@ def _main_report() -> None:
             f"{avg(arm, 'n_moves'):6.1f} {avg(arm, 'n_pins'):5.1f} "
             f"{avg(arm, 'action_cost'):6.3f} {rate(arm, 'country_hit'):8.1f}% "
             f"{within(arm, 200):7.1f}% {within(arm, 750):7.1f}% "
-            f"{zero:5.1f}% {rate(arm, 'forced_guess'):7.1f}% "
+            f"{zero:10.1f}% {no_guess:9.1f}% {rate(arm, 'forced_guess'):7.1f}% "
             f"{avg(arm, 'tokens_out'):8.0f}"
         )
 
@@ -1937,7 +2002,12 @@ def _main_report() -> None:
             statistics.fmean(by[arm][t]) - statistics.fmean(base[t]) for t in shared
         ]
         m = statistics.fmean(diffs)
-        se = statistics.pstdev(diffs) / math.sqrt(len(diffs))
+        # Sample standard deviation, not population: these 200 tasks are a
+        # sample of the split. At n=200 the correction is a factor of 1.0025,
+        # so it moves no published interval, but the method should be the right
+        # one. The interval itself is a paired normal approximation, uncorrected
+        # for the number of arms compared.
+        se = statistics.stdev(diffs) / math.sqrt(len(diffs))
         verdict = "SIGNIFICANT" if abs(m) > 1.96 * se else "not significant"
         print(
             f"  {arm:20} n={len(shared):3d}  delta {m:+.4f} +/- {se:.4f}  "
@@ -2349,7 +2419,15 @@ def _main_replay() -> None:
     parser.add_argument("episodes", type=pathlib.Path)
     parser.add_argument("--view-size", type=int, default=640)
     parser.add_argument("--cache", type=pathlib.Path, default=ROOT / "data" / "panos")
-    parser.add_argument("--tasks-dir", type=pathlib.Path, default=ROOT / "tasks")
+    # The task indexes live in the environment checkout, not beside the harness.
+    parser.add_argument(
+        "--tasks-dir",
+        type=pathlib.Path,
+        default=pathlib.Path(
+            os.getenv("OPENENV_GEOGUESSER", str(pathlib.Path(__file__).resolve().parent.parent / "env"))
+        )
+        / "tasks",
+    )
     parser.add_argument("--limit", type=int, default=None, help="First N episodes.")
     args = parser.parse_args()
     # `--env` is the documented way to name the target; an explicit

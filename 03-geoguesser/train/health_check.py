@@ -393,7 +393,23 @@ def main() -> None:
     if re.search(r"Traceback|CUDA out of memory", log):
         notes.append("traceback-in-log")
 
-    state_path.write_text(json.dumps({"steps": done, "entropy_baseline": baseline}))
+    # Both of these have to survive the write or the two alerts that depend on
+    # them can never fire: the drawdown check compares against `reward_peak`,
+    # and the stall check measures elapsed time since `steps_seen_at`. They were
+    # being dropped on every write, which is why neither ever alerted.
+    seen_at = state.get("steps_seen_at")
+    if done != state.get("steps") or not seen_at:
+        seen_at = time.time()
+    state_path.write_text(
+        json.dumps(
+            {
+                "steps": done,
+                "entropy_baseline": baseline,
+                "reward_peak": peak,
+                "steps_seen_at": seen_at,
+            }
+        )
+    )
 
     checkpoint = latest_checkpoint(args.run_name) if args.run_name else None
     if args.run_name:

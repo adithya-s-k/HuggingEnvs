@@ -48,4 +48,5 @@ results:
   untrained_base: "Qwen3.5-4B — 0.4825, median 1226 km, 29.5% non-submission"
   beats: 8    # of 9 off-the-shelf models, paired per task
   loses_to:
+    # paired delta and CI: results/summaries/cross-arm-vs-sonnet.txt
     - "claude-sonnet-5 (0.6952, -0.0508 [-0.0917, -0.0099])"

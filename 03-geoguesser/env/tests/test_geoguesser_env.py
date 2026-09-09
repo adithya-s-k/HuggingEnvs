@@ -259,9 +259,19 @@ def test_seed_selects_deterministically_by_modulo():
     assert env.reset(seed=5).metadata["task_index"] == 5 % env._backend.n_tasks
 
 
-def test_task_index_wraps_rather_than_failing():
+def test_out_of_range_task_index_raises():
+    # An explicit index is an address. Wrapping it means an eval that asks for
+    # task 500 of 200 silently scores task 100 instead, which is a measurement
+    # bug with no symptom.
     env = make_env()
-    assert env.reset(task_index=env._backend.n_tasks).metadata["task_index"] == 0
+    with pytest.raises(IndexError):
+        env.reset(task_index=env._backend.n_tasks)
+
+
+def test_seed_still_wraps():
+    # A seed is not an address, so wrapping is the intended behaviour there.
+    env = make_env()
+    assert env.reset(seed=env._backend.n_tasks).metadata["task_index"] == 0
 
 
 def test_metadata_always_records_the_chosen_task():

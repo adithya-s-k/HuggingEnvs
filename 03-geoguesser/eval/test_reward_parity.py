@@ -38,6 +38,26 @@ from geoeval import (
 TRAIN_SCRIPT = (
     pathlib.Path(__file__).resolve().parents[1] / "train" / "grpo_geoguesser.py"
 )
+ENV_DIR = pathlib.Path(__file__).resolve().parents[1] / "env"
+
+
+def _load_env_scoring():
+    """Import the environment's own scorer, or `None` if it is not available."""
+    import importlib.util
+    import sys
+
+    path = ENV_DIR / "server" / "scoring.py"
+    if not path.exists():
+        return None
+    if str(ENV_DIR) not in sys.path:
+        sys.path.insert(0, str(ENV_DIR))
+    spec = importlib.util.spec_from_file_location("_geo_env_scoring", path)
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        return None
+    return module
 
 # Run 1's curve, and the axis every checkpoint is scored on. Changing these
 # numbers invalidates comparison with every result recorded so far.
@@ -100,6 +120,29 @@ def test_training_defaults_match_the_reference():
         f"(training, reference): {drift}. The reference is deliberately fixed; "
         "compare runs on median km / country% / turns instead."
     )
+
+
+def test_environment_curve_is_a_known_third_curve():
+    """The environment's own scorer is *not* the yardstick, and that is on purpose.
+
+    Three curves exist in this project: the environment's game curve, the
+    trainer's mixture, and this pinned reference. The first two are allowed to
+    differ, but the difference has to be deliberate, so pin what the environment
+    does as well. If this fails, the environment's scoring changed and every
+    stored episode reward moved with it.
+    """
+    env_scoring = _load_env_scoring()
+    if env_scoring is None:
+        import pytest
+
+        pytest.skip("environment checkout not importable from here")
+
+    assert env_scoring.DECAY_KM == DECAY_KM, "the two curves share the short scale"
+    assert env_scoring.LONG_DECAY_KM == LONG_DECAY_KM
+    # Deliberately different: the environment caps the cost at half the score
+    # for play, the trainer at a fifth so exploring is never erased.
+    assert env_scoring.MAX_COST_FRACTION == 0.5
+    assert MAX_COST_FRACTION == 0.2
 
 
 def test_reference_ignores_training_cost_scaling():

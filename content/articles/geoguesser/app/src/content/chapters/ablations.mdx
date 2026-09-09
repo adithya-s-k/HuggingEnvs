@@ -56,7 +56,7 @@ Six measurement bugs, each of which produced *plausible* results rather than err
 | Dead tunnel | ckpt75 regressing to 0.4475 | 13% of requests got an HTML 404 recorded as an empty reply, so the episode burned its turns and scored 0 |
 | Two reward scales | run 2 deltas incomparable to run 1's | the stored reward is the environment's; reports recompute through the pinned curve. Same guess: 0.0107 against 0.135 |
 | No base arm | deltas read across sweeps | the same frozen base scored 0.465–0.500 between sweeps, wider than most differences being claimed |
-| Mismatched `k` | run 1 tying Sonnet 5 | baselines at pass@1 read Sonnet 0.6798; at pass@4, 0.6952 |
+| Comparing across `k` | run 1 tying Sonnet 5 | baselines read at pass@1 gave Sonnet 0.6798, at pass@4 0.6952. Mean-of-k is unbiased in `k`, so that gap was single-pass noise rather than a `k` artefact. Either way, compare arms measured with the same number of passes |
 | Concurrent sweeps | `k = 1.8` with `PASSES=1` | two sweeps writing one directory. Arithmetically impossible, and the only tell |
 
 <Note variant="warning">

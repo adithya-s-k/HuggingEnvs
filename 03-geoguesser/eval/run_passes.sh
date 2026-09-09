@@ -46,6 +46,19 @@ BASELINE=${BASELINE:-base}
 cd "$ENV_DIR"
 mkdir -p "$SP/$RUN"
 
+# One sweep per run directory, the same guard board_sweep.sh has. Two sweeps
+# writing one $RUN interleave their attempts, and the pooled report then shows a
+# k that is neither the number of passes nor an integer -- the exact way a
+# `k = 1.8` table with `PASSES=1` was produced once.
+LOCK="$SP/$RUN.lock"
+if ! mkdir "$LOCK" 2>/dev/null; then
+  echo "refusing to start: $LOCK exists, so another sweep is writing $RUN." >&2
+  echo "  if no sweep is running:  rmdir '$LOCK'" >&2
+  echo "  to run a second sweep:   RUN=other-name bash $0" >&2
+  exit 1
+fi
+trap 'rmdir "$LOCK" 2>/dev/null' EXIT INT TERM
+
 # Reuse servers if they are already answering; only start what is missing.
 for i in $(seq 0 $((SHARDS-1))); do
   PORT=$((BASE_PORT+i))
@@ -92,7 +105,20 @@ for p in $(seq 0 $((PASSES-1))); do
   # the checkpoint driver always found servers already listening and spawned
   # none, so its `wait` only ever had shards to wait for. Two multi-pass sweeps
   # stopped dead at exactly 1/4 of their episodes before this was found.
-  for pid in "${SHARD_PIDS[@]}"; do wait "$pid"; done
+  # Collect exit codes rather than just waiting: a shard that dies leaves a
+  # partial pass on disk, and pooling that with the others silently produces a
+  # k below the number of passes run, which is the shape of the contamination
+  # this sweep has already been bitten by once.
+  FAILED=0
+  for pid in "${SHARD_PIDS[@]}"; do
+    if ! wait "$pid"; then FAILED=$((FAILED + 1)); fi
+  done
+  if [ "$FAILED" -gt 0 ]; then
+    echo "pass $((p+1)): $FAILED of ${#SHARD_PIDS[@]} shard(s) exited non-zero." >&2
+    echo "  logs: $OUT/shard-*.log" >&2
+    echo "  the pass is incomplete; pooling it will understate k. Stopping." >&2
+    exit 1
+  fi
   echo "pass $((p+1)) finished in $(( $(date +%s) - START ))s"
   # Cumulative: every pass so far, pooled into pass@(p+1).
   python3 "$HERE/geoeval.py" report "$SP/$RUN" --baseline "$BASELINE"

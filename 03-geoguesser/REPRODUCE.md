@@ -4,6 +4,8 @@ Every number in [`README.md`](./README.md) comes from the commands below. All th
 
 Total spend was about $700: roughly $450 of training and $250 of eval GPUs and hosted-model API calls.
 
+Two things worth knowing before you start. The training script's bare defaults now reproduce run 1, so the only variables you have to set are the ones in each run's block below. And a training Space should be deployed with `GEOGUESSER_PLAY_ROUTES=0`: the browser game's routes hand out a task's coordinates over plain HTTP, which is fine for a Space people play and wrong for one a trainer points at.
+
 ## Prerequisites
 
 ```bash
@@ -100,7 +102,7 @@ hf jobs uv run --flavor a100-large --timeout 5h --image huggingface/trl --secret
 
 Always include a base arm in the same sweep. The same frozen base scored 0.465 to 0.500 across different sweeps, a drift wider than most per-checkpoint differences, so a delta read across sweeps is not trustworthy. Every comparison in the reports is paired per task within one sweep.
 
-Verify what the endpoint is actually serving before spending a sweep on it. `eval/serve_checkpoint.py` defaults to `MODEL=Qwen/Qwen3.5-4B`, and pointing 2B adapters at it produces a plausible table of nonsense: vLLM logs `Loaded new LoRA adapter` and serves anyway, even though a 2B adapter cannot fit a 4B base. All four of run 2's 2B checkpoint scores were silently invalid this way. `eval/board_sweep.sh` now queries `/v1/models` and refuses on a mismatch.
+Verify what the endpoint is actually serving before spending a sweep on it. `eval/serve_checkpoint.py` defaults to `MODEL=Qwen/Qwen3.5-4B`, and pointing 2B adapters at it produces a plausible table of nonsense: vLLM logs `Loaded new LoRA adapter` and serves anyway, even though a 2B adapter cannot fit a 4B base. All four of run 2's 2B checkpoint scores were silently invalid this way. `eval/serve_checkpoint.py` now refuses to serve on a mismatch: it checks that every requested adapter appears in `/v1/models`, and that each adapter's own `adapter_config.json` names the base being served.
 
 Then the sweep:
 

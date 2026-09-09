@@ -116,17 +116,22 @@ ENV_URL = os.getenv("ENV_URL", "https://huggingenvs-geoguesser-env.hf.space")
 PANO_CACHE = os.getenv("PANO_CACHE", "/panos/panos")
 TASK_INDEX = os.getenv("TASK_INDEX", "/panos/tasks/train_pano_v3.jsonl")
 SPLIT = os.getenv("SPLIT", "train")
-HUB_MODEL_ID = os.getenv("HUB_MODEL_ID", "HuggingEnvs/geoguesser-qwen3.5-4b-grpo")
 
-# Matches the eval harness, where models average 7-11 turns. It must also be the
-# *only* budget the model is told about; see `_blocks`.
-MAX_TURNS = int(os.getenv("MAX_TURNS", "24"))
+# Every default in this block is run 1's value, so `python grpo_geoguesser.py`
+# with no environment set reproduces the run this project reports rather than a
+# fourth configuration nobody measured. REPRODUCE.md lists what runs 2 and 3
+# changed.
+#
+# The turn budget must also be the *only* one the model is told about; see
+# `_blocks`. The eval harness uses 12 as well, where models average 7-11 turns.
+MAX_TURNS = int(os.getenv("MAX_TURNS", "12"))
 MAX_STEPS = int(os.getenv("MAX_STEPS", "200"))
 NUM_GENERATIONS = int(os.getenv("NUM_GENERATIONS", "8"))
 # Kept low deliberately. Each concurrent rollout holds one environment session,
-# and the hosted Space caps concurrent sessions (64 as deployed). This is the
-# number that decides whether a run dies with CAPACITY_REACHED an hour in.
-GENERATION_BATCH_SIZE = int(os.getenv("GENERATION_BATCH_SIZE", "16"))
+# and the Space caps them: `MAX_CONCURRENT_ENVS` defaults to 4, and this project
+# runs its Space at 8. This is the number that decides whether a run dies with
+# CAPACITY_REACHED an hour in, so raise the Space's cap before raising this.
+GENERATION_BATCH_SIZE = int(os.getenv("GENERATION_BATCH_SIZE", "8"))
 # The environment renders at 640px. Downscaled to 448 the view costs 196 tokens
 # (16px patches, 2x2 merge), the largest size that leaves twelve turns of images
 # comfortably inside the completion budget. 336px would halve it to 110, but
@@ -150,6 +155,14 @@ RUN_NAME = os.getenv(
 )
 OUTPUT_ROOT = os.getenv("OUTPUT_ROOT", os.getenv("OUTPUT_DIR", "runs"))
 OUTPUT_DIR = f"{OUTPUT_ROOT.rstrip('/')}/{RUN_NAME}"
+# Derived from the run name, never a fixed published repo. This used to default
+# to `HuggingEnvs/geoguesser-qwen3.5-4b-grpo`, which is run 1's adapter and the
+# one every number in the README refers to, so anyone in the org reproducing
+# with bare defaults would have overwritten it. Set HUB_MODEL_ID explicitly to
+# publish somewhere specific.
+HUB_MODEL_ID = os.getenv("HUB_MODEL_ID") or (
+    f"{os.getenv('HUB_ORG', 'HuggingEnvs')}/geoguesser-{RUN_NAME}"
+)
 # One project for every run, so runs land on a single comparable axis. The
 # first three runs predate this and were logged to `geoguesser-grpo` and
 # `geoguesser-v2`; their scalar metrics were merged into `geoguesser`, which is
@@ -269,12 +282,12 @@ actions, stop looking and guess."""
 # sees it so there is exactly one turn budget in play. See `_blocks`.
 _ENV_BUDGET = re.compile(r"\s*\d+\s+actions?\s+left\.?", re.I)
 
-# Fields the environment sends that identify the task rather than describe it.
-# The Mapillary contributor determines the country outright for 74% of training
-# tasks ("amsterdam" only maps the Netherlands), and task_index/task_id/
-# sequence_id are a few thousand memorisable keys straight to a coordinate.
-# Either lets a policy score without ever looking at the image.
-IDENTITY_FIELDS = ("attribution", "sequence_id", "task_id", "task_index", "captured_at")
+# On identity leaks, since the obvious defence is missing on purpose: nothing
+# here scrubs the environment's metadata, because `_blocks` never forwards it.
+# A turn hands the model the feedback string and the image and nothing else, so
+# `attribution` (the Mapillary contributor, which fixes the country outright for
+# 74% of training tasks), `sequence_id` and `task_id` never reach it. If you
+# widen `_blocks`, that is the moment to start filtering.
 
 
 # One writer for the whole process. TRL drives tool calls from the main thread,
@@ -512,7 +525,14 @@ class GeoGuesserTrainingEnv:
         # loop's budget is ever shown.
         text = _ENV_BUDGET.sub("", text).strip()
         left = max(0, MAX_TURNS - self._turns)
-        if left <= 1:
+        if left == 0:
+            # TRL's loop stops executing tool calls at this point, so telling
+            # the model to act would be a lie. Say what is true.
+            text = (
+                f"{text} No actions left. The episode ends here, and an episode "
+                "with no guess scores zero."
+            ).strip()
+        elif left == 1:
             text = (
                 f"{text} THIS IS YOUR FINAL ACTION. Call guess now with your "
                 "best estimate -- a rough guess scores far more than none."
@@ -849,7 +869,7 @@ def main() -> None:
             # OOM'd an 80 GB A100 with vLLM colocated beside it. Keep this at 1
             # and buy the effective batch back through accumulation.
             per_device_train_batch_size=int(os.getenv("BATCH", "1")),
-            gradient_accumulation_steps=int(os.getenv("ACCUM", "16")),
+            gradient_accumulation_steps=int(os.getenv("ACCUM", "2")),
             # The turn limit. Without it, generation stops only when the model
             # emits no tool call or fills the context.
             max_tool_calling_iterations=MAX_TURNS,
@@ -872,7 +892,7 @@ def main() -> None:
             # 24 x (196 image + 30 feedback + 93 output) = ~7,700 tokens.
             # 12,288 leaves 60% headroom; 16,384 was over-provisioned and cost
             # 2 GB more of logits for nothing.
-            max_completion_length=int(os.getenv("MAX_COMPLETION", "12288")),
+            max_completion_length=int(os.getenv("MAX_COMPLETION", "6144")),
             # Token-level truncated importance sampling, not the default
             # `sequence_mask`. The default sums per-token logprob differences
             # over the whole completion and exponentiates:
@@ -935,13 +955,20 @@ def main() -> None:
             # `LoraConfig` carries `rank_pattern={}` -- an empty dict, hence a
             # struct with no child fields, which Parquet cannot represent.
             trackio_static_space_id=False,
-            # `advantages / (std_rewards + 1e-4)` is what destabilised run 1: with
-            # one task per optimizer step a group's std collapses as the policy
-            # converges, amplifying advantages up to 10,000x and driving grad_norm
-            # from 0.18 to 6.3 with nothing to damp it. "none" removes the
-            # division; pair it with several tasks per step (ACCUM >= 8) so the
-            # advantage is still comparable across a batch.
-            scale_rewards=os.getenv("SCALE_REWARDS", "none"),
+            # `advantages / (std_rewards + 1e-4)` is what made run 1 look
+            # unstable: with one task per optimizer step a group's std is just
+            # how much eight rollouts of that task disagree, and it collapses as
+            # the policy makes up its mind. Run 1's median std was 0.016, so a
+            # typical step was amplified about 60x, with a ceiling of 10,000x
+            # when a group agrees exactly. grad_norm went from 0.18 to a peak
+            # above 11.
+            #
+            # It is also where most of run 1's learning came from: "none"
+            # (Dr.GRPO) removes the division, trained cleanly, and gained a
+            # fifth as much. Default is run 1's setting; if you switch it off,
+            # pair it with several tasks per step so advantages stay comparable
+            # across a batch.
+            scale_rewards=os.getenv("SCALE_REWARDS", "group"),
             # Free with LoRA: TRL sets `ref_model = None` for a PEFT model and
             # gets reference logprobs by disabling the adapters, so a KL anchor
             # costs no extra memory. Off by default because it changes the

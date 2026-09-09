@@ -19,4 +19,6 @@ variables:
   # rather than something to paper over with a network call.
   GEOGUESSER_ALLOW_FETCH: "0"
   # The street overlay is fetched per agent pin, so it cannot be pre-warmed.
+  # This is also the code default; it is stated here so a deployment reads as
+  # a complete configuration rather than relying on one.
   GEOGUESSER_STREET_DETAIL: "0"
