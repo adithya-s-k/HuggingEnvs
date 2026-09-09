@@ -1,0 +1,294 @@
+<div class="he" style="width:100%;">
+  <canvas class="he__c"
+    aria-label="200 real guesses on a world map, collapsing from the untrained model's scatter onto the trained model's"></canvas>
+  <div class="he__hud" aria-hidden="true">
+    <span class="he__state"></span>
+    <span class="he__med"></span>
+  </div>
+</div>
+
+<style>
+  .he {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 5 / 2;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--surface-bg);
+  }
+  .he__c { display: block; width: 100%; height: 100%; }
+
+  .he__hud {
+    position: absolute;
+    left: 0; right: 0; bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0 18px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    pointer-events: none;
+  }
+  .he__state, .he__med {
+    padding: 3px 8px;
+    border-radius: 5px;
+    background: color-mix(in oklab, var(--surface-bg) 86%, transparent);
+  }
+  .he__state { color: var(--muted-color); text-transform: uppercase; }
+  .he__med { color: var(--primary-color); font-variant-numeric: tabular-nums; }
+  @media (max-width: 640px) {
+    .he__hud { font-size: 9.5px; padding: 0 11px; }
+  }
+</style>
+
+<script>
+  (function () {
+    const LIBS = [
+      'https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js',
+      'https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js'
+    ];
+    const LAND = 'https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json';
+    const PATHS = [
+      '/data/hero-guesses.json',
+      './assets/data/hero-guesses.json',
+      '../assets/data/hero-guesses.json',
+      '../../assets/data/hero-guesses.json'
+    ];
+
+    // One pass of the loop: settle on the untrained scatter, travel to the
+    // trained one, hold, travel back. It reads as a before-and-after toggle
+    // rather than as a claim that training runs backwards.
+    const MORPH_MS = 3200;
+    const HOLD_MS = 1600;
+
+    const loadOnce = (src) => new Promise((resolve) => {
+      const found = document.querySelector(`script[data-lib="${src}"]`);
+      if (found) {
+        if (found.dataset.loaded) return resolve();
+        return found.addEventListener('load', () => resolve(), { once: true });
+      }
+      const s = document.createElement('script');
+      s.src = src;
+      s.dataset.lib = src;
+      s.addEventListener('load', () => { s.dataset.loaded = '1'; resolve(); }, { once: true });
+      s.addEventListener('error', () => resolve(), { once: true });
+      document.head.appendChild(s);
+    });
+
+    const fetchFirst = async (paths) => {
+      for (const p of paths) {
+        try { const r = await fetch(p, { cache: 'no-cache' }); if (r.ok) return await r.json(); }
+        catch (_) { /* next */ }
+      }
+      return null;
+    };
+
+    const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    const mix = (a, b, t) => a + (b - a) * t;
+
+    // Great-circle distance, so the readout is the same number the scorer used.
+    const haversine = (a, b) => {
+      const R = 6371, rad = Math.PI / 180;
+      const dLat = (b[0] - a[0]) * rad, dLon = (b[1] - a[1]) * rad;
+      const s = Math.sin(dLat / 2) ** 2 +
+        Math.cos(a[0] * rad) * Math.cos(b[0] * rad) * Math.sin(dLon / 2) ** 2;
+      return 2 * R * Math.asin(Math.sqrt(s));
+    };
+
+    const theme = (el) => {
+      const cs = getComputedStyle(el);
+      const get = (n, fb) => (cs.getPropertyValue(n) || '').trim() || fb;
+      return {
+        accent: get('--primary-color', '#e08a4a'),
+        text: get('--text-color', '#fff'),
+        muted: get('--muted-color', '#888'),
+        line: get('--border-color', '#333'),
+        surface: get('--surface-bg', '#07080a')
+      };
+    };
+
+    const mount = (root, data, land) => {
+      const d3 = window.d3;
+      const canvas = root.querySelector('.he__c');
+      const ctx = canvas.getContext('2d');
+      const stateOut = root.querySelector('.he__state');
+      const medOut = root.querySelector('.he__med');
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      let tint = theme(document.documentElement);
+      let W = 0, H = 0, projection = null, landPath = null, pts = [];
+      let raf = 0, t0 = 0, visible = true;
+
+      // Fit to the inhabited band rather than the whole sphere: Antarctica is
+      // a quarter of the frame and none of the data.
+      const FRAME = {
+        type: 'Polygon',
+        coordinates: [[[-180, -56], [180, -56], [180, 76], [-180, 76], [-180, -56]]]
+      };
+
+      const build = () => {
+        projection = d3.geoEquirectangular()
+          .fitExtent([[8, 10], [W - 8, H - 24]], FRAME);
+        landPath = land && window.topojson
+          ? window.topojson.feature(land, land.objects.land)
+          : null;
+
+        // Sorting by how far the untrained guess was puts the long, dramatic
+        // lines underneath the short ones.
+        pts = data.tasks
+          .map((r) => ({
+            truth: projection([r.truth[1], r.truth[0]]),
+            from: projection([r.from[1], r.from[0]]),
+            to: projection([r.to[1], r.to[0]]),
+            kmFrom: r.km_from,
+            kmTo: r.km_to,
+            // A per-task delay, so the field ripples west to east instead of
+            // snapping all at once.
+            lag: 0.28 * ((r.truth[1] + 180) / 360)
+          }))
+          .filter((p) => p.truth && p.from && p.to)
+          .sort((a, b) => b.kmFrom - a.kmFrom);
+      };
+
+      const resize = () => {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const rect = root.getBoundingClientRect();
+        W = Math.max(320, rect.width);
+        H = Math.max(150, rect.height);
+        canvas.width = Math.round(W * dpr);
+        canvas.height = Math.round(H * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        build();
+        draw(reduced ? 1 : 0);
+      };
+
+      const draw = (p) => {
+        ctx.clearRect(0, 0, W, H);
+
+        // The world, kept quiet: this is a backdrop for the data, not a map.
+        if (landPath) {
+          const path = d3.geoPath(projection, ctx);
+          ctx.beginPath();
+          path(landPath);
+          ctx.fillStyle = tint.muted;
+          ctx.globalAlpha = 0.11;
+          ctx.fill();
+          ctx.globalAlpha = 0.28;
+          ctx.strokeStyle = tint.muted;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+
+        ctx.globalAlpha = 1;
+        let kms = [];
+
+        for (const q of pts) {
+          // Each task's own progress, staggered by longitude.
+          const local = Math.max(0, Math.min(1, (p - q.lag) / (1 - q.lag)));
+          const e = ease(local);
+          const x = mix(q.from[0], q.to[0], e);
+          const y = mix(q.from[1], q.to[1], e);
+          const km = mix(q.kmFrom, q.kmTo, e);
+          kms.push(km);
+
+          // The error, drawn as the line it is. Long misses stay faint so the
+          // frame does not turn into a ball of string.
+          const reach = Math.hypot(x - q.truth[0], y - q.truth[1]);
+          ctx.globalAlpha = Math.max(0.05, 0.34 - reach / (W * 1.5));
+          ctx.strokeStyle = tint.accent;
+          ctx.lineWidth = 0.7;
+          ctx.beginPath();
+          ctx.moveTo(q.truth[0], q.truth[1]);
+          ctx.lineTo(x, y);
+          ctx.stroke();
+
+          // The true location, always there, always faint.
+          ctx.globalAlpha = 0.5;
+          ctx.fillStyle = tint.text;
+          ctx.beginPath();
+          ctx.arc(q.truth[0], q.truth[1], 1, 0, Math.PI * 2);
+          ctx.fill();
+
+          // The guess. It brightens and tightens as it lands.
+          ctx.globalAlpha = mix(0.5, 0.95, e);
+          ctx.fillStyle = tint.accent;
+          ctx.beginPath();
+          ctx.arc(x, y, mix(2.6, 1.9, e), 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.globalAlpha = 1;
+
+        kms.sort((a, b) => a - b);
+        const median = kms.length ? kms[Math.floor(kms.length / 2)] : 0;
+        stateOut.textContent = p < 0.5 ? 'untrained Qwen3.5-4B' : 'after 1,000 steps of GRPO';
+        medOut.textContent = `median error ${Math.round(median).toLocaleString()} km`;
+      };
+
+      // forward, hold, back, hold
+      const CYCLE = 2 * (MORPH_MS + HOLD_MS);
+      const phase = (now) => {
+        const t = (now - t0) % CYCLE;
+        if (t < MORPH_MS) return t / MORPH_MS;
+        if (t < MORPH_MS + HOLD_MS) return 1;
+        if (t < 2 * MORPH_MS + HOLD_MS) return 1 - (t - MORPH_MS - HOLD_MS) / MORPH_MS;
+        return 0;
+      };
+
+      const frame = (now) => {
+        if (!t0) t0 = now;
+        draw(phase(now));
+        if (visible) raf = requestAnimationFrame(frame);
+      };
+
+      const reTint = () => { tint = theme(document.documentElement); };
+      new MutationObserver(reTint).observe(document.documentElement, {
+        attributes: true, attributeFilter: ['data-theme', 'class']
+      });
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', reTint);
+
+      let rt;
+      window.addEventListener('resize', () => {
+        clearTimeout(rt);
+        rt = setTimeout(resize, 160);
+      });
+
+      resize();
+      if (reduced) return;
+
+      if ('IntersectionObserver' in window) {
+        new IntersectionObserver((es) => {
+          visible = es[0].isIntersecting;
+          if (visible) { cancelAnimationFrame(raf); raf = requestAnimationFrame(frame); }
+          else cancelAnimationFrame(raf);
+        }, { threshold: 0 }).observe(root);
+      } else {
+        raf = requestAnimationFrame(frame);
+      }
+    };
+
+    const bootstrap = async () => {
+      const nodes = document.querySelectorAll('.he');
+      if (!nodes.length) return;
+      await Promise.all(LIBS.map(loadOnce));
+      if (!window.d3) return;
+      const [data, land] = await Promise.all([
+        fetchFirst(PATHS),
+        fetch(LAND).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+      ]);
+      if (!data || !data.tasks) return;
+      nodes.forEach((root) => {
+        if (root.getAttribute('data-mounted')) return;
+        root.setAttribute('data-mounted', '1');
+        mount(root, data, land);
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap);
+    } else {
+      bootstrap();
+    }
+  })();
+</script>

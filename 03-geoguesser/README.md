@@ -11,6 +11,7 @@
 <a href="https://huggingface.co/spaces/HuggingEnvs/geoguesser-env"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Space-Play%20it%20now-FFD21E?style=for-the-badge&labelColor=1a1a1a" alt="Play the environment" height="32"></a>
 <a href="https://huggingface.co/datasets/HuggingEnvs/geoguesser-tasks"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Dataset-Task%20splits-4F46E5?style=for-the-badge&labelColor=1a1a1a" alt="Task splits" height="32"></a>
 <a href="https://github.com/huggingface/OpenEnv"><img src="https://img.shields.io/badge/framework-OpenEnv-3B82F6?style=for-the-badge&labelColor=1a1a1a" alt="OpenEnv" height="32"></a>
+<a href="https://huggingface.co/spaces/HuggingEnvs/geoguesser-article"><img src="https://img.shields.io/badge/%F0%9F%93%84%20Article-Read%20the%20write--up-10B981?style=for-the-badge&labelColor=1a1a1a" alt="Read the article" height="32"></a>
 
 </div>
 
@@ -113,11 +114,11 @@ It learned to stop looking.
 
 The base model wanders, narrates, and in nearly a third of episodes never commits to a coordinate, scoring a hard zero. The trained policy takes one look and answers. Its guesses are also more accurate, 1226 km to 662 km, so this is not only a formatting fix.
 
-The dominant term is the non-submission rate, and it generalises past our own checkpoints. Across the nine models we did not train, score correlates with non-submission at r = −0.97 and with turn count at r = −0.75. The reward has a cliff: failing to answer costs everything, so the fastest route up is to always answer immediately rather than to look more carefully.
+The dominant term is the reward's cliff, and the effect generalises past our own checkpoints. Across the nine models we did not train, score correlates with turn count at r = -0.75, and with the share of episodes scoring exactly zero at r = -0.96. Everything past roughly 3,500 km scores exactly the same as everything else out there, so the largest available win is to stop being catastrophically wrong, and the fastest route to that is to commit to a first instinct rather than reason toward another continent.
 
 This is not the agent we set out to build. We wanted a model that reads road signs and trained one that recalls a plausible city. That is a finding about the reward, not the model.
 
-Note which direction it points. Run 1 carried the largest action cost of the three and collapsed hardest, to 1.1 turns. A higher cost buys a faster commit, not more careful looking. Making evidence-gathering worthwhile needs a lower cost, plus something that removes the non-submission cliff so the reward for looking is not swamped by the penalty for hesitating.
+Note which direction it points. Run 1 carried the largest action cost of the three and collapsed hardest, to 1.1 turns. A higher cost buys a faster commit, not more careful looking. Making evidence-gathering worthwhile needs a lower cost, plus a curve with no cliff, so that a careful episode landing 4,000 km out still beats a careless one landing 12,000 km out.
 
 Full findings, including the six measurement bugs, are in [`LEARNINGS.md`](./LEARNINGS.md).
 
@@ -128,9 +129,11 @@ Full findings, including the six measurement bugs, are in [`LEARNINGS.md`](./LEA
 | Environment | [`geoguesser-env`](https://huggingface.co/spaces/HuggingEnvs/geoguesser-env) |
 | Task splits | [`geoguesser-tasks`](https://huggingface.co/datasets/HuggingEnvs/geoguesser-tasks) |
 | Imagery | [`geoguesser-panos`](https://huggingface.co/buckets/HuggingEnvs/geoguesser-panos), 22 GB |
-| Trained model | [`geoguesser-qwen3.5-4b-grpo-v3`](https://huggingface.co/HuggingEnvs/geoguesser-qwen3.5-4b-grpo-v3) |
+| Trained model, run 1 | [`geoguesser-qwen3.5-4b-grpo`](https://huggingface.co/HuggingEnvs/geoguesser-qwen3.5-4b-grpo) |
+| Trained model, run 3 | [`geoguesser-qwen3.5-4b-grpo-v3`](https://huggingface.co/HuggingEnvs/geoguesser-qwen3.5-4b-grpo-v3) |
 | Training curves | [`geoguesser-trackio`](https://huggingface.co/spaces/HuggingEnvs/geoguesser-trackio), all four runs |
+| Write-up | [`geoguesser-article`](https://huggingface.co/spaces/HuggingEnvs/geoguesser-article), the reasoning behind every decision here |
 
-Run 1's checkpoint is not on the Hub yet. Only run 3's step 300 is published.
+Both trained adapters are on the Hub, and everything is gathered in the [GeoGuesser Env collection](https://huggingface.co/collections/HuggingEnvs/geoguesser-env-6a969f8db267fe0e85fa1ab6).
 
 A reproduction that disagrees with the tables above is a bug report we want.

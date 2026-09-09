@@ -35,17 +35,17 @@ Run 1's +0.1620 is almost entirely one behavioural change.
 
 An episode that deliberates for 12 turns and never submits scores exactly zero, and that was happening to nearly a third of episodes. Guessing immediately makes it structurally impossible.
 
-The effect generalises past our own checkpoints. Across the nine models we did not train, score correlates with non-submission at r = −0.97 and with turn count at r = −0.75. The models that commit early win, ours and theirs alike.
+The effect generalises past our own checkpoints. Across the nine models we did not train, score correlates with turn count at r = -0.75, and with the share of episodes scoring exactly zero at r = -0.96. That second one is partly circular, since both are functions of the same distances; the turn count is the finding. Note also that the zero-scoring share is not non-submission: in these sweeps every arm answered, and the zero-scoring episodes are guesses past the reward's cliff, which sits at roughly 3,500 km.
 
-Pooling our checkpoints in raises those to −0.93 and −0.81, but that is partly circular. Training drove non-submission down and score up together, so our arms sit at both extremes by construction. The nine-model figure is the one that means something.
+Pooling our checkpoints in raises those correlations, but that is partly circular: training drove turns down, zero-scoring episodes down and score up together, so our arms sit at both extremes by construction. The nine-model figure is the one that means something.
 
-The transferable version: on any multi-turn task with a terminal action, measure the non-submission rate before tuning anything else.
+The transferable version: before tuning anything else, find out what your reward cannot distinguish. Ours flattened to exactly zero past about 4,500 km, which covered nearly a third of untrained episodes, so a third of the data carried no gradient at all.
 
 ## 2. The reward has a cliff, and only an under-regularised optimiser jumps it
 
 Winning here needs a qualitative switch to "commit early", not incremental refinement. Run 1's config could make that jump and run 2's could not.
 
-Run 3 was the controlled test. It reverted only `SCALE_REWARDS=group` and `BETA=0`, keeping run 2's `COST_SCALE=0.2` and `ACCUM=4`. It recovered 44% of run 1's gain, +0.0717 against +0.1620. It reproduced run 1's dynamics, with entropy falling 0.46 to 0.04, group spread collapsing to 0.001 and grad norm rising 0.18 to 3.7, but stalled at 24% non-submission where run 1 reached 0.5%.
+Run 3 was the controlled test. It reverted only `SCALE_REWARDS=group` and `BETA=0`, keeping run 2's `COST_SCALE=0.2` and `ACCUM=4`. It recovered 44% of run 1's gain, +0.0717 against +0.1620. It reproduced run 1's dynamics, with entropy falling 0.46 to 0.04, group spread collapsing to 0.001 and grad norm rising 0.18 to 3.7, but stalled with about 24% of episodes still scoring zero where run 1 got that down to 0.5%.
 
 So amplification starts the transition and action cost finishes it.
 
@@ -89,4 +89,4 @@ The reward pays for accuracy and charges for actions, so its optimum is to know 
 
 ## Where to go next
 
-Change only `COST_SCALE`, from 0.2 back to 1.0, on top of run 3's config. Run 3 established that the algorithmic revert buys half the gain and that the residual sits in the non-submission rate. Action cost is the remaining lever. 300 steps, about 5 hours.
+Change only `COST_SCALE`, from 0.2 back to 1.0, on top of run 3's config. Run 3 established that the algorithmic revert buys half the gain and that the residual sits in the zero-scoring episodes. Action cost is the remaining lever. 300 steps, about 5 hours.

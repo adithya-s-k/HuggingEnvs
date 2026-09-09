@@ -1,0 +1,178 @@
+<div class="tl" style="width:100%;margin:14px 0;">
+  <div class="tl__frame">
+
+    <div class="tl__col">
+      <div class="tl__cap">the trainer, on the GPU node</div>
+
+      <div class="tl__box">
+        <b>the dataset</b>
+        <span>one row per task, just <code>split</code> and <code>index</code></span>
+      </div>
+      <div class="tl__flow"><span>one row</span></div>
+      <div class="tl__box tl__box--hot">
+        <b>the group</b>
+        <span><code>NUM_GENERATIONS=8</code> rollouts of the <em>same</em> row</span>
+        <div class="tl__dots"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="tl__flow"><span>8 concurrent sessions</span></div>
+      <div class="tl__box">
+        <b>vLLM, colocated</b>
+        <span>generation shares the same four cards as training</span>
+      </div>
+      <div class="tl__flow tl__flow--back"><span>8 rewards come back</span></div>
+      <div class="tl__box tl__box--hot">
+        <b>the update</b>
+        <span>the advantage is the spread <em>inside</em> the group, so a group whose rollouts all score alike teaches nothing</span>
+      </div>
+    </div>
+
+    <div class="tl__wire">
+      <div class="tl__wire-line"></div>
+      <div class="tl__wire-tag">
+        <b>HTTP</b>
+        <span>one session per rollout, open for the whole episode</span>
+      </div>
+    </div>
+
+    <div class="tl__col">
+      <div class="tl__cap">the environment, on a Space</div>
+
+      <div class="tl__box tl__box--env">
+        <b><code>reset(**row)</code></b>
+        <span>the whole dataset row lands here, which is what puts all eight rollouts on one task</span>
+      </div>
+      <div class="tl__flow"><span>the first view</span></div>
+      <div class="tl__box tl__box--env">
+        <b>eleven tools, over MCP</b>
+        <span>public methods become tools, schemas come from the docstrings, and a tool result may carry an image</span>
+      </div>
+      <div class="tl__flow"><span>up to 12 turns</span></div>
+      <div class="tl__box tl__box--env">
+        <b><code>get_reward()</code></b>
+        <span>distance and action cost, turned into a reward by the training script rather than read off the environment</span>
+      </div>
+
+      <p class="tl__note">
+        <b>Where the boundary sits.</b> The trainer owns the loop, the group and the update. The
+        environment owns the task, the tools and the truth. Neither one imports the other, which is
+        why the same URL serves the eval harness unchanged.
+      </p>
+    </div>
+
+  </div>
+</div>
+
+<style>
+  .tl__frame {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 138px minmax(0, 1fr);
+    gap: 4px;
+    align-items: start;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--surface-bg);
+    padding: 16px 15px 15px;
+  }
+  @media (max-width: 780px) {
+    .tl__frame { grid-template-columns: 1fr; }
+    .tl__wire { display: none; }
+  }
+
+  .tl__col { display: flex; flex-direction: column; min-width: 0; }
+  .tl__cap {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    margin-bottom: 8px;
+  }
+
+  .tl__box {
+    border: 1px solid var(--border-color);
+    border-radius: 7px;
+    padding: 8px 10px 9px;
+    background: color-mix(in oklab, var(--muted-color) 6%, transparent);
+  }
+  .tl__box b {
+    display: block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px;
+    color: var(--text-color);
+    margin-bottom: 2px;
+  }
+  .tl__box span { font-size: 11px; line-height: 1.45; color: var(--muted-color); }
+  .tl__box em { font-style: normal; color: var(--text-color); }
+  .tl__box code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px;
+  }
+  .tl__box--hot {
+    background: color-mix(in oklab, var(--primary-color) 8%, transparent);
+    border-color: color-mix(in oklab, var(--primary-color) 34%, var(--border-color));
+  }
+  .tl__box--env { border-style: dashed; }
+
+  .tl__dots { display: flex; gap: 3px; margin-top: 7px; }
+  .tl__dots i {
+    width: 10px; height: 4px;
+    border-radius: 2px;
+    background: color-mix(in oklab, var(--primary-color) 60%, transparent);
+  }
+
+  .tl__flow { position: relative; height: 26px; }
+  .tl__flow::before {
+    content: "";
+    position: absolute;
+    top: 0; bottom: 0; left: 19px;
+    width: 1px;
+    background: var(--border-color);
+  }
+  .tl__flow span {
+    position: absolute;
+    left: 28px; top: 50%;
+    transform: translateY(-50%);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    color: var(--muted-color);
+  }
+  .tl__flow--back::before {
+    background: repeating-linear-gradient(to bottom,
+      color-mix(in oklab, var(--primary-color) 70%, transparent) 0 3px, transparent 3px 6px);
+  }
+
+  .tl__wire { position: relative; padding-top: 42px; text-align: center; }
+  .tl__wire-line {
+    position: absolute;
+    top: 20px; bottom: 14px; left: 50%;
+    width: 1px;
+    background: repeating-linear-gradient(to bottom,
+      var(--border-color) 0 5px, transparent 5px 10px);
+  }
+  .tl__wire-tag {
+    position: relative;
+    display: inline-block;
+    background: var(--surface-bg);
+    padding: 6px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+  }
+  .tl__wire-tag b {
+    display: block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px;
+    color: var(--primary-color);
+    margin-bottom: 2px;
+  }
+  .tl__wire-tag span { font-size: 9.5px; line-height: 1.4; color: var(--muted-color); }
+
+  .tl__note {
+    margin: 12px 0 0;
+    padding-left: 10px;
+    border-left: 2px solid color-mix(in oklab, var(--primary-color) 55%, transparent);
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--muted-color);
+  }
+  .tl__note b { color: var(--text-color); font-weight: 600; }
+</style>

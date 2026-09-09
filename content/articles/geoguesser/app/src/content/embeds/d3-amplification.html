@@ -1,0 +1,279 @@
+<div class="amp" style="width:100%;margin:14px 0;min-height:430px;">
+  <div class="amp__frame">
+    <div class="amp__head">
+      <div class="amp__legend"></div>
+      <span class="amp__axis-note">left: spread inside the group &nbsp;·&nbsp; right: what GRPO multiplies the advantage by &nbsp;·&nbsp; shaded: 20x or more</span>
+    </div>
+    <div class="amp__chart"></div>
+    <div class="amp__cards"></div>
+    <p class="amp__note">
+      GRPO divides each advantage by its own group's standard deviation, at
+      <code>grpo_trainer.py:2809</code>. With one task per optimizer step, that spread is just how
+      much eight rollouts of the same task disagree, and it collapses as the policy makes up its
+      mind. With two tasks per step it also contains the difference between the tasks, which never
+      collapses. Same line of code, two entirely different training dynamics.
+    </p>
+  </div>
+</div>
+
+<style>
+  .amp__frame {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--surface-bg);
+    padding: 14px 15px 14px;
+  }
+  .amp__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .amp__legend { display: flex; flex-wrap: wrap; gap: 12px; }
+  .amp__key {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    color: var(--muted-color);
+  }
+  .amp__key i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+  .amp__axis-note {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9px;
+    color: var(--muted-color);
+  }
+
+  .amp__chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .amp .grid { stroke: var(--border-color); stroke-opacity: 0.5; stroke-width: 0.6; }
+  .amp .tick, .amp .axis-lbl {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    fill: var(--muted-color);
+  }
+  .amp .danger-band { fill: color-mix(in oklab, var(--muted-color) 7%, transparent); }
+  .amp .danger-edge {
+    stroke: color-mix(in oklab, var(--muted-color) 55%, transparent);
+    stroke-width: 0.8;
+    stroke-dasharray: 2 3;
+  }
+  .amp .danger-lbl {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9px;
+    fill: color-mix(in oklab, var(--muted-color) 85%, transparent);
+  }
+  .amp .line { fill: none; stroke-width: 1.6; stroke-linejoin: round; }
+  .amp .med { stroke-dasharray: 3 3; stroke-width: 1; opacity: 0.5; }
+  /* Run 3 shares run 1's family of colour, so it is dashed to tell them apart. */
+  .amp .line--dash { stroke-dasharray: 6 3; }
+
+  .amp__cards {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 9px;
+  }
+  @media (max-width: 720px) { .amp__cards { grid-template-columns: 1fr; } }
+  .amp__card {
+    border: 1px solid var(--border-color);
+    border-radius: 7px;
+    padding: 8px 10px 9px;
+  }
+  .amp__card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 5px;
+  }
+  .amp__card-head b {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px;
+    color: var(--text-color);
+  }
+  .amp__card-head span { font-size: 9.5px; color: var(--muted-color); }
+  .amp__rows { display: flex; flex-direction: column; gap: 2px; }
+  .amp__row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    color: var(--muted-color);
+  }
+  .amp__row b { color: var(--text-color); font-variant-numeric: tabular-nums; }
+  .amp__row--gain b { color: var(--primary-color); }
+
+  .amp__note {
+    margin: 12px 0 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-color);
+    font-size: 11.5px;
+    line-height: 1.55;
+    color: var(--muted-color);
+  }
+  .amp__note code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px;
+  }
+</style>
+
+<script>
+  (function () {
+    const PATHS = [
+      '/data/runs-std.json',
+      './assets/data/runs-std.json',
+      '../assets/data/runs-std.json',
+      '../../assets/data/runs-std.json'
+    ];
+    // One colour per run, all from theme tokens.
+    const TINT = [
+      'var(--primary-color)',
+      'color-mix(in oklab, var(--muted-color) 80%, var(--surface-bg))',
+      'color-mix(in oklab, var(--primary-color) 45%, var(--muted-color))'
+    ];
+    const FLOOR = 0.004;   // where the log axis bottoms out
+    const CEIL = 1.0;
+
+    const ns = 'http://www.w3.org/2000/svg';
+    const el = (name, attrs, text) => {
+      const n = document.createElementNS(ns, name);
+      Object.entries(attrs).forEach(([k, v]) => n.setAttribute(k, v));
+      if (text !== undefined) n.textContent = text;
+      return n;
+    };
+
+    const fetchFirst = async (paths) => {
+      for (const p of paths) {
+        try { const r = await fetch(p, { cache: 'no-cache' }); if (r.ok) return await r.json(); }
+        catch (_) { /* next */ }
+      }
+      return null;
+    };
+
+    // A light moving average: the raw per-step spread is as noisy as the reward
+    // it is computed from, and the shape is the point here.
+    const smooth = (pts, span) => {
+      const a = 2 / (span + 1);
+      let acc = pts[0].std;
+      return pts.map((p) => {
+        acc = a * p.std + (1 - a) * acc;
+        return { step: p.step, std: Math.max(acc, FLOOR) };
+      });
+    };
+
+    const render = (root, data) => {
+      const host = root.querySelector('.amp__chart');
+      host.innerHTML = '';
+
+      const runs = data.runs;
+      const W = 860, H = 300;
+      const M = { l: 44, r: 62, t: 14, b: 34 };
+      const iw = W - M.l - M.r, ih = H - M.t - M.b;
+      const lastStep = Math.max(...runs.map((r) => r.points[r.points.length - 1].step));
+
+      const X = (s) => M.l + (s / lastStep) * iw;
+      const L = Math.log(CEIL / FLOOR);
+      const Y = (v) => M.t + (1 - Math.log(Math.max(v, FLOOR) / FLOOR) / L) * ih;
+
+      const svg = el('svg', {
+        viewBox: `0 0 ${W} ${H}`, role: 'img',
+        'aria-label': 'Within-group reward spread per step for each run, on a log axis'
+      });
+      host.appendChild(svg);
+
+      // Below about 0.05 the divisor starts multiplying advantages by more than
+      // twenty, which is the region worth marking.
+      svg.appendChild(el('rect', {
+        class: 'danger-band', x: M.l, y: Y(0.05), width: iw, height: M.t + ih - Y(0.05)
+      }));
+      svg.appendChild(el('line', {
+        class: 'danger-edge', x1: M.l, x2: W - M.r, y1: Y(0.05), y2: Y(0.05)
+      }));
+
+
+      [1, 0.3, 0.1, 0.03, 0.01, FLOOR].forEach((v) => {
+        svg.appendChild(el('line', { class: 'grid', x1: M.l, x2: W - M.r, y1: Y(v), y2: Y(v) }));
+        svg.appendChild(el('text', {
+          class: 'tick', x: M.l - 7, y: Y(v) + 3, 'text-anchor': 'end'
+        }, v < 0.01 ? v.toFixed(3) : String(v)));
+        svg.appendChild(el('text', {
+          class: 'tick', x: W - M.r + 7, y: Y(v) + 3
+        }, `${Math.round(1 / v)}x`));
+      });
+      [0, 250, 500, 750, 1000].forEach((s) => {
+        if (s > lastStep) return;
+        svg.appendChild(el('text', {
+          class: 'tick', x: X(s), y: H - 18, 'text-anchor': 'middle'
+        }, String(s)));
+      });
+      svg.appendChild(el('text', {
+        class: 'axis-lbl', x: M.l + iw / 2, y: H - 4, 'text-anchor': 'middle'
+      }, 'optimizer step'));
+
+      runs.forEach((r, i) => {
+        const pts = smooth(r.points, 25);
+        svg.appendChild(el('path', {
+          class: `line${i === 2 ? ' line--dash' : ''}`,
+          stroke: TINT[i % TINT.length],
+          d: 'M' + pts.map((p) => `${X(p.step).toFixed(1)},${Y(p.std).toFixed(1)}`).join('L')
+        }));
+        svg.appendChild(el('line', {
+          class: 'line med',
+          stroke: TINT[i % TINT.length],
+          x1: X(0), x2: X(lastStep), y1: Y(r.median_std), y2: Y(r.median_std)
+        }));
+      });
+
+      root.querySelector('.amp__legend').innerHTML = runs.map((r, i) =>
+        `<span class="amp__key"><i style="background:${TINT[i % TINT.length]}"></i>` +
+        `${r.label}, ${r.tasks_per_step} task${r.tasks_per_step > 1 ? 's' : ''} per step</span>`
+      ).join('');
+
+      root.querySelector('.amp__cards').innerHTML = runs.map((r, i) => `
+        <div class="amp__card" style="border-color:color-mix(in oklab, ${TINT[i % TINT.length]} 35%, var(--border-color))">
+          <div class="amp__card-head">
+            <b>${r.label}</b>
+            <span>${r.tasks_per_step} task${r.tasks_per_step > 1 ? 's' : ''} per step</span>
+          </div>
+          <div class="amp__rows">
+            <div class="amp__row"><span>median spread</span><b>${r.median_std.toFixed(3)}</b></div>
+            <div class="amp__row"><span>so a typical push of</span><b>${Math.round(1 / Math.max(r.median_std, 1e-4))}x</b></div>
+            <div class="amp__row"><span>peak grad norm</span><b>${r.max_grad.toFixed(2)}</b></div>
+            <div class="amp__row"><span>worst dead groups</span><b>${Math.round(r.max_zero * 100)}%</b></div>
+            <div class="amp__row amp__row--gain"><span>eval gain</span><b>+${r.gain.toFixed(4)}</b></div>
+          </div>
+        </div>`).join('');
+    };
+
+    const bootstrap = async () => {
+      const nodes = document.querySelectorAll('.amp');
+      if (!nodes.length) return;
+      const data = await fetchFirst(PATHS);
+      nodes.forEach((root) => {
+        if (root.getAttribute('data-mounted')) return;
+        root.setAttribute('data-mounted', '1');
+        if (!data || !data.runs) {
+          root.innerHTML = '<div style="padding:24px;color:var(--muted-color);font-size:13px">' +
+            'runs-std.json not found. Build it with scripts/build_runs_std.py</div>';
+          return;
+        }
+        render(root, data);
+        let t;
+        window.addEventListener('resize', () => {
+          clearTimeout(t);
+          t = setTimeout(() => render(root, data), 180);
+        });
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap);
+    } else {
+      bootstrap();
+    }
+  })();
+</script>

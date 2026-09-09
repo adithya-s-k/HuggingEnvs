@@ -2,7 +2,7 @@
 
 Every number in [`README.md`](./README.md) comes from the commands below. All three runs trained on 4×A100 against a hosted copy of the environment, with rewards computed in the trainer rather than read from the environment.
 
-Total spend was about $700: roughly $450 of training and $250 of eval GPUs and frontier-model API calls.
+Total spend was about $700: roughly $450 of training and $250 of eval GPUs and hosted-model API calls.
 
 ## Prerequisites
 

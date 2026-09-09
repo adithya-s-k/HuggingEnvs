@@ -4,12 +4,13 @@ name: geoguesser
 title: "GeoGuesser"
 tagline: "Drop a VLM at a random street corner on Earth and score it on kilometres of error."
 order: 3
-status: stable   # env, evals and three GRPO runs; 21 arms scored at pass@4
+status: stable   # env, evals and three GRPO runs; 11 arms on the board at pass@4
 
 hub:
   org: HuggingEnvs
   spaces:
     - HuggingEnvs/geoguesser-env
+    - HuggingEnvs/geoguesser-article          # the write-up, as a Space
   datasets:
     - HuggingEnvs/geoguesser-tasks
   buckets:
@@ -25,6 +26,7 @@ hub:
     - HuggingEnvs/geoguesser-trackio              # all four runs, one axis
     - HuggingEnvs/geoguesser-grpo-trackio         # run 1, with rollout galleries
     - HuggingEnvs/geoguesser-grpo-v2-trackio      # runs 2 and 3, with galleries
+  collection: HuggingEnvs/geoguesser-env-6a969f8db267fe0e85fa1ab6
 
 envs:
   - name: geoguesser

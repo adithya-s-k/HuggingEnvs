@@ -1,0 +1,542 @@
+<div class="geo-hero-sweep" style="width:100%;"></div>
+
+<style>
+  /* A street-level 360° panorama, procedurally generated, with the camera
+     sweeping its heading the way the agent's `look` tool does. */
+  .geo-hero-sweep {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 5 / 2;
+    min-height: 200px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--primary-color) 11%, var(--surface-bg)) 0%,
+      color-mix(in oklab, var(--primary-color) 3%, var(--surface-bg)) 34%,
+      var(--surface-bg) 52%
+    );
+  }
+  .geo-hero-sweep canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  /* Seats the caption without touching the artwork's colours. */
+  .geo-hero-sweep .veil {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(
+      0deg,
+      color-mix(in oklab, var(--surface-bg) 82%, transparent) 0%,
+      transparent 24%
+    );
+  }
+  .geo-hero-sweep .caption {
+    position: absolute;
+    left: 16px;
+    bottom: 13px;
+    z-index: 2;
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: 11px;
+    line-height: 1.6;
+    letter-spacing: 0.01em;
+    color: var(--muted-color);
+    pointer-events: none;
+  }
+  .geo-hero-sweep .caption b {
+    color: var(--text-color);
+    font-weight: 600;
+  }
+  @media (max-width: 640px) {
+    .geo-hero-sweep .caption { font-size: 10px; left: 11px; bottom: 9px; }
+  }
+</style>
+
+<script>
+  (function () {
+    const CLASS = 'geo-hero-sweep';
+    const reduceMotion = !!(window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+    // ── Theme plumbing ───────────────────────────────────────────────────────
+    // Canvas cannot read CSS custom properties, so resolve them once per theme
+    // change. Alpha is applied with globalAlpha, never baked into a literal,
+    // so any colour syntax the browser accepts (oklch included) works.
+    const probe = document.createElement('canvas').getContext('2d');
+    const usable = (c) => {
+      if (!c) return false;
+      probe.fillStyle = 'rgb(1,2,3)';
+      try { probe.fillStyle = c; } catch (e) { return false; }
+      return probe.fillStyle !== 'rgb(1, 2, 3)';
+    };
+    const readTheme = () => {
+      const cs = getComputedStyle(document.documentElement);
+      const get = (name, fallback) => {
+        const v = cs.getPropertyValue(name).trim();
+        return usable(v) ? v : fallback;
+      };
+      const muted = get('--muted-color', 'rgba(128,128,128,.65)');
+      return {
+        muted,
+        text: get('--text-color', muted),
+        border: get('--border-color', muted),
+        primary: get('--primary-color', muted)
+      };
+    };
+
+    // ── Scene: a deterministic street, in metres, around the camera ──────────
+    const mkRng = (seed) => () => {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+
+    const buildScene = () => {
+      const rnd = mkRng(20260908);
+      const items = [];
+      // Buildings set back from both kerbs.
+      for (const side of [-1, 1]) {
+        let z = -152;
+        while (z < 152) {
+          const w = 6 + rnd() * 11;
+          const h = 4 + rnd() * 8;
+          const setback = 17 + rnd() * 15;
+          items.push({ t: 'b', x: side * (setback + w / 2), z, w, h, k: rnd(), dmin: 26 });
+          z += w + 7 + rnd() * 15;
+        }
+      }
+      // Utility poles down one side only: spacing is itself a location clue.
+      for (let z = -140; z < 145; z += 27) {
+        items.push({ t: 'p', x: -5.6, z, h: 8.4, k: 0, dmin: 15 });
+      }
+      // Roadside vegetation.
+      for (let i = 0; i < 30; i++) {
+        const side = rnd() < 0.5 ? -1 : 1;
+        items.push({
+          t: 'v',
+          x: side * (12 + rnd() * 18),
+          z: -152 + rnd() * 304,
+          h: 3.4 + rnd() * 4.2,
+          cr: 1.2 + rnd() * 1.1,
+          k: rnd(),
+          dmin: 27
+        });
+      }
+      return items.filter((o) => Math.hypot(o.x, o.z) >= o.dmin);
+    };
+
+    const SCENE = buildScene();
+
+    const CLUES = {
+      b: ['facade · shutters + render', 'roof pitch · clay tile', 'balcony rail pattern'],
+      p: ['utility pole · concrete', 'pole spacing ≈ 27 m', 'overhead line count'],
+      v: ['roadside vegetation', 'canopy · broadleaf', 'verge cut · managed']
+    };
+
+    const CARDINALS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+
+    const norm = (a) => {
+      while (a > Math.PI) a -= Math.PI * 2;
+      while (a < -Math.PI) a += Math.PI * 2;
+      return a;
+    };
+    const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+    const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+    const mount = (root) => {
+      const canvas = document.createElement('canvas');
+      root.appendChild(canvas);
+      const veil = document.createElement('div');
+      veil.className = 'veil';
+      root.appendChild(veil);
+      const caption = document.createElement('div');
+      caption.className = 'caption';
+      caption.innerHTML =
+        '<b>look</b> turns the camera · <b>zoom</b> · <b>move</b> walks the road · ' +
+        '<b>place_pin</b> · <b>submit_guess</b><br>' +
+        'the model sees only the street, never a label';
+      root.appendChild(caption);
+
+      const ctx = canvas.getContext('2d');
+      canvas.setAttribute('role', 'img');
+      canvas.setAttribute('aria-label',
+        'A street-level panorama with the camera slowly turning, and clues ' +
+        'being picked out of the scene');
+
+      let W = 0, H = 0, dpr = 1;
+      let colors = readTheme();
+
+      // Camera: fixed position, sweeping heading. Holds, then turns, forever,
+      // so it reads the same whenever a reader arrives.
+      const cam = { heading: 0.55, phase: 'hold', pt: 0, k: 0, from: 0.55, to: 0.55 };
+      const HOLD = 1.55, TURN = 1.35, CAM_H = 2.55, HALF_FOV = 0.78;
+
+      const layout = () => {
+        const rect = root.getBoundingClientRect();
+        W = Math.max(1, Math.round(rect.width));
+        H = Math.max(1, Math.round(rect.height));
+        dpr = Math.max(1, Math.min(2.5, window.devicePixelRatio || 1));
+        canvas.style.width = W + 'px';
+        canvas.style.height = H + 'px';
+        canvas.width = Math.round(W * dpr);
+        canvas.height = Math.round(H * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      };
+
+      const advance = (dt) => {
+        cam.pt += dt;
+        if (cam.phase === 'hold' && cam.pt >= HOLD) {
+          cam.pt -= HOLD;
+          cam.phase = 'turn';
+          cam.k += 1;
+          // Deterministic-ish sweep: mostly forward, occasionally a long pan.
+          const step = (26 + ((cam.k * 37) % 5) * 12) * Math.PI / 180;
+          cam.from = cam.heading;
+          cam.to = cam.heading + step;
+        } else if (cam.phase === 'turn' && cam.pt >= TURN) {
+          cam.pt -= TURN;
+          cam.phase = 'hold';
+          cam.heading = cam.to;
+        }
+        if (cam.phase === 'turn') {
+          cam.heading = cam.from + (cam.to - cam.from) * easeInOut(clamp(cam.pt / TURN, 0, 1));
+        }
+      };
+
+      // Pinhole projection into camera space.
+      const project = (x, z, focal, cx, horizon) => {
+        const s = Math.sin(cam.heading), c = Math.cos(cam.heading);
+        const f = x * s + z * c;          // forward
+        const r = x * c - z * s;          // right
+        if (f < 0.6) return null;
+        return {
+          f,
+          x: cx + focal * (r / f),
+          base: horizon + focal * (CAM_H / f),
+          scale: focal / f
+        };
+      };
+
+      const draw = () => {
+        const cx = W / 2;
+        const horizon = H * 0.455;
+        const focal = cx / Math.tan(HALF_FOV);
+        const mono = '11px ' + (getComputedStyle(root).getPropertyValue('--font-mono').trim()
+          || 'ui-monospace, SFMono-Regular, Menlo, monospace');
+
+        ctx.clearRect(0, 0, W, H);
+        ctx.lineCap = 'butt';
+
+        // Distant ridge: a periodic function of absolute azimuth, so it wraps.
+        ctx.globalAlpha = 0.16;
+        ctx.fillStyle = colors.muted;
+        ctx.beginPath();
+        ctx.moveTo(0, horizon);
+        for (let px = 0; px <= W; px += 4) {
+          const az = cam.heading + Math.atan((px - cx) / focal);
+          const amp = 1 + 0.62 * Math.sin(3 * az) + 0.4 * Math.sin(7 * az + 1.3)
+            + 0.24 * Math.sin(11 * az + 2.7);
+          ctx.lineTo(px, horizon - H * 0.028 * amp);
+        }
+        ctx.lineTo(W, horizon);
+        ctx.closePath();
+        ctx.fill();
+
+        // Ground.
+        ctx.globalAlpha = 0.07;
+        ctx.fillRect(0, horizon, W, H - horizon);
+
+        // Road: two carriageway edges plus a centre line, sampled in metres and
+        // broken wherever a sample falls behind the camera.
+        const roadBand = (o1, o2, alpha) => {
+          const zs = [];
+          for (let i = 0; i <= 60; i++) zs.push(-160 + (320 * i) / 60);
+          let run = [];
+          const flush = () => {
+            if (run.length > 1) {
+              ctx.globalAlpha = alpha;
+              ctx.beginPath();
+              ctx.moveTo(run[0].a[0], run[0].a[1]);
+              for (let i = 1; i < run.length; i++) ctx.lineTo(run[i].a[0], run[i].a[1]);
+              for (let i = run.length - 1; i >= 0; i--) ctx.lineTo(run[i].b[0], run[i].b[1]);
+              ctx.closePath();
+              ctx.fill();
+            }
+            run = [];
+          };
+          for (const z of zs) {
+            const pa = project(o1, z, focal, cx, horizon);
+            const pb = project(o2, z, focal, cx, horizon);
+            if (!pa || !pb) { flush(); continue; }
+            run.push({ a: [pa.x, pa.base], b: [pb.x, pb.base] });
+          }
+          flush();
+        };
+        ctx.fillStyle = colors.muted;
+        roadBand(-3.6, 3.6, 0.13);
+        // Centre dashes.
+        ctx.globalAlpha = 0.3;
+        ctx.fillStyle = colors.border;
+        for (let z = -150; z < 150; z += 9) {
+          const a = project(-0.12, z, focal, cx, horizon);
+          const b = project(0.12, z + 3.4, focal, cx, horizon);
+          if (!a || !b) continue;
+          if (a.f > 130) continue;
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.base);
+          ctx.lineTo(b.x, b.base);
+          ctx.lineTo(b.x + Math.max(0.7, b.scale * 0.18), b.base);
+          ctx.lineTo(a.x + Math.max(0.9, a.scale * 0.18), a.base);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        // Scene objects, far to near.
+        const drawable = [];
+        for (let i = 0; i < SCENE.length; i++) {
+          const o = SCENE[i];
+          const p = project(o.x, o.z, focal, cx, horizon);
+          if (!p) continue;
+          if (Math.abs(p.x - cx) > W * 0.85) continue;
+          if (p.f > 165) continue;
+          drawable.push({ o, p, i });
+        }
+        drawable.sort((a, b) => b.p.f - a.p.f);
+
+        let poleTop = null;
+        for (const d of drawable) {
+          const { o, p } = d;
+          const fog = clamp(1 - p.f / 150, 0.08, 1);
+          const hpx = p.scale * o.h;
+          if (o.t === 'b') {
+            const wpx = Math.max(1.5, p.scale * o.w);
+            const x0 = p.x - wpx / 2;
+            const top = p.base - hpx;
+            ctx.globalAlpha = 0.15 * fog + 0.06;
+            ctx.fillStyle = colors.muted;
+            ctx.fillRect(x0, top, wpx, p.base - top);
+            ctx.globalAlpha = 0.3 * fog;
+            ctx.strokeStyle = colors.muted;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x0 + 0.5, top + 0.5, wpx - 1, p.base - top - 1);
+            ctx.globalAlpha = 0.5 * fog;
+            ctx.beginPath();
+            ctx.moveTo(x0, top + 0.5);
+            ctx.lineTo(x0 + wpx, top + 0.5);
+            ctx.stroke();
+            // Floor bands stand in for window rows.
+            const floors = Math.max(1, Math.round(o.h / 3.2));
+            ctx.globalAlpha = 0.22 * fog;
+            for (let fl = 1; fl < floors; fl++) {
+              const y = top + (hpx * fl) / floors;
+              ctx.beginPath();
+              ctx.moveTo(x0 + wpx * 0.12, y);
+              ctx.lineTo(x0 + wpx * 0.88, y);
+              ctx.stroke();
+            }
+          } else if (o.t === 'p') {
+            const top = p.base - hpx;
+            ctx.globalAlpha = 0.5 * fog;
+            ctx.strokeStyle = colors.muted;
+            ctx.lineWidth = Math.max(1, p.scale * 0.16);
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.base);
+            ctx.lineTo(p.x, top);
+            ctx.stroke();
+            ctx.lineWidth = Math.max(1, p.scale * 0.1);
+            ctx.beginPath();
+            ctx.moveTo(p.x - p.scale * 0.9, top + hpx * 0.1);
+            ctx.lineTo(p.x + p.scale * 0.9, top + hpx * 0.1);
+            ctx.stroke();
+            // Wire to the previous pole, if it is also on screen.
+            if (poleTop && Math.abs(poleTop[0] - p.x) < W * 0.9) {
+              ctx.globalAlpha = 0.24 * fog;
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(poleTop[0], poleTop[1]);
+              ctx.quadraticCurveTo(
+                (poleTop[0] + p.x) / 2,
+                (poleTop[1] + top) / 2 + Math.min(14, Math.abs(poleTop[0] - p.x) * 0.06),
+                p.x, top + hpx * 0.1
+              );
+              ctx.stroke();
+            }
+            poleTop = [p.x, top + hpx * 0.1];
+          } else {
+            const crpx = Math.max(1.2, p.scale * o.cr);
+            ctx.globalAlpha = 0.5 * fog;
+            ctx.strokeStyle = colors.muted;
+            ctx.lineWidth = Math.max(1, p.scale * 0.13);
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.base);
+            ctx.lineTo(p.x, p.base - hpx * 0.55);
+            ctx.stroke();
+            ctx.globalAlpha = 0.21 * fog + 0.05;
+            ctx.fillStyle = colors.muted;
+            ctx.beginPath();
+            ctx.ellipse(p.x, p.base - hpx * 0.72, crpx, crpx * (0.8 + o.k * 0.5), 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // Compass strip: absolute bearings, so it slides as the camera turns.
+        const stripY = 26;
+        ctx.globalAlpha = 0.5;
+        ctx.strokeStyle = colors.border;
+        ctx.fillStyle = colors.muted;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, stripY + 0.5);
+        ctx.lineTo(W, stripY + 0.5);
+        ctx.stroke();
+        ctx.font = mono;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        const startDeg = Math.floor((cam.heading - HALF_FOV) * 180 / Math.PI / 10) * 10;
+        const endDeg = Math.ceil((cam.heading + HALF_FOV) * 180 / Math.PI / 10) * 10;
+        for (let deg = startDeg; deg <= endDeg; deg += 10) {
+          const a = norm(deg * Math.PI / 180 - cam.heading);
+          if (Math.abs(a) > HALF_FOV * 0.98) continue;
+          const x = cx + focal * Math.tan(a);
+          const major = ((deg % 45) + 360) % 45 === 0;
+          ctx.globalAlpha = major ? 0.72 : 0.34;
+          ctx.strokeStyle = major ? colors.text : colors.border;
+          ctx.beginPath();
+          ctx.moveTo(x, stripY);
+          ctx.lineTo(x, stripY - (major ? 7 : 4));
+          ctx.stroke();
+          if (major) {
+            const idx = (((deg % 360) + 360) % 360) / 45;
+            ctx.globalAlpha = 0.7;
+            ctx.fillStyle = colors.text;
+            ctx.fillText(CARDINALS[idx], x, stripY + 13);
+          }
+        }
+        // Centre index.
+        ctx.globalAlpha = 0.85;
+        ctx.fillStyle = colors.primary;
+        ctx.beginPath();
+        ctx.moveTo(cx, stripY - 1);
+        ctx.lineTo(cx - 4, stripY - 8);
+        ctx.lineTo(cx + 4, stripY - 8);
+        ctx.closePath();
+        ctx.fill();
+
+        // Heading readout.
+        const bearing = ((cam.heading * 180 / Math.PI) % 360 + 360) % 360;
+        ctx.globalAlpha = 0.75;
+        ctx.fillStyle = colors.muted;
+        ctx.textAlign = 'right';
+        ctx.fillText(
+          'heading ' + bearing.toFixed(0).padStart(3, '0') + '°   fov 89°',
+          W - 16, H - 17
+        );
+        ctx.textAlign = 'left';
+
+        // Clue lock: while the camera holds, bracket whatever sits nearest the
+        // centre of frame and name what a human would read off it.
+        if (cam.phase === 'hold') {
+          let best = null;
+          for (const d of drawable) {
+            if (d.p.f > 74 || d.p.f < 16) continue;
+            const off = Math.abs(d.p.x - cx);
+            if (off > W * 0.22) continue;
+            if (!best || off < Math.abs(best.p.x - cx)) best = d;
+          }
+          if (best) {
+            const t = clamp(cam.pt / HOLD, 0, 1);
+            const fade = clamp(Math.sin(t * Math.PI) * 1.6, 0, 1);
+            const { o, p } = best;
+            const hpx = p.scale * o.h;
+            const wpx = o.t === 'b'
+              ? Math.max(14, p.scale * o.w)
+              : Math.max(14, p.scale * (o.cr ? o.cr * 2 : 1.6));
+            const x0 = clamp(p.x - wpx / 2, 8, W - 8 - wpx);
+            const y0 = clamp(p.base - hpx - 6, stripY + 36, H - 46);
+            const y1 = clamp(p.base + 4, y0 + 22, H - 22);
+            const bw = Math.min(wpx, W - 16 - x0);
+            const c = Math.min(14, bw * 0.3, (y1 - y0) * 0.3);
+            ctx.globalAlpha = 0.85 * fade;
+            ctx.strokeStyle = colors.primary;
+            ctx.lineWidth = 1.2;
+            const corner = (px, py, sx, sy) => {
+              ctx.beginPath();
+              ctx.moveTo(px + sx * c, py);
+              ctx.lineTo(px, py);
+              ctx.lineTo(px, py + sy * c);
+              ctx.stroke();
+            };
+            corner(x0, y0, 1, 1);
+            corner(x0 + bw, y0, -1, 1);
+            corner(x0, y1, 1, -1);
+            corner(x0 + bw, y1, -1, -1);
+            const list = CLUES[o.t] || CLUES.b;
+            const label = list[best.i % list.length];
+            ctx.globalAlpha = 0.9 * fade;
+            ctx.fillStyle = colors.text;
+            ctx.font = mono;
+            const lx = clamp(x0, 12, W - 220);
+            ctx.fillText(label, lx, y0 - 7);
+            ctx.globalAlpha = 0.4 * fade;
+            ctx.strokeStyle = colors.primary;
+            ctx.beginPath();
+            ctx.moveTo(lx, y0 - 3.5);
+            ctx.lineTo(lx + Math.min(bw, 200), y0 - 3.5);
+            ctx.stroke();
+          }
+        }
+        ctx.globalAlpha = 1;
+      };
+
+      let raf = null, last = 0;
+      const frame = (now) => {
+        const dt = last ? Math.min(0.05, (now - last) / 1000) : 0.016;
+        last = now;
+        advance(dt);
+        draw();
+        raf = window.requestAnimationFrame(frame);
+      };
+
+      layout();
+      if (reduceMotion) {
+        draw();
+      } else {
+        raf = window.requestAnimationFrame(frame);
+      }
+
+      const stop = () => {
+        if (raf != null) { window.cancelAnimationFrame(raf); raf = null; }
+      };
+      document.addEventListener('visibilitychange', () => {
+        if (reduceMotion) return;
+        if (document.hidden) { stop(); } else if (raf == null) { last = 0; raf = window.requestAnimationFrame(frame); }
+      });
+
+      let t;
+      window.addEventListener('resize', () => {
+        clearTimeout(t);
+        t = setTimeout(() => { layout(); draw(); }, 180);
+      });
+
+      // Re-resolve colours when the article flips theme.
+      const mo = new MutationObserver(() => { colors = readTheme(); draw(); });
+      mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
+    };
+
+    const bootstrap = () => {
+      document.querySelectorAll('.' + CLASS).forEach((root) => {
+        if (root.getAttribute('data-mounted')) return;
+        root.setAttribute('data-mounted', '1');
+        mount(root);
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+    } else {
+      bootstrap();
+    }
+  })();
+</script>

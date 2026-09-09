@@ -1,0 +1,288 @@
+<div class="geo-resolve" style="width:100%;">
+  <canvas class="geo-resolve__c" aria-label="A field of scattered fragments resolving into a regular lattice, left to right"></canvas>
+  <div class="geo-resolve__labels" aria-hidden="true">
+    <span class="geo-resolve__l">continuous, unlabelled</span>
+    <span class="geo-resolve__r">typed, indexed, scored</span>
+  </div>
+</div>
+
+<style>
+  .geo-resolve {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 5 / 2;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--surface-bg);
+  }
+  .geo-resolve__c {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .geo-resolve__labels {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 18px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+  /* The lattice runs right up to the labels, so each gets a scrim of the
+     panel colour behind it. Without this the right-hand label is read through
+     grid lines. */
+  .geo-resolve__l,
+  .geo-resolve__r {
+    padding: 3px 8px;
+    border-radius: 5px;
+    background: color-mix(in oklab, var(--surface-bg) 88%, transparent);
+  }
+  .geo-resolve__l { color: var(--muted-color); }
+  .geo-resolve__r { color: var(--primary-color); }
+  @media (max-width: 640px) {
+    .geo-resolve__labels { font-size: 9.5px; padding: 0 11px; }
+  }
+</style>
+
+<script>
+  (function () {
+    const TASK_PATHS = [
+      '/data/eval-tasks.json',
+      './assets/data/eval-tasks.json',
+      '../assets/data/eval-tasks.json',
+      '../../assets/data/eval-tasks.json'
+    ];
+
+    // A small deterministic PRNG, so the field looks the same on every load and
+    // does not need Math.random.
+    const rng = (seed) => () => {
+      seed = (seed * 1664525 + 1013904223) % 4294967296;
+      return seed / 4294967296;
+    };
+
+    const smooth = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
+    const mix = (a, b, t) => a + (b - a) * t;
+
+    const fetchFirst = async (paths) => {
+      for (const p of paths) {
+        try { const r = await fetch(p, { cache: 'no-cache' }); if (r.ok) return await r.json(); }
+        catch (_) { /* next candidate */ }
+      }
+      return null;
+    };
+
+    // Read the theme's own colours out of CSS rather than hardcoding any, so
+    // the canvas follows light, dark and the toggle.
+    const readTheme = (el) => {
+      const cs = getComputedStyle(el);
+      const get = (n, fb) => (cs.getPropertyValue(n) || '').trim() || fb;
+      return {
+        chaos: get('--muted-color', '#888'),
+        order: get('--primary-color', '#e08a4a'),
+        rule: get('--border-color', '#333')
+      };
+    };
+
+    // Rows and columns are derived from the box so cells stay near-square.
+    const layout = (w, h) => {
+      const cols = Math.max(14, Math.min(30, Math.round(w / 46)));
+      const rows = Math.max(6, Math.round(cols * (h / w) * 1.05));
+      return { cols, rows, cw: w / cols, ch: h / rows };
+    };
+
+    const build = (w, h, tasks) => {
+      const { cols, rows, cw, ch } = layout(w, h);
+      const rand = rng(20260908);
+      const pts = [];
+
+      // Seed the disorder from the real eval coordinates where there are
+      // enough of them, so the scatter is the actual geographic spread rather
+      // than noise. Longitude drives x, latitude drives y.
+      const seeds = (tasks && tasks.length) ? tasks : null;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const i = r * cols + c;
+          const vertical = (i % 2) === 1;
+
+          // Where this fragment ends up once ordered. Horizontals sit on the
+          // cell's top edge and verticals on its left edge, so the two meet at
+          // the corners and close into a real lattice rather than reading as
+          // loose tally marks.
+          const ox = vertical ? c * cw : c * cw + cw / 2;
+          const oy = vertical ? r * ch + ch / 2 : r * ch;
+
+          // Where it sits while still disordered. Keyed to the cell so the
+          // field covers the full width evenly, with the real eval coordinates
+          // deciding which direction it strays.
+          let jx, jy;
+          if (seeds) {
+            const s = seeds[i % seeds.length];
+            const sx = ((s.lon + 180) / 360) - 0.5;
+            const sy = ((90 - s.lat) / 180) - 0.5;
+            jx = ox + sx * cw * 3.2 + (rand() - 0.5) * cw * 0.9;
+            jy = oy + sy * ch * 3.2 + (rand() - 0.5) * ch * 0.9;
+          } else {
+            jx = ox + (rand() - 0.5) * cw * 2.8;
+            jy = oy + (rand() - 0.5) * ch * 2.8;
+          }
+
+          pts.push({
+            ox, oy, jx, jy,
+            vertical,
+            jAngle: rand() * Math.PI * 2,
+            jLen: mix(0.35, 1.15, rand()),
+            phase: rand() * Math.PI * 2,
+            weight: mix(0.6, 1.0, rand())
+          });
+        }
+      }
+      return { pts, cw, ch };
+    };
+
+    const mount = (root, tasks) => {
+      const canvas = root.querySelector('.geo-resolve__c');
+      const ctx = canvas.getContext('2d');
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      let theme = readTheme(document.documentElement);
+      let field = null;
+      let w = 0, h = 0, raf = 0, visible = true;
+
+      const resize = () => {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const rect = root.getBoundingClientRect();
+        w = Math.max(320, rect.width);
+        h = Math.max(140, rect.height);
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        field = build(w, h, tasks);
+        draw(performance.now());
+      };
+
+      const draw = (now) => {
+        if (!field) return;
+        const { pts, cw, ch } = field;
+        const t = now / 1000;
+
+        ctx.clearRect(0, 0, w, h);
+
+        // A slow wave of extra order travelling left to right. The base state
+        // is already a left-to-right gradient, so a frozen frame still reads
+        // as the whole transformation; the wave only adds life.
+        const waveX = reduced ? -2 : ((t * 0.16) % 1.6) - 0.3;
+
+        for (let i = 0; i < pts.length; i++) {
+          const p = pts[i];
+          const u = p.ox / w;
+
+          // Base order rises across the frame, held back at the very left and
+          // saturated at the right.
+          let order = smooth((u - 0.04) / 0.74);
+
+          // The wave: a soft bump that pushes nearby fragments further along.
+          const d = Math.abs(u - waveX);
+          if (d < 0.22) order = Math.min(1, order + (1 - d / 0.22) * 0.45);
+
+          // Disordered fragments breathe a little so the left side is alive.
+          const drift = reduced ? 0 : (1 - order) * Math.sin(t * 0.7 + p.phase) * 2.2;
+
+          const cx = mix(p.jx + drift, p.ox, order);
+          const cy = mix(p.jy - drift * 0.6, p.oy, order);
+
+          const target = p.vertical ? Math.PI / 2 : 0;
+          // Unwrap so the rotation takes the short way round.
+          let a0 = p.jAngle;
+          while (a0 - target > Math.PI) a0 -= Math.PI * 2;
+          while (target - a0 > Math.PI) a0 += Math.PI * 2;
+          const angle = mix(a0, target, order);
+
+          const base = p.vertical ? ch : cw;
+          const len = mix(base * p.jLen, base * 0.64, order);
+
+          const dx = Math.cos(angle) * len / 2;
+          const dy = Math.sin(angle) * len / 2;
+
+          ctx.globalAlpha = mix(0.30, 0.92, order);
+          ctx.strokeStyle = order > 0.55 ? theme.order : theme.chaos;
+          ctx.lineWidth = mix(1.0, 1.5, order) * p.weight;
+          ctx.lineCap = order > 0.8 ? 'butt' : 'round';
+
+          ctx.beginPath();
+          ctx.moveTo(cx - dx, cy - dy);
+          ctx.lineTo(cx + dx, cy + dy);
+          ctx.stroke();
+        }
+
+        // Cell corners, only where the lattice has actually formed. These are
+        // what make the right-hand side read as a grid rather than as dashes.
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = theme.order;
+        for (let i = 0; i < pts.length; i += 2) {
+          const p = pts[i];
+          const u = p.ox / w;
+          const order = smooth((u - 0.04) / 0.74);
+          if (order < 0.72) continue;
+          const r = (order - 0.72) / 0.28 * 1.5;
+          ctx.globalAlpha = (order - 0.72) / 0.28 * 0.75;
+          const gx = p.vertical ? p.ox : p.ox - cw / 2;
+          const gy = p.vertical ? p.oy - ch / 2 : p.oy;
+          ctx.beginPath();
+          ctx.arc(gx, gy, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.globalAlpha = 1;
+        if (!reduced && visible) raf = requestAnimationFrame(draw);
+      };
+
+      // Follow the theme toggle and the OS setting.
+      const reTheme = () => { theme = readTheme(document.documentElement); draw(performance.now()); };
+      new MutationObserver(reTheme).observe(document.documentElement, {
+        attributes: true, attributeFilter: ['data-theme', 'class']
+      });
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', reTheme);
+
+      // Do not burn frames while scrolled away.
+      if ('IntersectionObserver' in window) {
+        new IntersectionObserver((es) => {
+          visible = es[0].isIntersecting;
+          if (visible && !reduced) { cancelAnimationFrame(raf); raf = requestAnimationFrame(draw); }
+          else cancelAnimationFrame(raf);
+        }, { threshold: 0 }).observe(root);
+      }
+
+      let rt;
+      window.addEventListener('resize', () => {
+        clearTimeout(rt);
+        rt = setTimeout(resize, 160);
+      });
+
+      resize();
+    };
+
+    const bootstrap = async () => {
+      const nodes = document.querySelectorAll('.geo-resolve');
+      if (!nodes.length) return;
+      const tasks = await fetchFirst(TASK_PATHS);
+      nodes.forEach((root) => {
+        if (root.getAttribute('data-mounted')) return;
+        root.setAttribute('data-mounted', '1');
+        mount(root, tasks);
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap);
+    } else {
+      bootstrap();
+    }
+  })();
+</script>

@@ -1,0 +1,388 @@
+{
+ "episode": {
+  "episode_id": "90a9d3eba5ce",
+  "model_name": "haiku-4.5",
+  "model": {
+   "provider": "anthropic",
+   "model": "claude-haiku-4-5-20251001",
+   "max_tokens": 2048,
+   "temperature": null,
+   "thinking": "off",
+   "thinking_budget": null,
+   "thinking_shape": null
+  },
+  "split": "eval",
+  "index": 40,
+  "task_id": "eval-00040",
+  "country": "Italy",
+  "attribution": {
+   "creator_username": "mircozorzo",
+   "creator_id": "105552725012938",
+   "licence": "CC-BY-SA-4.0",
+   "source": "Mapillary"
+  },
+  "prompt_version": "v2"
+ },
+ "outcome": {
+  "reward": 0.8695855363224861,
+  "distance_km": 0.6187981749684509,
+  "parsed_ok": true,
+  "guess": [
+   45.6471,
+   13.7758
+  ],
+  "guess_country": "Italy",
+  "verdict": "Pinpoint",
+  "country_hit": true,
+  "region_hit": true,
+  "score_before_cost": 0.9995855363224861,
+  "n_looks": 6,
+  "n_maps": 0,
+  "n_pins": 1,
+  "n_moves": 1,
+  "truth": [
+   45.649877755846,
+   13.768901947355
+  ],
+  "action_cost": 0.13,
+  "total_moved_meters": 1.822929311142286,
+  "forced_guess": false,
+  "turns_used": 9,
+  "turns_ok": 9,
+  "turns_unparseable": 0,
+  "turns_provider_error": 0,
+  "wall_clock_s": 38.358,
+  "model_latency_s": 29.759,
+  "tokens_in": 11733,
+  "tokens_out": 1739
+ },
+ "segments": [
+  {
+   "turn": 0,
+   "kind": "reset",
+   "imageKind": "view",
+   "verb": "START",
+   "label": "reset",
+   "toolCall": "{\"action\": \"reset\"}",
+   "caption": "dropped somewhere on Earth",
+   "feedback": "Episode started.",
+   "note": null,
+   "pins": [],
+   "minimap": null,
+   "hud": {
+    "heading_deg": 0.0,
+    "fov_deg": 90.0,
+    "steps_remaining": 12,
+    "action_cost": 0.0,
+    "frame_index": 12,
+    "total_moved_meters": 0.0
+   },
+   "frames": [
+    "frames/000.jpg"
+   ],
+   "aspect": 1.0
+  },
+  {
+   "turn": 1,
+   "kind": "zoom",
+   "imageKind": "view",
+   "verb": "ZOOM",
+   "label": "zoom(fov=30\u00b0)",
+   "toolCall": "{\"action\": \"zoom\", \"fov_deg\": 30}",
+   "caption": "zooming in to 30\u00b0 field of view",
+   "feedback": "Field of view now 30 deg. 11 actions left.",
+   "note": "I'll analyze this street-level image to determine my location. From the image, I can observe: 1. **Architecture**: Classic European Renaissance/Baroque style building with ornate stone facade 2.",
+   "pins": [],
+   "minimap": null,
+   "hud": {
+    "heading_deg": 0.0,
+    "fov_deg": 30.0,
+    "steps_remaining": 11,
+    "action_cost": 0.01,
+    "frame_index": 12,
+    "total_moved_meters": 0.0
+   },
+   "frames": [
+    "frames/001.jpg",
+    "frames/002.jpg",
+    "frames/003.jpg",
+    "frames/004.jpg",
+    "frames/005.jpg",
+    "frames/006.jpg",
+    "frames/007.jpg"
+   ],
+   "aspect": 1.0
+  },
+  {
+   "turn": 2,
+   "kind": "look",
+   "imageKind": "view",
+   "verb": "LOOK",
+   "label": "look(heading=90\u00b0, fov=90\u00b0)",
+   "toolCall": "{\"action\": \"look\", \"heading_deg\": 90, \"fov_deg\": 90}",
+   "caption": "turning 90\u00b0 right, to 90\u00b0",
+   "feedback": "Facing 90 deg, 90 deg field of view. 10 actions left.",
+   "note": "I can see a storefront with \"borsa\" signage visible. The architecture shows European-style stone building with regular window patterns. Let me gather more information about the location.",
+   "pins": [],
+   "minimap": null,
+   "hud": {
+    "heading_deg": 90.0,
+    "fov_deg": 90.0,
+    "steps_remaining": 10,
+    "action_cost": 0.02,
+    "frame_index": 12,
+    "total_moved_meters": 0.0
+   },
+   "frames": [
+    "frames/008.jpg",
+    "frames/009.jpg",
+    "frames/010.jpg",
+    "frames/011.jpg",
+    "frames/012.jpg",
+    "frames/013.jpg",
+    "frames/014.jpg"
+   ],
+   "aspect": 1.0
+  },
+  {
+   "turn": 3,
+   "kind": "pin",
+   "imageKind": "map",
+   "verb": "PIN",
+   "label": "pin(45.647, 13.776)",
+   "toolCall": "{\"action\": \"place_pin\", \"lat\": 45.6471, \"lon\": 13.7758}",
+   "caption": "marking 45.647, 13.776 on the map",
+   "feedback": "Pin 1 placed at 45.6471, 13.7758 - Italy (Southern Europe). Nearest major city: Trieste, ~2 km W. 9 actions left.",
+   "note": "I'll analyze the image to determine my location. From the visible clues: 1. **\"Filatellia Nazionale\"** - Italian text on the green storefront (philately/stamp shop) 2.",
+   "pins": [
+    [
+     45.6471,
+     13.7758
+    ]
+   ],
+   "minimap": "frames/016.jpg",
+   "hud": {
+    "heading_deg": 90.0,
+    "fov_deg": 90.0,
+    "steps_remaining": 9,
+    "action_cost": 0.04,
+    "frame_index": 12,
+    "total_moved_meters": 0.0
+   },
+   "frames": [
+    "frames/015.jpg"
+   ],
+   "aspect": 2.619
+  },
+  {
+   "turn": 4,
+   "kind": "look",
+   "imageKind": "view",
+   "verb": "LOOK",
+   "label": "look(heading=0\u00b0, fov=90\u00b0)",
+   "toolCall": "{\"action\": \"look\", \"heading_deg\": 0, \"fov_deg\": 90}",
+   "caption": "turning 90\u00b0 left, to 0\u00b0",
+   "feedback": "Facing 0 deg, 90 deg field of view. 8 actions left.",
+   "note": "I can see from the previous actions that a pin has been placed in Trieste, Italy (45.6471, 13.7758). However, I need to gather more information about my actual location to determine if this is correct or if I\u2026",
+   "pins": [
+    [
+     45.6471,
+     13.7758
+    ]
+   ],
+   "minimap": "frames/016.jpg",
+   "hud": {
+    "heading_deg": 0.0,
+    "fov_deg": 90.0,
+    "steps_remaining": 8,
+    "action_cost": 0.05,
+    "frame_index": 12,
+    "total_moved_meters": 0.0
+   },
+   "frames": [
+    "frames/017.jpg",
+    "frames/018.jpg",
+    "frames/019.jpg",
+    "frames/020.jpg",
+    "frames/021.jpg",
+    "frames/022.jpg",
+    "frames/023.jpg"
+   ],
+   "aspect": 1.0
+  },
+  {
+   "turn": 5,
+   "kind": "zoom",
+   "imageKind": "view",
+   "verb": "ZOOM",
+   "label": "zoom(fov=20\u00b0)",
+   "toolCall": "{\"action\": \"zoom\", \"fov_deg\": 20}",
+   "caption": "zooming in to 20\u00b0 field of view",
+   "feedback": "Field of view now 20 deg. 7 actions left.",
+   "note": "I need to analyze what I can see in the image to determine my location. Key observations from the image: - Classical European architecture with Renaissance/Neoclassical style - Stone/ashlar facade with ornate\u2026",
+   "pins": [
+    [
+     45.6471,
+     13.7758
+    ]
+   ],
+   "minimap": "frames/016.jpg",
+   "hud": {
+    "heading_deg": 0.0,
+    "fov_deg": 20.0,
+    "steps_remaining": 7,
+    "action_cost": 0.06,
+    "frame_index": 12,
+    "total_moved_meters": 0.0
+   },
+   "frames": [
+    "frames/024.jpg",
+    "frames/025.jpg",
+    "frames/026.jpg",
+    "frames/027.jpg",
+    "frames/028.jpg",
+    "frames/029.jpg",
+    "frames/030.jpg"
+   ],
+   "aspect": 1.0
+  },
+  {
+   "turn": 6,
+   "kind": "zoom",
+   "imageKind": "view",
+   "verb": "ZOOM",
+   "label": "zoom(fov=15\u00b0)",
+   "toolCall": "{\"action\": \"zoom\", \"fov_deg\": 15}",
+   "caption": "zooming in to 15\u00b0 field of view",
+   "feedback": "Field of view now 15 deg. 6 actions left.",
+   "note": "I need to analyze what I can see in the image and the context provided. From the image, I can see: - A storefront with \"CORSO\" visible in the signage - White-framed window boxes/planters on the right -\u2026",
+   "pins": [
+    [
+     45.6471,
+     13.7758
+    ]
+   ],
+   "minimap": "frames/016.jpg",
+   "hud": {
+    "heading_deg": 0.0,
+    "fov_deg": 15.0,
+    "steps_remaining": 6,
+    "action_cost": 0.07,
+    "frame_index": 12,
+    "total_moved_meters": 0.0
+   },
+   "frames": [
+    "frames/031.jpg",
+    "frames/032.jpg",
+    "frames/033.jpg",
+    "frames/034.jpg",
+    "frames/035.jpg",
+    "frames/036.jpg",
+    "frames/037.jpg"
+   ],
+   "aspect": 1.0
+  },
+  {
+   "turn": 7,
+   "kind": "move",
+   "imageKind": "view",
+   "verb": "WALK",
+   "label": "move(forward, 15 m)",
+   "toolCall": "{\"action\": \"move\", \"direction\": \"forward\", \"meters\": 15}",
+   "caption": "walking forward 15 m down the road",
+   "feedback": "Moved 2 m forward (2 m total). 5 actions left.",
+   "note": "I need to analyze what I can see in the image and the information from previous turns. From the history: - Turn 3 placed a pin in Trieste, Italy (45.6471, 13.7758) - The location appears to be street-level in\u2026",
+   "pins": [
+    [
+     45.6471,
+     13.7758
+    ]
+   ],
+   "minimap": "frames/016.jpg",
+   "hud": {
+    "heading_deg": 0.0,
+    "fov_deg": 15.0,
+    "steps_remaining": 5,
+    "action_cost": 0.12000000000000001,
+    "frame_index": 23,
+    "total_moved_meters": 1.822929311142286
+   },
+   "frames": [
+    "frames/038.jpg",
+    "frames/039.jpg",
+    "frames/040.jpg",
+    "frames/041.jpg",
+    "frames/042.jpg",
+    "frames/043.jpg",
+    "frames/044.jpg"
+   ],
+   "aspect": 1.0
+  },
+  {
+   "turn": 8,
+   "kind": "look",
+   "imageKind": "view",
+   "verb": "LOOK",
+   "label": "look(heading=270\u00b0, fov=90\u00b0)",
+   "toolCall": "{\"action\": \"look\", \"heading_deg\": 270, \"fov_deg\": 90}",
+   "caption": "turning 90\u00b0 left, to 270\u00b0",
+   "feedback": "Facing 270 deg, 90 deg field of view. 4 actions left.",
+   "note": "I need to gather more information about this location to narrow down my guess. Let me analyze what I can see and work systematically.",
+   "pins": [
+    [
+     45.6471,
+     13.7758
+    ]
+   ],
+   "minimap": "frames/016.jpg",
+   "hud": {
+    "heading_deg": 270.0,
+    "fov_deg": 90.0,
+    "steps_remaining": 4,
+    "action_cost": 0.13,
+    "frame_index": 23,
+    "total_moved_meters": 1.822929311142286
+   },
+   "frames": [
+    "frames/045.jpg",
+    "frames/046.jpg",
+    "frames/047.jpg",
+    "frames/048.jpg",
+    "frames/049.jpg",
+    "frames/050.jpg",
+    "frames/051.jpg"
+   ],
+   "aspect": 1.0
+  },
+  {
+   "turn": 9,
+   "kind": "guess",
+   "imageKind": "map",
+   "verb": "GUESS",
+   "label": "guess(45.647, 13.776)",
+   "toolCall": "{\"action\": \"submit_guess\", \"lat\": 45.6471, \"lon\": 13.7758}",
+   "caption": "final answer: 45.647, 13.776",
+   "feedback": "Pinpoint - 1 km away. True location 45.6499, 13.7689 (Italy). Score 1.000 minus 0.13 action cost = 0.870.",
+   "note": null,
+   "pins": [
+    [
+     45.6471,
+     13.7758
+    ]
+   ],
+   "minimap": "frames/016.jpg",
+   "hud": {
+    "heading_deg": 270.0,
+    "fov_deg": 90.0,
+    "steps_remaining": 4,
+    "action_cost": 0.13,
+    "frame_index": 23,
+    "total_moved_meters": 1.822929311142286
+   },
+   "frames": [
+    "frames/052.jpg"
+   ],
+   "aspect": 2.619
+  }
+ ]
+}

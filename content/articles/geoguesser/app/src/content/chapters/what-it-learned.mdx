@@ -1,0 +1,102 @@
+import HtmlEmbed from "../../components/HtmlEmbed.astro";
+import Note from "../../components/Note.astro";
+
+### What it actually learned
+
+The model stopped exploring.
+
+
+<HtmlEmbed
+  src="d3-progression.html"
+  title="Behaviour across checkpoints"
+  desc="Turns, output tokens and zero-scoring episodes all fall together while accuracy improves. Score plateaus by step 200."
+  frameless
+/>
+
+<Note variant="info">
+**Pro tip: serve every checkpoint from one endpoint.** Training leaves you with a series of LoRA adapters rather than a series of models, and vLLM will hold a base model plus up to eight adapters at the same time behind `--enable-lora`. Each adapter is addressable as its own model name, so a sweep across eight checkpoints costs one GPU-hour instead of eight. Two things to check: the adapters have to have been trained on the base you are serving, since vLLM will happily load a 2B adapter onto a 4B base and answer anyway, and it is worth asking `/v1/models` what is actually loaded before you record a single score.
+</Note>
+
+| checkpoint | eval score | turns | looks | pins | output tokens | scored zero | median error |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| base | 0.4825 | 6.7 | 2.2 | 2.1 | 1062 | 29.5% | 1226 km |
+| step 50 | 0.4968 | 4.8 | 1.5 | 1.7 | 602 | 25.4% | 1308 km |
+| step 100 | 0.5600 | 2.6 | 0.6 | 0.9 | 186 | 18.5% | 964 km |
+| step 150 | 0.6113 | 1.3 | 0.0 | 0.2 | 50 | 5.2% | 714 km |
+| step 200 | 0.6393 | 1.1 | 0.0 | 0.1 | 46 | 1.9% | 675 km |
+| step 500 | 0.6350 | 1.1 | 0.0 | 0.1 | 86 | 2.1% | 709 km |
+| step 1000 | **0.6445** | 1.1 | 0.0 | 0.1 | 66 | **0.5%** | **662 km** |
+
+Turns fell from 6.7 to 1.1. Looks went to zero. Output tokens dropped from about a thousand to sixty. By step 150 the policy had essentially stopped using the environment at all.
+
+And its accuracy went *up*. Median error nearly halved, 1226 km to 662 km, country identification rose from 21% to 33%, and the share of episodes scoring exactly zero fell from 29.5% to 0.5%.
+
+That last column is worth being precise about, because I got it wrong myself for a while. Those are not episodes where the model ran out of turns without answering; non-submission is essentially absent from this sweep. They are episodes where it *did* answer and landed past the reward's cliff, which on the game curve sits somewhere between 3,300 and 4,500 km depending on how many actions the episode spent. Almost a third of the untrained model's guesses were that wrong. One in two hundred of the trained model's were.
+
+#### So it is just guessing a random point?
+
+This is the first thing everyone asks, and the collapse in output tokens makes it a fair question. The answer is no, and the evidence is in the same table.
+
+A random guess on land averages something like 8,000 km of error. This model's median is 662 km. It names the right country a third of the time, up from a fifth. It puts a fifth of its guesses inside 200 km of the truth. Guesses beyond the cliff, the ones a coin flip would produce, drop from 29.5% of episodes to 0.5%. None of that is what random looks like.
+
+What it is doing is recognising the region from the first frame and committing to a plausible city in it. You can see that in the raw traces: the same coordinates recur across independent rollouts, 41.9028/12.4964 for Italian scenes, 60.1282/24.78 for Scandinavian ones. That is recall of where cities are, applied to a visual prior about what a place looks like. It is one glance and one decision rather than a chain of deductions, but the glance is doing real work.
+
+The uncomfortable part is not that it guesses. It is that deliberation was making a 4B model *worse*, and the training found that out before I did.
+
+#### Was it reward hacking?
+
+When a policy stops doing the task and scores better, the first assumption should be reward hacking. I spent a day trying to find the exploit. The candidates were the pin loop leaking target information, the task identity being visible in an observation, prompt or metadata leaking the answer, and plain memorisation of the training split.
+
+None of them held up. The pin loop returns only what is at the pinned coordinate. Task identity is hidden. And the memorisation story does not survive arithmetic: a full 1000-step run at one task per step touches 1,000 of 3,452 tasks, one group each, never repeated. The eval split shares no sequence with training and sits at least 1 km away from any training task. On top of that, the gains are measured on 200 held-out tasks it has never seen.
+
+#### The reward has a cliff, not a slope
+
+What actually happened is simpler and more interesting. Under the game curve, everything past roughly 3,500 km scores exactly zero, and that was happening to nearly a third of untrained episodes. So the largest win available to the policy was not being catastrophically wrong, and the fastest route to that was to stop reasoning itself into a different continent and commit to its first instinct instead. The gain is that plus a genuinely sharper prior about where street scenes look like they are.
+
+<HtmlEmbed
+  src="d3-commit-vs-score.html"
+  title="Turns against score, every model on the board"
+  desc="Across the nine models I did not train, more turns go with a lower score, r = −0.75. Marker size is the share of episodes that scored zero."
+  frameless
+/>
+
+The effect generalises past my own checkpoints, which is what convinced me it was the reward rather than my training. Across the nine off-the-shelf models I never touched, score correlates with turns per episode at **r = −0.75**: the ones that deliberate longest do worst. It correlates with the zero-scoring share at **r = −0.96**, though that one is partly the same measurement twice, since both are functions of the same distances. The turn count is the finding. Models that commit early win, mine and theirs alike.
+
+<Note variant="warning">
+I want to be straight about what that means. I set out to build a model that reads road signs and I trained one that recalls a plausible city and commits. It is genuinely more accurate, and it is not cheating, but it is not the visual agent I was aiming for. That is a finding about reward design.
+
+The direction it points is counter-intuitive: run 1 carried the *largest* action cost of my three runs and collapsed hardest. A higher cost buys a faster commit, not more careful looking. Making evidence-gathering worthwhile needs a *lower* action cost, plus a curve with no cliff at all, so that a careful episode landing 4,000 km out still scores better than a careless one landing 12,000 km out. Under the game curve those two are identical, and a policy cannot learn from a distinction the reward does not make.
+</Note>
+
+#### Where it landed
+
+All arms on the same 200 held-out tasks, pass@4, 800 episodes each, scored through the same curve.
+
+<HtmlEmbed
+  src="d3-board.html"
+  title="The finished board"
+  desc="Mean-of-4 on 200 held-out tasks, 800 episodes per arm. The trained 4B is second of eleven."
+  frameless
+/>
+
+| model | mean-of-4 | median error |
+|---|---:|---:|
+| claude-sonnet-5 | 0.6952 | 324 km |
+| **run 1, step 1000** (Qwen3.5-4B + LoRA) | **0.6445** | 662 km |
+| gpt-5.4-mini | 0.5732 | 753 km |
+| claude-haiku-4.5 | 0.5374 | 939 km |
+| Qwen3.5-122B-A10B | 0.5338 | 767 km |
+| *Qwen3.5-4B, untrained* | *0.4825* | *1226 km* |
+| Qwen3.5-9B | 0.4776 | 1203 km |
+| Qwen3.5-35B-A3B | 0.4483 | 1485 km |
+| Qwen3.5-27B | 0.4478 | 1289 km |
+| Qwen3.5-397B-A17B | 0.4466 | 1420 km |
+| gpt-5.4-nano | 0.3748 | 2541 km |
+
+Second of eleven. It beats `gpt-5.4-mini`, `haiku-4.5`, and every Qwen3.5 up to 397B, a model roughly a hundred times its size. It loses to `claude-sonnet-5` by 0.0508.
+
+The improvement over its own base is **+0.1620**, paired per task, 95% CI ±0.0137, better on 169 of 200 tasks. Ten hours and about $100.
+
+<Note>
+One caveat arrives from the same table: the run plateaued by **step 200**. Step 200 scores 0.6393 against step 1000's 0.6445, which is inside the noise. The remaining 800 steps span a 0.013 band across nineteen checkpoints and bought nothing but about $70 of A100. If you reproduce this, stop at 250.
+</Note>

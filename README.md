@@ -47,6 +47,18 @@ demos on **[🤗 huggingface.co/HuggingEnvs](https://huggingface.co/HuggingEnvs)
 Each numbered folder is a **self-contained, end-to-end project** — its own environments, notebooks,
 results and README, plus the Hub repos it owns. They read in order but stand alone.
 
+<!-- BEGIN:projects -->
+| # | Project | What you get | Envs | Frameworks | Deployed | Status |
+|---|---|---|:--:|:--:|:--:|---|
+| **00** | **[RL Environments 101](./00-environments-101/)** | Three environments, six frameworks, side by side. | 3 | 6 | 8 | ✅ stable |
+| **01** | **[LaTeX OCR](./01-latex-ocr/)** | Train Qwen3-VL-2B to read math images into LaTeX, with a verifiable reward. | 1 | 1 | 1 | 📓 notebook |
+| **02** | **[Watercolour](./02-watercolour/)** | Train Qwen3.5-35B-A3B to paint watercolours by writing p5.brush sketches, rewarded by an aesthetic preference model. | 1 | 1 | 0 | ✅ trained |
+| **03** | **[GeoGuesser](./03-geoguesser/)** | Drop a VLM at a random street corner on Earth and score it on kilometres of error. | 1 | 1 | 1 | ✅ stable |
+<!-- END:projects -->
+
+<sub>Generated from each project's `project.yaml` by `tools/build_index.py`. Adding a project means
+editing that manifest, not this table.</sub>
+
 ### [00 · RL Environments 101](./00-environments-101/) &nbsp;<sub>3 environments · 6 frameworks · 8 live Spaces</sub>
 
 **One env, six ways.** Three environments, each implemented six times — same logic, six framework
@@ -83,6 +95,19 @@ hand-rated reference pool, so the reward is somebody's taste. Three reward mixes
 compared, every artifact published, and the full story in
 [the blog post](https://huggingface.co/blog/train-to-paint-with-code).
 
+### [03 · GeoGuesser](./03-geoguesser/) &nbsp;<sub>train a VLM to place itself on Earth</sub>
+
+**A game as an environment.** Projects 01 and 02 score one shot. This one is multi-turn: the agent
+looks around, walks down the road, zooms on a sign, pins a candidate, and commits.
+
+Qwen3.5-4B learns visual geolocation with GRPO against a
+[playable OpenEnv Space](https://huggingface.co/spaces/HuggingEnvs/geoguesser-env) serving real
+Mapillary panoramas, scored on kilometres of error. It ends up ahead of `gpt-5.4-mini` and
+`claude-haiku-4.5` on a 200-task held-out split and behind only `claude-sonnet-5`, for about $100.
+Ten hours on four A100s, or one GPU if you are in no hurry. Three training runs, the reward
+redesigned once, and every measurement bug written down in
+[the article](https://huggingface.co/spaces/HuggingEnvs/geoguesser-article).
+
 > **More coming.** Each new project is another end-to-end recipe: an environment, a training run, and
 > the artifacts on the Hub. [Proposals and contributions welcome →](./CONTRIBUTING.md)
 
@@ -95,6 +120,20 @@ Hub as a Space.
 
 <table>
 <tr>
+<td width="33%" valign="top">
+
+<a href="https://huggingface.co/spaces/HuggingEnvs/geoguesser-article"><img src="./assets/content/geoguesser.png" alt="How to turn a game into an RL environment: the technical intuition"></a>
+
+#### [How to turn a game into an RL environment](https://huggingface.co/spaces/HuggingEnvs/geoguesser-article)
+
+![Article](https://img.shields.io/badge/-article-4F46E5) ![Live](https://img.shields.io/badge/-live%20space-FFD21E)
+
+The technical intuition, worked end to end: curating the data, designing the environment, shipping it
+with OpenEnv, and training a 4B against it with TRL until it outscored `gpt-5.4-mini` at GeoGuessr.
+
+<sub>📂 [`content/articles/geoguesser/`](./content/articles/geoguesser/) · project [`03-geoguesser/`](./03-geoguesser/)</sub>
+
+</td>
 <td width="33%" valign="top">
 
 <a href="https://huggingface.co/spaces/AdithyaSK/rl-environments-guide"><img src="./assets/content/guide.png" alt="The ultimate guide to RL environments: building and scaling them in the LLM era"></a>

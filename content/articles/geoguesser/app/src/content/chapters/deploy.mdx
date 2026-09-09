@@ -1,0 +1,48 @@
+import HtmlEmbed from "../../components/HtmlEmbed.astro";
+import Note from "../../components/Note.astro";
+
+## Deploying and sharing it
+
+An environment nobody else can run is a private result. Sharing it buys transparency, which is the thing I actually care about: a number someone else can regenerate is a claim, and a number nobody else can reach is an anecdote. The Hugging Face Hub is the best place I know to get that, because the environment, the data, the trained adapters and the training curves can all sit next to each other and all be pulled by a stranger holding one URL.
+
+Shipping it also keeps the training honest. If the trainer and the eval harness both talk to one hosted environment over HTTP, there is no chance of measuring against a subtly different thing than you trained on.
+
+### Let the Hub hold the parts it is good at
+
+The useful thing about Hub infrastructure is that there is a repo type per kind of artifact and they compose: a bucket for bulk bytes, a dataset for anything that must be versioned, a Space for anything that must be running, model repos for weights, Jobs for GPUs you rent by the hour. One token addresses all of it.
+
+<HtmlEmbed
+  src="hub-infra.html"
+  title="Where each piece lives, and what talks to what"
+  desc="Storage in a Bucket and a Dataset, the running environment on a Space with the bucket mounted read-only, GPUs rented per run through Jobs, and one HTTP URL that the trainer, the eval harness and a browser all reach."
+  frameless
+/>
+
+How I used each of them, and why:
+
+**A Storage Bucket for the imagery.** 22 GB of panoramas cannot live in a Space image, and Space disk is ephemeral anyway. A bucket is mutable object storage, which is exactly right for something a harvest tops up over time, and it mounts read-only into the Space at `/data`. Scale is the point: the cache can keep growing without a single commit.
+
+**A dataset repo for the task indexes.** These are 8 MB of metadata, and they are the part that has to be *frozen*. A bucket is not versioned, so a benchmark living in one can change under you silently. In a dataset repo, a change to a split appears in history where a reviewer can see it.
+
+**A Space for the environment.** One image serves the browser game, the MCP tools and the HTTP simulation routes. Locally the indexes and imagery come from the checkout; on the Space they arrive through the mount, and nothing but environment variables differs between the two.
+
+**Model repos for the adapters.** Both trained models are LoRA adapters rather than merged weights, so they are tens of megabytes. Anyone can pull one, point it at the same Space, and check my numbers.
+
+**Jobs for the GPUs.** Training and checkpoint serving both run as Jobs, rented per run rather than kept: ten hours on four A100s, around $100. The same CLI stands up a vLLM endpoint for an eval sweep and tears it down afterwards.
+
+**A Trackio Space for the curves.** All four runs report into one dashboard, which is what makes them readable against each other rather than one at a time.
+
+```bash
+export HF_TOKEN=hf_...
+python dataset/deploy_hub.py --all      # bucket, dataset and Space
+python dataset/deploy_hub.py --space    # code only, fast iteration
+python dataset/deploy_hub.py --verify   # check a live deployment
+```
+
+Parity between local and hosted is checked rather than assumed: the same task returns the same image checksum, the same reward and the same distance from either. Part of what makes that true is that the Space runs with `GEOGUESSER_ALLOW_FETCH=0`, so a missing frame raises instead of quietly reaching out to Mapillary. The store is complete by construction, so a miss means the mount is wrong, and you want to hear about that immediately rather than after six hours of a run silently going over the network.
+
+<Note>
+`openenv push` is deliberately not used here. It cannot attach a bucket volume, and its default excludes would have uploaded 22 GB of panoramas into git.
+</Note>
+
+Once it is up, anyone can play the environment in a browser, and any trainer or eval harness can reach it over HTTP with no checkout, no imagery and no GPU.

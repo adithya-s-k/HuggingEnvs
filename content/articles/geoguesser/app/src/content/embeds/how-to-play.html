@@ -1,0 +1,250 @@
+<div class="how-to-play" style="width:100%;margin:14px 0;">
+  <div class="htp">
+
+    <div class="htp__phase" data-phase="gather">
+      <div class="htp__phase-head">
+        <span class="htp__num">1</span>
+        <span class="htp__phase-name">Look around</span>
+        <span class="htp__phase-note">as many times as you like, each action costs a little reward</span>
+      </div>
+      <div class="htp__tools">
+        <div class="htp__tool">
+          <svg viewBox="0 0 40 40" aria-hidden="true">
+            <circle class="s-dim" cx="20" cy="20" r="14"/>
+            <path class="s-fill" d="M20 20 L33 11 A15.9 15.9 0 0 1 33 29 Z"/>
+            <circle class="s-dot" cx="20" cy="20" r="2.4"/>
+            <text class="s-tag" x="20" y="37" text-anchor="middle">90&#176;</text>
+          </svg>
+          <b>look</b>
+          <span>Turn the camera. Signage, road markings, which side traffic drives on.</span>
+        </div>
+        <div class="htp__tool">
+          <svg viewBox="0 0 40 40" aria-hidden="true">
+            <circle class="s-dim" cx="20" cy="20" r="14"/>
+            <path class="s-fill" d="M20 20 L34.4 16.2 A14.9 14.9 0 0 1 34.4 23.8 Z"/>
+            <circle class="s-dot" cx="20" cy="20" r="2.4"/>
+            <text class="s-tag" x="20" y="37" text-anchor="middle">30&#176;</text>
+          </svg>
+          <b>zoom</b>
+          <span>Narrow the view to read something distant. 90&deg; rarely resolves text.</span>
+        </div>
+        <div class="htp__tool">
+          <svg viewBox="0 0 40 40" aria-hidden="true">
+            <path class="s-line" d="M8 30 L32 30"/>
+            <circle class="s-dot" cx="14" cy="30" r="2.6"/>
+            <circle class="s-dot-2" cx="26" cy="30" r="2.6"/>
+            <path class="s-line" d="M17 24 L24 24 M24 24 L21 21 M24 24 L21 27"/>
+          </svg>
+          <b>move</b>
+          <span>Walk along the road to reach a sign you cannot read from here.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="htp__arrow" aria-hidden="true">
+      <svg viewBox="0 0 24 40"><path d="M12 4 L12 30 M12 30 L7 24 M12 30 L17 24"/></svg>
+    </div>
+
+    <div class="htp__phase" data-phase="test">
+      <div class="htp__phase-head">
+        <span class="htp__num">2</span>
+        <span class="htp__phase-name">Test a guess on the map</span>
+        <span class="htp__phase-note">as often as you like, and back to looking whenever</span>
+      </div>
+      <div class="htp__tools">
+        <div class="htp__tool htp__tool--wide">
+          <svg viewBox="0 0 40 40" aria-hidden="true">
+            <path class="s-line" d="M6 26 Q13 20 20 26 T34 26"/>
+            <path class="s-fill" d="M20 8 a5 5 0 0 1 5 5 c0 4-5 9-5 9 s-5-5-5-9 a5 5 0 0 1 5-5z"/>
+            <circle class="s-hole" cx="20" cy="13" r="1.8"/>
+          </svg>
+          <b>place_pin</b>
+          <span>
+            Drop a coordinate on the world map. It reports <em>what is there</em>: the country,
+            the nearest city, the distance from your last pin.
+          </span>
+        </div>
+      </div>
+      <p class="htp__trap">
+        It never tells you whether you are close to the answer. If it did, the best strategy would
+        be binary search, and the game would be about bisection instead of geography.
+      </p>
+    </div>
+
+    <div class="htp__arrow" aria-hidden="true">
+      <svg viewBox="0 0 24 40"><path d="M12 4 L12 30 M12 30 L7 24 M12 30 L17 24"/></svg>
+    </div>
+
+    <div class="htp__phase htp__phase--final" data-phase="commit">
+      <div class="htp__phase-head">
+        <span class="htp__num">3</span>
+        <span class="htp__phase-name">Commit</span>
+        <span class="htp__phase-note">terminal, one guess per episode</span>
+      </div>
+      <div class="htp__tools">
+        <div class="htp__tool htp__tool--wide">
+          <svg viewBox="0 0 40 40" aria-hidden="true">
+            <circle class="s-ring" cx="20" cy="20" r="15"/>
+            <circle class="s-ring" cx="20" cy="20" r="9.5"/>
+            <circle class="s-target" cx="20" cy="20" r="3.6"/>
+          </svg>
+          <b>submit_guess</b>
+          <span>
+            Your latitude and longitude. Scored on kilometres of error, and running out of
+            turns without guessing scores zero.
+          </span>
+        </div>
+      </div>
+      <div class="htp__reward">
+        <div class="htp__reward-cap">how the guess is scored</div>
+        <svg viewBox="0 0 320 62" preserveAspectRatio="none" aria-hidden="true">
+          <path class="r-area" d="M0,6 C40,10 80,24 120,36 C170,49 240,56 320,58 L320,62 L0,62 Z"/>
+          <path class="r-line" d="M0,6 C40,10 80,24 120,36 C170,49 240,56 320,58"/>
+        </svg>
+        <div class="htp__reward-axis">
+          <span>0 km, reward 1.0</span>
+          <span>1,500 km, reward 0.37</span>
+          <span>far, reward 0</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+  .htp {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--surface-bg);
+    padding: 20px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .htp__phase { padding: 2px 0; }
+  .htp__phase-head {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 9px;
+    margin-bottom: 11px;
+  }
+  .htp__num {
+    flex: none;
+    width: 20px; height: 20px;
+    border-radius: 999px;
+    display: grid; place-items: center;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    color: var(--surface-bg);
+    background: var(--primary-color);
+  }
+  .htp__phase-name {
+    font-size: 15px;
+    font-weight: 650;
+    color: var(--text-color);
+  }
+  .htp__phase-note {
+    font-size: 12px;
+    color: var(--muted-color);
+  }
+
+  .htp__tools {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  @media (max-width: 620px) {
+    .htp__tools { grid-template-columns: 1fr; }
+  }
+  .htp__tool {
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    grid-template-rows: auto auto;
+    column-gap: 10px;
+    align-items: center;
+    padding: 11px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: color-mix(in oklab, var(--muted-color) 4%, transparent);
+  }
+  .htp__tool--wide { grid-column: 1 / -1; }
+  .htp__tool svg { grid-row: 1 / span 2; width: 34px; height: 34px; }
+  .htp__tool b {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-color);
+  }
+  .htp__tool span {
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--muted-color);
+  }
+  .htp__tool em { color: var(--text-color); font-style: normal; font-weight: 600; }
+
+  /* icon strokes and fills, all from theme tokens */
+  .htp svg .s-dim   { fill: none; stroke: var(--border-color); stroke-width: 1.4; }
+  .htp svg .s-fill  { fill: color-mix(in oklab, var(--primary-color) 30%, transparent);
+                      stroke: var(--primary-color); stroke-width: 1.2; }
+  .htp svg .s-dot   { fill: var(--primary-color); }
+  .htp svg .s-dot-2 { fill: none; stroke: var(--primary-color); stroke-width: 1.4; }
+  .htp svg .s-line  { fill: none; stroke: var(--muted-color); stroke-width: 1.4;
+                      stroke-linecap: round; }
+  .htp svg .s-hole  { fill: var(--surface-bg); }
+  .htp svg .s-ring  { fill: none; stroke: var(--border-color); stroke-width: 1.4; }
+  .htp svg .s-target{ fill: var(--primary-color); }
+  .htp svg .s-tag {
+    fill: var(--muted-color);
+    font-size: 8.5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  .htp__arrow { display: grid; place-items: center; height: 26px; }
+  .htp__arrow svg { width: 16px; height: 26px; }
+  .htp__arrow path {
+    fill: none;
+    stroke: var(--border-color);
+    stroke-width: 1.6;
+    stroke-linecap: round;
+  }
+
+  .htp__trap {
+    margin: 10px 0 0;
+    padding-left: 11px;
+    border-left: 2px solid var(--primary-color);
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--muted-color);
+  }
+
+  .htp__reward { margin-top: 11px; }
+  .htp__reward-cap {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    margin-bottom: 4px;
+  }
+  .htp__reward svg { display: block; width: 100%; height: 54px; }
+  .htp__reward .r-line {
+    fill: none;
+    stroke: var(--primary-color);
+    stroke-width: 1.6;
+    vector-effect: non-scaling-stroke;
+  }
+  .htp__reward .r-area {
+    fill: color-mix(in oklab, var(--primary-color) 12%, transparent);
+    stroke: none;
+  }
+  .htp__reward-axis {
+    display: flex;
+    justify-content: space-between;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px;
+    color: var(--muted-color);
+    margin-top: 2px;
+  }
+</style>
