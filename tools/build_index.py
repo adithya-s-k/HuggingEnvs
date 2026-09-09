@@ -30,6 +30,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 STATUS_ICON = {
     "stable": "✅ stable",
+    "trained": "✅ trained",
     "notebook-only": "📓 notebook",
     "wip": "🚧 wip",
 }

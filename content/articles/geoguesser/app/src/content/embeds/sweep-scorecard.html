@@ -1,0 +1,171 @@
+<div class="sweep-card" style="width:100%;margin:14px 0;min-height:520px;"></div>
+
+<style>
+  .sweep-card {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--surface-bg);
+    padding: 16px 14px 12px;
+    overflow-x: auto;
+  }
+  .sweep-card table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 660px;
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .sweep-card thead th {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    font-weight: 500;
+    text-align: right;
+    padding: 0 7px 7px;
+    border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
+    vertical-align: bottom;
+  }
+  .sweep-card thead th.l { text-align: left; }
+  .sweep-card tbody td {
+    padding: 5px 7px;
+    text-align: right;
+    color: var(--text-color);
+    border-bottom: 1px solid color-mix(in oklab, var(--border-color) 45%, transparent);
+    white-space: nowrap;
+  }
+  .sweep-card tbody tr:last-child td { border-bottom: none; }
+  .sweep-card td.name {
+    text-align: left;
+    max-width: 210px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sweep-card td.name span { color: var(--muted-color); font-size: 11px; }
+  .sweep-card tr.pick td { background: color-mix(in oklab, var(--primary-color) 9%, transparent); }
+  .sweep-card tr.pick td.name { font-weight: 650; }
+
+  /* A bar drawn inside the cell, so a column can be read as a shape without
+     needing a separate chart. */
+  .sweep-card .cell {
+    position: relative;
+    display: block;
+    padding: 2px 5px;
+    border-radius: 3px;
+    isolation: isolate;
+  }
+  .sweep-card .cell::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: var(--w, 0%);
+    border-radius: 3px;
+    background: var(--fill, color-mix(in oklab, var(--muted-color) 22%, transparent));
+    z-index: -1;
+  }
+  .sweep-card .cell.good { --fill: color-mix(in oklab, var(--primary-color) 26%, transparent); }
+  .sweep-card .cell.bad  { --fill: color-mix(in oklab, var(--danger-color, #b4462f) 24%, transparent); }
+
+  .sweep-card .foot {
+    margin: 10px 2px 0;
+    font-size: 11.5px;
+    line-height: 1.55;
+    color: var(--muted-color);
+  }
+  .sweep-card .foot b { color: var(--text-color); font-weight: 600; }
+  .sweep-card .foot code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+  }
+</style>
+
+<script>
+  (function () {
+    const PATHS = [
+      '/data/baseline-sweep.json',
+      './assets/data/baseline-sweep.json',
+      '../assets/data/baseline-sweep.json',
+      '../../assets/data/baseline-sweep.json'
+    ];
+
+    const fetchFirst = async (paths) => {
+      for (const p of paths) {
+        try { const r = await fetch(p, { cache: 'no-cache' }); if (r.ok) return await r.json(); }
+        catch (_) { /* next */ }
+      }
+      return null;
+    };
+
+    // Columns, and how each maps to a bar. `invert` means smaller is better,
+    // `bad` means the bar marks a failure rather than an achievement.
+    const COLS = [
+      { key: 'reward',     label: 'reward',      fmt: v => v.toFixed(3), good: true },
+      { key: 'median_km',  label: 'median km',   fmt: v => v.toLocaleString(), invert: true },
+      { key: 'within25',   label: '≤ 25 km', fmt: v => String(v), good: true },
+      { key: 'within200',  label: '≤ 200 km', fmt: v => String(v), good: true },
+      { key: 'turns',      label: 'turns',       fmt: v => v.toFixed(1) },
+      { key: 'forced',     label: 'never guessed', fmt: v => String(v), bad: true },
+      { key: 'fabricated', label: 'fabricated',  fmt: v => String(v), bad: true }
+    ];
+
+    const render = (root, rows) => {
+      const max = {};
+      COLS.forEach(c => { max[c.key] = Math.max(...rows.map(r => r[c.key])) || 1; });
+
+      const head = '<tr><th class="l">#</th><th class="l">model</th>' +
+        COLS.map(c => `<th>${c.label}</th>`).join('') + '</tr>';
+
+      const body = rows.map((r) => {
+        // The 4B is the model this project went on to train, so it is marked.
+        const pick = (r.name === 'Qwen3.5-4B' && r.provider === 'local');
+        const cells = COLS.map((c) => {
+          const v = r[c.key];
+          const frac = c.invert ? (1 - v / max[c.key]) : (v / max[c.key]);
+          const cls = c.good ? ' good' : (c.bad && v > 0 ? ' bad' : '');
+          const w = Math.max(0, Math.min(1, frac)) * 100;
+          const show = (c.bad && v === 0) ? '0' : c.fmt(v);
+          return `<td><span class="cell${cls}" style="--w:${w.toFixed(1)}%">${show}</span></td>`;
+        }).join('');
+        return `<tr class="${pick ? 'pick' : ''}">` +
+          `<td>${r.rank}</td>` +
+          `<td class="name">${r.name}` +
+            (r.provider ? ` <span>${r.provider}</span>` : '') +
+          `</td>${cells}</tr>`;
+      }).join('');
+
+      root.innerHTML =
+        `<table><thead>${head}</thead><tbody>${body}</tbody></table>` +
+        '<p class="foot">' +
+        '15 models, 200 tasks each, 3,000 episodes, scored on the environment\'s own reward curve. ' +
+        '<b>never guessed</b> counts episodes that ran out of turns without submitting, which is an ' +
+        'instruction-following failure rather than a geography one. <b>fabricated</b> counts replies ' +
+        'that wrote the environment\'s own side of the exchange, inventing tool results for turns ' +
+        'that never happened. The highlighted row is the model this project went on to train.' +
+        '</p>';
+    };
+
+    const bootstrap = async () => {
+      const nodes = document.querySelectorAll('.sweep-card');
+      if (!nodes.length) return;
+      const rows = await fetchFirst(PATHS);
+      nodes.forEach((root) => {
+        if (root.getAttribute('data-mounted')) return;
+        root.setAttribute('data-mounted', '1');
+        if (!rows) {
+          root.innerHTML = '<div style="padding:24px;color:var(--muted-color);font-size:13px">' +
+            'baseline-sweep.json not found. Expected at /data/baseline-sweep.json</div>';
+          return;
+        }
+        render(root, rows);
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap);
+    } else {
+      bootstrap();
+    }
+  })();
+</script>

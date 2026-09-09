@@ -1,0 +1,24 @@
+spec_version: 1
+name: geoguesser_env
+type: space
+runtime: fastapi
+app: server.app:app
+port: 8000
+
+# Applied as Space variables when this environment is deployed. The paths point
+# at a Storage Bucket mounted read-only at /data, because ~31 GB of panoramas
+# cannot live in the Space image: Space disk is ephemeral and capped well below
+# that. Locally these are unset and the server falls back to repo-relative
+# defaults, so the same image serves both.
+variables:
+  GEOGUESSER_TASKS_EVAL: /data/tasks/eval_pano_v3.jsonl
+  GEOGUESSER_TASKS_TRAIN: /data/tasks/train_pano_v3.jsonl
+  GEOGUESSER_DEFAULT_SPLIT: train
+  GEOGUESSER_CACHE: /data/panos
+  # A mounted bucket makes the dataset complete, so a cache miss is a bug
+  # rather than something to paper over with a network call.
+  GEOGUESSER_ALLOW_FETCH: "0"
+  # The street overlay is fetched per agent pin, so it cannot be pre-warmed.
+  # This is also the code default; it is stated here so a deployment reads as
+  # a complete configuration rather than relying on one.
+  GEOGUESSER_STREET_DETAIL: "0"

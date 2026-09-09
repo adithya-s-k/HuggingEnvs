@@ -1,0 +1,76 @@
+<div class="tk">
+  <div class="tk__frame">
+    <iframe
+      src="https://huggingenvs-geoguesser-trackio.hf.space/?project=geoguesser&amp;smoothing=30"
+      title="All four training runs in one Trackio project"
+      loading="lazy"
+      allow="clipboard-write"
+      referrerpolicy="no-referrer-when-downgrade"></iframe>
+  </div>
+  <p class="tk__note">
+    The whole dashboard, live: all four runs, every metric each of them logged, and the sidebar to
+    filter and group them. Every training figure in this article is built from this same database.
+    One thing to know if you go exploring: the x axis defaults to the logging step, which ticks
+    twice per optimizer step, so switch it to <code>train/global_step</code> to line it up with the
+    checkpoint numbers.
+    <a href="https://huggingface.co/spaces/HuggingEnvs/geoguesser-trackio"
+    target="_blank" rel="noopener">Open it in a new tab</a> for more room.
+  </p>
+</div>
+
+<style>
+  /* Same break-out as the playable environment: a dashboard at text width is
+     not readable, and this is the other thing on the page worth touching. */
+  .tk {
+    position: relative;
+    width: min(80vw, 1600px);
+    margin-left: 50%;
+    transform: translateX(-50%);
+    margin-top: 18px;
+    margin-bottom: 40px;
+  }
+  .tk__frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    border: 1px solid var(--primary-color);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--surface-bg);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary-color) 10%, transparent);
+  }
+  .tk__frame iframe { display: block; width: 100%; height: 100%; border: 0; }
+  .tk__frame::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: radial-gradient(120% 100% at 50% 0%,
+      color-mix(in oklab, var(--primary-color) 10%, transparent) 0%,
+      transparent 60%);
+    animation: tkWake 2.4s ease-in-out infinite;
+  }
+  @keyframes tkWake {
+    0%, 100% { opacity: 0.45; }
+    50%      { opacity: 1; }
+  }
+  .tk__note {
+    margin: 9px 0 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--muted-color);
+    text-align: center;
+  }
+  .tk__note a { color: var(--primary-color); }
+  .tk__note code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px;
+  }
+  @media (max-width: 700px) {
+    .tk { width: 100%; margin-left: 0; transform: none; }
+    .tk__frame { aspect-ratio: 4 / 5; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tk__frame::before { animation: none; }
+  }
+</style>

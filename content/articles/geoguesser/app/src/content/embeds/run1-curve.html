@@ -1,0 +1,410 @@
+<div class="r1" style="width:100%;margin:14px 0;min-height:440px;">
+  <div class="r1__frame">
+    <div class="r1__head">
+      <div class="r1__legend">
+        <span class="r1__key r1__key--smooth">training reward, smoothed</span>
+        <span class="r1__key r1__key--raw">one task per step, raw</span>
+        <span class="r1__key r1__key--eval">held-out eval, mean of 4</span>
+        <span class="r1__key r1__key--base">every other model, same 200 tasks</span>
+      </div>
+      <button class="r1__btn" data-act="replay">replay</button>
+    </div>
+
+    <div class="r1__chart"><svg viewBox="0 0 860 330" role="img"
+      aria-label="Run 1: training reward and held-out eval reward rising from the untrained baseline"></svg></div>
+
+    <div class="r1__read">
+      <div class="r1__stat"><span>optimizer step</span><b class="r1__step">0</b></div>
+      <div class="r1__stat"><span>training reward</span><b class="r1__train">·</b></div>
+      <div class="r1__stat"><span>eval reward</span><b class="r1__eval">·</b></div>
+      <div class="r1__stat"><span>vs baseline</span><b class="r1__delta">·</b></div>
+      <div class="r1__stat"><span>turns per episode</span><b class="r1__turns">·</b></div>
+      <div class="r1__stat"><span>entropy</span><b class="r1__entropy">·</b></div>
+      <div class="r1__stat"><span>models passed</span><b class="r1__passed">·</b></div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .r1__frame {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--surface-bg);
+    padding: 14px 15px 13px;
+  }
+  .r1__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .r1__legend { display: flex; flex-wrap: wrap; gap: 12px; }
+  .r1__key {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    color: var(--muted-color);
+  }
+  .r1__key::before { content: ""; width: 14px; height: 2px; border-radius: 2px; }
+  .r1__key--smooth::before { background: var(--primary-color); height: 3px; }
+  .r1__key--raw::before {
+    background: color-mix(in oklab, var(--primary-color) 32%, transparent);
+  }
+  .r1__key--eval::before { background: var(--text-color); }
+  .r1__key--base::before {
+    background: repeating-linear-gradient(to right,
+      var(--muted-color) 0 4px, transparent 4px 7px);
+  }
+  .r1__btn {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px;
+    color: var(--text-color);
+    background: color-mix(in oklab, var(--muted-color) 8%, transparent);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 2px 9px;
+    cursor: pointer;
+  }
+  .r1__btn:hover { border-color: var(--primary-color); }
+
+  .r1__chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .r1 .grid { stroke: var(--border-color); stroke-opacity: 0.5; stroke-width: 0.6; }
+  .r1 .tick {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    fill: var(--muted-color);
+  }
+  .r1 .ref-line, .r1 .ref-tie {
+    fill: none;
+    stroke: color-mix(in oklab, var(--muted-color) 42%, transparent);
+    stroke-width: 0.8;
+  }
+  .r1 .ref-lbl {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    fill: var(--muted-color);
+  }
+  /* The untrained 4B is the one the run starts from, so it is dashed. */
+  .r1 .ref--base .ref-line { stroke-dasharray: 4 3; stroke-width: 1.1; }
+  .r1 .ref--base .ref-lbl { fill: var(--text-color); }
+  /* A reference the run has already overtaken. */
+  .r1 .ref.is-passed .ref-line,
+  .r1 .ref.is-passed .ref-tie {
+    stroke: color-mix(in oklab, var(--primary-color) 55%, transparent);
+  }
+  .r1 .ref.is-passed .ref-lbl { fill: var(--primary-color); }
+  .r1 .raw {
+    fill: none;
+    stroke: color-mix(in oklab, var(--primary-color) 24%, transparent);
+    stroke-width: 0.6;
+  }
+  .r1 .smooth {
+    fill: none;
+    stroke: var(--primary-color);
+    stroke-width: 2.2;
+    stroke-linejoin: round;
+  }
+  .r1 .eval-line {
+    fill: none;
+    stroke: var(--text-color);
+    stroke-width: 1.2;
+    stroke-opacity: 0.75;
+  }
+  .r1 .eval-dot { fill: var(--text-color); stroke: var(--surface-bg); stroke-width: 1.2; }
+  .r1 .eval-lbl {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    fill: var(--text-color);
+  }
+  .r1 .sweep { stroke: var(--primary-color); stroke-width: 0.8; stroke-opacity: 0.5; }
+  .r1 .head-dot { fill: var(--primary-color); }
+
+  .r1__read {
+    margin-top: 11px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-color);
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 10px;
+  }
+  @media (max-width: 720px) {
+    .r1__read { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .r1__frame { padding-right: 12px; }
+  }
+  .r1__stat span {
+    display: block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 8.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    margin-bottom: 2px;
+  }
+  .r1__stat b {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 14px;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
+  }
+  .r1__delta { color: var(--primary-color) !important; }
+</style>
+
+<script>
+  (function () {
+    const paths = (name) => [
+      `/data/${name}`,
+      `./assets/data/${name}`,
+      `../assets/data/${name}`,
+      `../../assets/data/${name}`
+    ];
+    const RUN_MS = 9000;      // how long one pass takes
+
+    const ns = 'http://www.w3.org/2000/svg';
+    const el = (name, attrs, text) => {
+      const n = document.createElementNS(ns, name);
+      Object.entries(attrs).forEach(([k, v]) => n.setAttribute(k, v));
+      if (text !== undefined) n.textContent = text;
+      return n;
+    };
+
+    const fetchFirst = async (paths) => {
+      for (const p of paths) {
+        try { const r = await fetch(p, { cache: 'no-cache' }); if (r.ok) return await r.json(); }
+        catch (_) { /* next */ }
+      }
+      return null;
+    };
+
+    const mount = (root, data, board) => {
+      const svg = root.querySelector('.r1__chart svg');
+      const train = data.train;
+      const evals = data.eval;
+      const lastStep = train[train.length - 1].step;
+
+      // A wide right gutter, because every reference line is labelled there.
+      const M = { l: 34, r: 168, t: 14, b: 24 };
+      const W = 860, H = 330;
+      const iw = W - M.l - M.r, ih = H - M.t - M.b;
+      const X = (s) => M.l + (s / lastStep) * iw;
+      const Y = (v) => M.t + (1 - v) * ih;
+
+      // Static furniture, drawn once.
+      const statics = el('g', {});
+      [0, 0.25, 0.5, 0.75, 1].forEach((v) => {
+        statics.appendChild(el('line', { class: 'grid', x1: M.l, x2: W - M.r, y1: Y(v), y2: Y(v) }));
+        statics.appendChild(el('text', {
+          class: 'tick', x: M.l - 6, y: Y(v) + 3, 'text-anchor': 'end'
+        }, v.toFixed(2)));
+      });
+      [0, 250, 500, 750, 1000].forEach((s) => {
+        statics.appendChild(el('text', {
+          class: 'tick', x: X(s), y: H - 8, 'text-anchor': 'middle'
+        }, String(s)));
+      });
+      statics.appendChild(el('text', {
+        class: 'tick', x: M.l + 3, y: M.t + 9, 'text-anchor': 'start'
+      }, 'x: optimizer step'));
+
+      // Everything the run is being measured against, on the same mean-of-4
+      // scale over the same 200 tasks. The untrained 4B is one of them.
+      const refs = board
+        .filter((r) => r.kind !== 'ours')
+        .map((r) => ({
+          name: r.name.replace(' (untrained)', ''),
+          mean: r.mean,
+          base: r.kind === 'base'
+        }))
+        .sort((a, b) => b.mean - a.mean);
+
+      // Greedy de-collision: labels keep their order and get pushed apart just
+      // enough to stay readable.
+      const MIN_GAP = 12;
+      const labelY = [];
+      refs.forEach((r, i) => {
+        let y = Y(r.mean);
+        if (i > 0 && y - labelY[i - 1] < MIN_GAP) y = labelY[i - 1] + MIN_GAP;
+        labelY.push(y);
+      });
+
+      const refNodes = refs.map((r, i) => {
+        const g = el('g', { class: `ref${r.base ? ' ref--base' : ''}` });
+        g.appendChild(el('line', {
+          class: 'ref-line', x1: M.l, x2: W - M.r, y1: Y(r.mean), y2: Y(r.mean)
+        }));
+        // A little elbow when the label had to move off its line.
+        g.appendChild(el('path', {
+          class: 'ref-tie',
+          d: `M${W - M.r},${Y(r.mean)}L${W - M.r + 6},${labelY[i]}L${W - M.r + 9},${labelY[i]}`
+        }));
+        g.appendChild(el('text', {
+          class: 'ref-lbl', x: W - M.r + 13, y: labelY[i] + 3
+        }, `${r.name}  ${r.mean.toFixed(3)}`));
+        statics.appendChild(g);
+        return { ...r, node: g };
+      });
+
+      const rawPath = el('path', { class: 'raw', d: '' });
+      const smoothPath = el('path', { class: 'smooth', d: '' });
+      const evalLine = el('path', { class: 'eval-line', d: '' });
+      const dots = el('g', {});
+      const sweep = el('line', { class: 'sweep', y1: M.t, y2: M.t + ih, x1: M.l, x2: M.l });
+      const head = el('circle', { class: 'head-dot', r: 3.4, cx: M.l, cy: Y(train[0].smooth) });
+
+      svg.innerHTML = '';
+      [statics, rawPath, evalLine, smoothPath, dots, sweep, head].forEach((n) => svg.appendChild(n));
+
+      const out = {
+        step: root.querySelector('.r1__step'),
+        train: root.querySelector('.r1__train'),
+        eval: root.querySelector('.r1__eval'),
+        delta: root.querySelector('.r1__delta'),
+        turns: root.querySelector('.r1__turns'),
+        entropy: root.querySelector('.r1__entropy')
+      };
+
+      const seg = (pts, key) => 'M' + pts
+        .map((p) => `${X(p.step).toFixed(1)},${Y(p[key]).toFixed(1)}`).join('L');
+
+      const frame = (idx) => {
+        const upto = train.slice(0, Math.max(2, idx + 1));
+        const cur = upto[upto.length - 1];
+        rawPath.setAttribute('d', seg(upto, 'reward'));
+        smoothPath.setAttribute('d', seg(upto, 'smooth'));
+        sweep.setAttribute('x1', X(cur.step));
+        sweep.setAttribute('x2', X(cur.step));
+        head.setAttribute('cx', X(cur.step));
+        head.setAttribute('cy', Y(cur.smooth));
+
+        const seen = evals.filter((e) => e.step <= cur.step);
+        evalLine.setAttribute('d', seen.length > 1
+          ? 'M' + seen.map((e) => `${X(e.step).toFixed(1)},${Y(e.mean).toFixed(1)}`).join('L')
+          : '');
+        dots.innerHTML = '';
+        seen.forEach((e, i) => {
+          dots.appendChild(el('circle', {
+            class: 'eval-dot', cx: X(e.step), cy: Y(e.mean), r: 3.6
+          }));
+          // Label only the ends, so the line stays readable.
+          if (i === 0 || i === seen.length - 1) {
+            dots.appendChild(el('text', {
+              class: 'eval-lbl', x: X(e.step) + 7, y: Y(e.mean) - 6
+            }, e.mean.toFixed(3)));
+          }
+        });
+
+        const last = seen[seen.length - 1];
+        let passed = 0;
+        refNodes.forEach((r) => {
+          const over = last && last.mean > r.mean;
+          if (over && !r.base) passed += 1;
+          r.node.classList.toggle('is-passed', !!over);
+        });
+        root.querySelector('.r1__passed').textContent =
+          `${passed} of ${refNodes.filter((r) => !r.base).length}`;
+        out.step.textContent = cur.step;
+        out.train.textContent = cur.smooth.toFixed(3);
+        out.eval.textContent = last ? last.mean.toFixed(4) : '·';
+        out.delta.textContent = last
+          ? `${last.mean - data.baseline >= 0 ? '+' : ''}${(last.mean - data.baseline).toFixed(4)}`
+          : '·';
+        out.turns.textContent = last ? last.turns.toFixed(1) : '·';
+        out.entropy.textContent = cur.entropy !== undefined ? cur.entropy.toFixed(2) : '·';
+      };
+
+      // A timer rather than requestAnimationFrame: a background tab throttles
+      // rAF to nothing, and the visibility guard below is what actually saves
+      // the work. 40 ms is smooth enough for two paths and a few markers.
+      const TICK_MS = 40;
+      let timer = 0, running = false;
+      // It plays once, the first time the reader reaches it, and then holds the
+      // finished chart. `elapsed` is kept across pauses so scrolling away and
+      // back resumes rather than restarting.
+      let elapsed = 0, lastTick = 0, done = false;
+
+      const tick = () => {
+        const now = performance.now();
+        elapsed += now - lastTick;
+        lastTick = now;
+        const p = Math.min(1, elapsed / RUN_MS);
+        // Ease out, so the busy first fifth of the run is not a blur.
+        const eased = 1 - Math.pow(1 - p, 1.6);
+        frame(Math.floor(eased * (train.length - 1)));
+        if (p >= 1) {
+          done = true;
+          stop();
+        }
+      };
+
+      const start = () => {
+        if (running || done) return;
+        running = true;
+        lastTick = performance.now();
+        timer = setInterval(tick, TICK_MS);
+      };
+      const stop = () => {
+        running = false;
+        clearInterval(timer);
+      };
+
+      root.querySelector('[data-act="replay"]').addEventListener('click', () => {
+        stop();
+        elapsed = 0;
+        done = false;
+        frame(0);
+        start();
+      });
+
+      let onScreen = false;
+      const sync = () => {
+        if (onScreen && document.visibilityState === 'visible') start();
+        else stop();
+      };
+      document.addEventListener('visibilitychange', sync);
+
+      frame(0);
+
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        frame(train.length - 1);
+        return;
+      }
+      if ('IntersectionObserver' in window) {
+        new IntersectionObserver((es) => {
+          onScreen = es[0].isIntersecting;
+          sync();
+        }, { rootMargin: '-10% 0px -10% 0px', threshold: 0 }).observe(root);
+      } else {
+        onScreen = true;
+        sync();
+      }
+    };
+
+    const bootstrap = async () => {
+      const nodes = document.querySelectorAll('.r1');
+      if (!nodes.length) return;
+      const [data, board] = await Promise.all([
+        fetchFirst(paths('run1-curve.json')),
+        fetchFirst(paths('board.json'))
+      ]);
+      nodes.forEach((root) => {
+        if (root.getAttribute('data-mounted')) return;
+        root.setAttribute('data-mounted', '1');
+        if (!data) {
+          root.innerHTML = '<div style="padding:24px;color:var(--muted-color);font-size:13px">' +
+            'run1-curve.json not found. Build it with scripts/build_run1_curve.py</div>';
+          return;
+        }
+        mount(root, data, board || []);
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap);
+    } else {
+      bootstrap();
+    }
+  })();
+</script>

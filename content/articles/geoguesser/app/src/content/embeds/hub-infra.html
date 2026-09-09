@@ -1,0 +1,238 @@
+<div class="hub" style="width:100%;margin:14px 0;">
+  <div class="hub__frame">
+
+    <div class="hub__band">
+      <div class="hub__band-cap">storage, one repo type per kind of thing</div>
+      <div class="hub__cards">
+        <div class="hub__card">
+          <div class="hub__card-top">
+            <span class="hub__kind">Storage Bucket</span>
+            <span class="hub__size">22 GB</span>
+          </div>
+          <b>geoguesser-panos</b>
+          <span>86,395 panoramas. Mutable object storage, so a harvest can top it up without a commit.</span>
+        </div>
+        <div class="hub__card">
+          <div class="hub__card-top">
+            <span class="hub__kind">Dataset</span>
+            <span class="hub__size">8 MB</span>
+          </div>
+          <b>geoguesser-tasks</b>
+          <span>The task indexes alone. Versioned, so a change to a frozen benchmark shows up in history.</span>
+        </div>
+        <div class="hub__card">
+          <div class="hub__card-top">
+            <span class="hub__kind">Models</span>
+            <span class="hub__size">2 &times; 40 MB</span>
+          </div>
+          <b>…-4b-grpo, …-grpo-v3</b>
+          <span>LoRA adapters, not merged weights. Small enough that anyone can pull one and reproduce a score.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hub__wires" aria-hidden="true">
+      <div class="hub__wire">
+        <span>mounted read-only at <code>/data</code></span>
+      </div>
+    </div>
+
+    <div class="hub__band hub__band--run">
+      <div class="hub__band-cap">compute</div>
+      <div class="hub__cards">
+        <div class="hub__card hub__card--live">
+          <div class="hub__card-top">
+            <span class="hub__kind hub__kind--live">Space</span>
+            <span class="hub__size">CPU</span>
+          </div>
+          <b>geoguesser-env</b>
+          <span>
+            The environment itself, always on. Serves the browser game, the MCP tools and the
+            HTTP simulation routes from one image.
+          </span>
+          <div class="hub__pills">
+            <span class="hub__pill">8 concurrent sessions</span>
+            <span class="hub__pill"><code>ALLOW_FETCH=0</code></span>
+          </div>
+        </div>
+        <div class="hub__card hub__card--live">
+          <div class="hub__card-top">
+            <span class="hub__kind hub__kind--live">Jobs</span>
+            <span class="hub__size">4 &times; A100</span>
+          </div>
+          <b>training and serving</b>
+          <span>
+            Rented per run, not kept. The same CLI serves a checkpoint behind vLLM for an eval
+            sweep and tears it down after.
+          </span>
+          <div class="hub__pills">
+            <span class="hub__pill">10 h, about $100</span>
+          </div>
+        </div>
+        <div class="hub__card hub__card--live">
+          <div class="hub__card-top">
+            <span class="hub__kind hub__kind--live">Space</span>
+            <span class="hub__size">CPU</span>
+          </div>
+          <b>geoguesser-trackio</b>
+          <span>All four training runs in one dashboard, so the runs can be read against each other rather than one at a time.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hub__wires" aria-hidden="true">
+      <div class="hub__wire hub__wire--split">
+        <span>HTTP, the same hosted environment for both</span>
+      </div>
+    </div>
+
+    <div class="hub__band">
+      <div class="hub__band-cap">who connects, and from where</div>
+      <div class="hub__cards hub__cards--three">
+        <div class="hub__card hub__card--client">
+          <b>the trainer</b>
+          <span>Eight sessions, one per rollout in a GRPO group.</span>
+        </div>
+        <div class="hub__card hub__card--client">
+          <b>the eval harness</b>
+          <span>The same URL, the same splits. Nothing to install, no imagery, no GPU.</span>
+        </div>
+        <div class="hub__card hub__card--client">
+          <b>anyone with a browser</b>
+          <span>Plays a round, or points their own model at the tools.</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <p class="hub__foot">
+    The property worth designing for is the middle row reading the top row the same way everywhere.
+    Locally the indexes and imagery sit in the checkout; on the Space they arrive through the mount.
+    Splits, step budget, street labels and offline enforcement are identical, and checked: the same
+    task returns the same image checksum, reward and distance from either.
+  </p>
+</div>
+
+<style>
+  .hub__frame {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--surface-bg);
+    padding: 16px 15px 18px;
+  }
+  .hub__band-cap {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    margin-bottom: 7px;
+  }
+  .hub__cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+  @media (max-width: 780px) {
+    .hub__cards { grid-template-columns: 1fr; }
+  }
+
+  .hub__card {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 9px 11px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    background: color-mix(in oklab, var(--muted-color) 5%, transparent);
+    min-width: 0;
+  }
+  .hub__card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .hub__kind {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted-color);
+  }
+  .hub__size {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    color: var(--muted-color);
+    font-variant-numeric: tabular-nums;
+  }
+  .hub__card b {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    color: var(--text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .hub__card span:not(.hub__kind):not(.hub__size):not(.hub__pill) {
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--muted-color);
+  }
+  .hub__card code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+  }
+
+  /* The running things carry the accent; storage stays quiet. */
+  .hub__card--live {
+    background: color-mix(in oklab, var(--primary-color) 7%, transparent);
+    border-color: color-mix(in oklab, var(--primary-color) 32%, var(--border-color));
+  }
+  .hub__kind--live { color: var(--primary-color); }
+  .hub__card--client {
+    background: transparent;
+    border-style: dashed;
+  }
+
+  .hub__pills { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; }
+  .hub__pill {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--text-color);
+    background: color-mix(in oklab, var(--primary-color) 16%, transparent);
+  }
+
+  .hub__wires { padding: 9px 0; }
+  .hub__wire {
+    position: relative;
+    display: grid;
+    place-items: center;
+    height: 18px;
+  }
+  .hub__wire::before {
+    content: "";
+    position: absolute;
+    left: 8%; right: 8%; top: 50%;
+    height: 1px;
+    background: repeating-linear-gradient(to right,
+      var(--border-color) 0 5px, transparent 5px 10px);
+  }
+  .hub__wire span {
+    position: relative;
+    background: var(--surface-bg);
+    padding: 0 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    color: var(--muted-color);
+  }
+  .hub__wire code { font-size: 9.5px; }
+
+  .hub__foot {
+    margin: 11px 2px 0;
+    font-size: 11.5px;
+    line-height: 1.55;
+    color: var(--muted-color);
+  }
+</style>

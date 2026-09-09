@@ -1,0 +1,505 @@
+<div class="rc" style="width:100%;margin:14px 0;min-height:470px;">
+  <div class="rc__frame">
+    <div class="rc__head">
+      <div class="rc__examples" role="group" aria-label="tasks"></div>
+      <div class="rc__bar">
+        <button class="rc__btn" data-act="prev" aria-label="previous turn">&#8592;</button>
+        <button class="rc__btn rc__btn--play" data-act="play" aria-label="play or pause">pause</button>
+        <button class="rc__btn" data-act="next" aria-label="next turn">&#8594;</button>
+        <span class="rc__clock"></span>
+      </div>
+    </div>
+    <div class="rc__map"></div>
+    <div class="rc__lanes"></div>
+  </div>
+</div>
+
+<style>
+  .rc__frame {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--surface-bg);
+    padding: 14px 15px 14px;
+  }
+  .rc__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .rc__examples { display: flex; flex-wrap: wrap; gap: 5px; }
+  .rc__ex {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 5px;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--muted-color);
+    cursor: pointer;
+  }
+  .rc__ex:hover { border-color: var(--primary-color); color: var(--text-color); }
+  .rc__ex.is-on {
+    color: var(--text-color);
+    border-color: color-mix(in oklab, var(--primary-color) 55%, var(--border-color));
+    background: color-mix(in oklab, var(--primary-color) 13%, transparent);
+  }
+
+  .rc__bar { display: flex; align-items: center; gap: 5px; }
+  .rc__btn {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    color: var(--text-color);
+    background: color-mix(in oklab, var(--muted-color) 8%, transparent);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 2px 8px;
+    cursor: pointer;
+  }
+  .rc__btn:hover { border-color: var(--primary-color); }
+  .rc__btn--play { min-width: 54px; }
+  .rc__clock {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    color: var(--muted-color);
+    min-width: 62px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rc__map svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .rc .land {
+    fill: color-mix(in oklab, var(--muted-color) 15%, var(--surface-bg));
+    stroke: color-mix(in oklab, var(--muted-color) 34%, var(--surface-bg));
+    stroke-width: 0.4;
+  }
+  .rc .sphere { fill: none; stroke: var(--border-color); stroke-width: 0.7; }
+  .rc .graticule { fill: none; stroke: var(--border-color); stroke-opacity: 0.4; stroke-width: 0.4; }
+
+  .rc .truth-ring { fill: none; stroke: var(--text-color); stroke-width: 1.2; }
+  .rc .truth-dot { fill: var(--text-color); }
+
+  /* The untrained wandering is drawn cold, the trained guess warm. */
+  .rc .base-link {
+    fill: none;
+    stroke: color-mix(in oklab, var(--muted-color) 62%, transparent);
+    stroke-width: 1;
+    stroke-dasharray: 3 3;
+  }
+  .rc .base-pin {
+    fill: color-mix(in oklab, var(--surface-bg) 70%, var(--muted-color));
+    stroke: var(--muted-color);
+    stroke-width: 1.1;
+  }
+  .rc .base-final { fill: var(--muted-color); stroke: var(--surface-bg); stroke-width: 1; }
+  .rc .ckpt-pin { fill: var(--primary-color); stroke: var(--surface-bg); stroke-width: 1; }
+  .rc .drop { animation: rcDrop .32s ease-out; }
+  @keyframes rcDrop { from { r: 0; opacity: 0 } to { opacity: 1 } }
+  .rc .miss { fill: none; stroke-width: 1.1; stroke-dasharray: 4 3; }
+  .rc .miss--base { stroke: color-mix(in oklab, var(--muted-color) 75%, transparent); }
+  .rc .miss--ckpt { stroke: var(--primary-color); }
+  .rc .miss--draw { animation: rcDraw .85s ease-out forwards; }
+  @keyframes rcDraw { from { opacity: 0 } to { opacity: 1 } }
+
+  .rc text {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+  }
+  .rc .lbl { fill: var(--muted-color); }
+  .rc .lbl--truth { fill: var(--text-color); }
+  .rc .lbl--ckpt { fill: var(--primary-color); }
+  .rc .ord { fill: var(--muted-color); font-size: 8.5px; }
+
+  .rc__lanes { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .rc__lane {
+    display: grid;
+    grid-template-columns: 124px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 11px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 9px 11px;
+  }
+  .rc__lane--ckpt {
+    border-color: color-mix(in oklab, var(--primary-color) 38%, var(--border-color));
+    background: color-mix(in oklab, var(--primary-color) 6%, transparent);
+  }
+  @media (max-width: 720px) {
+    .rc__lane { grid-template-columns: 1fr; }
+  }
+  .rc__who b {
+    display: block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px;
+    color: var(--text-color);
+  }
+  .rc__who span { font-size: 10px; color: var(--muted-color); }
+
+  .rc__chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; min-height: 20px; }
+  .rc__chip {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--muted-color);
+    background: color-mix(in oklab, var(--muted-color) 12%, transparent);
+    white-space: nowrap;
+    opacity: 0.22;
+    transition: opacity .18s ease;
+  }
+  .rc__chip.is-seen { opacity: 1; }
+  .rc__chip.is-now { outline: 1px solid var(--primary-color); outline-offset: 1px; }
+  .rc__chip--bad {
+    color: var(--text-color);
+    border: 1px dashed color-mix(in oklab, var(--muted-color) 60%, transparent);
+    background: transparent;
+  }
+  .rc__chip--guess { color: var(--surface-bg); background: var(--primary-color); }
+  .rc__done {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    color: var(--muted-color);
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .rc__done.is-on { opacity: 1; }
+
+  .rc__stats { display: flex; gap: 12px; }
+  .rc__stat { text-align: right; }
+  .rc__stat b {
+    display: block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
+  }
+  .rc__stat span {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 8.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted-color);
+  }
+  .rc__stat.is-pending b { color: var(--muted-color); opacity: 0.4; }
+</style>
+
+<script>
+  (function () {
+    const LIBS = [
+      'https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js',
+      'https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js'
+    ];
+    const LAND = 'https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json';
+    const PATHS = [
+      '/data/rollout-compare.json',
+      './assets/data/rollout-compare.json',
+      '../assets/data/rollout-compare.json',
+      '../../assets/data/rollout-compare.json'
+    ];
+    const STEP_MS = 800;
+    const END_HOLD_MS = 2600;
+
+    const CHIP = {
+      look: 'look', pan: 'pan', zoom: 'zoom', move: 'move',
+      place_pin: 'pin', reverse_geocode: 'geocode', view_map: 'map',
+      measure: 'measure', list_pins: 'pins', clear_pins: 'clear',
+      guess: 'guess', submit_guess: 'guess', unparseable: 'unparseable'
+    };
+
+    const loadOnce = (src) => new Promise((resolve) => {
+      const found = document.querySelector(`script[data-lib="${src}"]`);
+      if (found) {
+        if (found.dataset.loaded) return resolve();
+        return found.addEventListener('load', () => resolve(), { once: true });
+      }
+      const s = document.createElement('script');
+      s.src = src;
+      s.dataset.lib = src;
+      s.addEventListener('load', () => { s.dataset.loaded = '1'; resolve(); }, { once: true });
+      s.addEventListener('error', () => resolve(), { once: true });
+      document.head.appendChild(s);
+    });
+
+    const fetchFirst = async (paths) => {
+      for (const p of paths) {
+        try { const r = await fetch(p, { cache: 'no-cache' }); if (r.ok) return await r.json(); }
+        catch (_) { /* next */ }
+      }
+      return null;
+    };
+
+    const km = (v) => (v < 10 ? v.toFixed(1) : Math.round(v).toLocaleString());
+    const ns = 'http://www.w3.org/2000/svg';
+
+    const mount = (root, data, land) => {
+      const d3 = window.d3;
+      const mapHost = root.querySelector('.rc__map');
+      const laneHost = root.querySelector('.rc__lanes');
+      const exHost = root.querySelector('.rc__examples');
+      const clock = root.querySelector('.rc__clock');
+      const playBtn = root.querySelector('.rc__btn--play');
+
+      let ei = 0, step = 0, timer = 0, playing = false;
+      let ex, base, ckpt, projection, svg, layers, laneRefs;
+
+      const totalSteps = () => Math.max(...ex.arms.map((a) => a.turns.length));
+
+      // ---------- the map, redrawn per example ----------
+      const buildMap = () => {
+        mapHost.innerHTML = '';
+        const W = 960, H = 360;
+        svg = d3.select(mapHost).append('svg')
+          .attr('viewBox', `0 0 ${W} ${H}`)
+          .attr('role', 'img')
+          .attr('aria-label',
+            `Where each policy pinned on task ${ex.task.index} in ${ex.task.country}`)
+          .node();
+
+        projection = d3.geoEquirectangular()
+          .fitExtent([[6, 14], [W - 6, H - 10]], { type: 'Sphere' });
+        const path = d3.geoPath(projection);
+        const add = (name, attrs) => {
+          const n = document.createElementNS(ns, name);
+          Object.entries(attrs).forEach(([k, v]) => n.setAttribute(k, v));
+          svg.appendChild(n);
+          return n;
+        };
+
+        add('path', { class: 'sphere', d: path({ type: 'Sphere' }) });
+        add('path', { class: 'graticule', d: path(d3.geoGraticule10()) });
+        if (land && window.topojson) {
+          add('path', { class: 'land', d: path(window.topojson.feature(land, land.objects.land)) });
+        }
+
+        layers = { arcs: add('g', {}), pins: add('g', {}), labels: add('g', {}) };
+
+        const truth = projection([ex.task.truth[1], ex.task.truth[0]]);
+        add('circle', { class: 'truth-ring', cx: truth[0], cy: truth[1], r: 8 });
+        add('circle', { class: 'truth-dot', cx: truth[0], cy: truth[1], r: 2 });
+        const t = add('text', {
+          class: 'lbl lbl--truth', x: truth[0] + 12, y: truth[1] - 12
+        });
+        t.textContent = `true location, ${ex.task.country}`;
+      };
+
+      const arcPath = (a, b) => window.d3.geoPath(projection)({
+        type: 'LineString', coordinates: [[a[1], a[0]], [b[1], b[0]]]
+      });
+
+      // ---------- lanes ----------
+      const buildLanes = () => {
+        laneHost.innerHTML = '';
+        laneRefs = ex.arms.map((a) => {
+          const isBase = a.model === 'base';
+          const lane = document.createElement('div');
+          lane.className = `rc__lane${isBase ? '' : ' rc__lane--ckpt'}`;
+          lane.innerHTML =
+            `<div class="rc__who"><b>${isBase ? 'base model' : 'run 1, step 1000'}</b>` +
+            `<span>${isBase ? 'untrained Qwen3.5-4B' : 'the same model, trained'}</span></div>` +
+            `<div class="rc__chips">${a.turns.map((t) => {
+              const bad = t.kind === 'unparseable' ||
+                (t.status && String(t.status).startsWith('invalid_action'));
+              const cls = bad ? ' rc__chip--bad'
+                : (t.kind === 'guess' || t.kind === 'submit_guess') ? ' rc__chip--guess' : '';
+              return `<span class="rc__chip${cls}">${CHIP[t.kind] || t.kind}</span>`;
+            }).join('')}<span class="rc__done">committed</span></div>` +
+            `<div class="rc__stats">
+               <div class="rc__stat"><b>${a.turns.length}</b><span>turns</span></div>
+               <div class="rc__stat"><b>${a.tokens.toLocaleString()}</b><span>tokens out</span></div>
+               <div class="rc__stat is-pending" data-km><b>${km(a.distance_km)}</b><span>km off</span></div>
+               <div class="rc__stat is-pending" data-r><b>${a.reward.toFixed(3)}</b><span>reward</span></div>
+             </div>`;
+          laneHost.appendChild(lane);
+          return {
+            arm: a,
+            chips: [...lane.querySelectorAll('.rc__chip')],
+            done: lane.querySelector('.rc__done'),
+            pending: [...lane.querySelectorAll('.rc__stat.is-pending, .rc__stat[data-km], .rc__stat[data-r]')]
+          };
+        });
+      };
+
+      // ---------- one frame ----------
+      const paint = (animate) => {
+        clock.textContent = `turn ${Math.min(step + 1, totalSteps())} of ${totalSteps()}`;
+
+        layers.pins.innerHTML = '';
+        layers.arcs.innerHTML = '';
+        layers.labels.innerHTML = '';
+
+        ex.arms.forEach((a) => {
+          const isBase = a.model === 'base';
+          const seen = a.turns.slice(0, step + 1);
+          const pinCount = seen.filter((t) => t.pin !== null).length;
+          const pins = a.pins.slice(0, pinCount);
+
+          if (isBase && pins.length > 1) {
+            const p = document.createElementNS(ns, 'path');
+            p.setAttribute('class', 'base-link');
+            p.setAttribute('d', 'M' + pins
+              .map((q) => projection([q.lon, q.lat]).join(',')).join('L'));
+            layers.arcs.appendChild(p);
+          }
+
+          pins.forEach((q, i) => {
+            const xy = projection([q.lon, q.lat]);
+            const c = document.createElementNS(ns, 'circle');
+            const cls = isBase ? (q.final ? 'base-final' : 'base-pin') : 'ckpt-pin';
+            const fresh = animate && i === pins.length - 1;
+            c.setAttribute('class', `${cls}${fresh ? ' drop' : ''}`);
+            c.setAttribute('cx', xy[0]);
+            c.setAttribute('cy', xy[1]);
+            c.setAttribute('r', q.final ? 4.4 : 3.4);
+            layers.pins.appendChild(c);
+
+            if (isBase) {
+              const lb = document.createElementNS(ns, 'text');
+              lb.setAttribute('class', 'ord');
+              lb.setAttribute('x', xy[0] + 6);
+              lb.setAttribute('y', xy[1] - 5);
+              lb.textContent = `t${q.turn}`;
+              layers.labels.appendChild(lb);
+            }
+          });
+
+          // The miss line and the score arrive only once the arm has committed.
+          const committed = pins.some((q) => q.final);
+          const ref = laneRefs.find((r) => r.arm === a);
+          ref.done.classList.toggle('is-on', committed);
+          ref.pending.forEach((n) => n.classList.toggle('is-pending', !committed));
+          ref.chips.forEach((c, i) => {
+            c.classList.toggle('is-seen', i <= step);
+            c.classList.toggle('is-now', i === step);
+          });
+
+          if (committed) {
+            const p = document.createElementNS(ns, 'path');
+            p.setAttribute('class',
+              `miss miss--${isBase ? 'base' : 'ckpt'}${animate ? ' miss--draw' : ''}`);
+            p.setAttribute('d', arcPath(ex.task.truth, a.guess));
+            layers.arcs.appendChild(p);
+
+            const g = projection([a.guess[1], a.guess[0]]);
+            const lb = document.createElementNS(ns, 'text');
+            lb.setAttribute('class', `lbl${isBase ? '' : ' lbl--ckpt'}`);
+            lb.setAttribute('x', g[0] + (isBase ? -8 : 10));
+            lb.setAttribute('y', g[1] + 15);
+            lb.setAttribute('text-anchor', isBase ? 'end' : 'start');
+            lb.textContent = `${isBase ? 'base' : 'trained'}, ${km(a.distance_km)} km off`;
+            layers.labels.appendChild(lb);
+          }
+        });
+      };
+
+      // ---------- playback ----------
+      const tick = () => {
+        if (step >= totalSteps() - 1) {
+          timer = setTimeout(() => { step = 0; paint(false); timer = setTimeout(tick, STEP_MS); },
+            END_HOLD_MS);
+          return;
+        }
+        step += 1;
+        paint(true);
+        timer = setTimeout(tick, STEP_MS);
+      };
+      const play = () => {
+        if (playing) return;
+        playing = true;
+        playBtn.textContent = 'pause';
+        timer = setTimeout(tick, STEP_MS);
+      };
+      const pause = () => {
+        playing = false;
+        playBtn.textContent = 'play';
+        clearTimeout(timer);
+      };
+
+      const load = (i, autoplay) => {
+        ei = i;
+        ex = data.examples[i];
+        base = ex.arms.find((a) => a.model === 'base') || ex.arms[0];
+        ckpt = ex.arms.find((a) => a !== base);
+        step = 0;
+        buildMap();
+        buildLanes();
+        paint(false);
+        exHost.querySelectorAll('.rc__ex').forEach((b, j) => b.classList.toggle('is-on', j === i));
+        if (autoplay) { pause(); play(); }
+      };
+
+      data.examples.forEach((e, i) => {
+        const b = document.createElement('button');
+        b.className = 'rc__ex';
+        b.type = 'button';
+        b.textContent = `${e.task.country.toLowerCase()}, task ${e.task.index}`;
+        b.addEventListener('click', () => load(i, true));
+        exHost.appendChild(b);
+      });
+
+      root.querySelectorAll('.rc__btn').forEach((b) => {
+        b.addEventListener('click', () => {
+          const act = b.dataset.act;
+          if (act === 'play') return playing ? pause() : play();
+          pause();
+          step = (step + (act === 'next' ? 1 : -1) + totalSteps()) % totalSteps();
+          paint(true);
+        });
+      });
+
+      load(0, false);
+
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        // Show the finished state rather than animating toward it.
+        step = totalSteps() - 1;
+        paint(false);
+        pause();
+        return;
+      }
+
+      let started = false;
+      if ('IntersectionObserver' in window) {
+        new IntersectionObserver((es) => {
+          if (es[0].isIntersecting) { started = true; play(); }
+          else if (started) pause();
+        }, { rootMargin: '-10% 0px -10% 0px', threshold: 0 }).observe(root);
+      } else {
+        play();
+      }
+
+      let rt;
+      window.addEventListener('resize', () => {
+        clearTimeout(rt);
+        rt = setTimeout(() => { buildMap(); paint(false); }, 200);
+      });
+    };
+
+    const bootstrap = async () => {
+      const nodes = document.querySelectorAll('.rc');
+      if (!nodes.length) return;
+      await Promise.all(LIBS.map(loadOnce));
+      if (!window.d3) return;
+      const [data, land] = await Promise.all([
+        fetchFirst(PATHS),
+        fetch(LAND).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+      ]);
+      nodes.forEach((root) => {
+        if (root.getAttribute('data-mounted')) return;
+        root.setAttribute('data-mounted', '1');
+        if (!data || !data.examples) {
+          root.innerHTML = '<div style="padding:24px;color:var(--muted-color);font-size:13px">' +
+            'rollout-compare.json not found. Build it with scripts/build_rollout_compare.py</div>';
+          return;
+        }
+        mount(root, data, land);
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap);
+    } else {
+      bootstrap();
+    }
+  })();
+</script>

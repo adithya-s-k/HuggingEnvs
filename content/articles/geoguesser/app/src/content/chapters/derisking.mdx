@@ -1,0 +1,62 @@
+import Note from "../../components/Note.astro";
+
+## Checks before the run
+
+Three cheap checks before you rent a GPU. Each one has saved us a full run's cost, and none of them needs a GPU.
+
+Being systematic about this pays off because RL failures do not announce themselves. A broken reward, a wrong turn budget and a model that simply cannot do the task all produce the same flat line at zero. You cannot tell them apart from the loss curve, so you have to rule them out beforehand.
+
+### First, prove the environment can take the load
+
+If you are training against a hosted environment, open as many concurrent sessions as the run will need, before the run.
+
+`MAX_CONCURRENT_ENVS` defaults to 4. Four training ranks plus generation needs 8. Worse, `duplicate_space` copies a Space's files but *not* its variables, so a duplicate looks correct and is not. A run pointed at one of those dies about an hour in with `CAPACITY_REACHED: 4/4 sessions active`.
+
+```python
+from geoguesser_env.client import GeoGuesserEnv
+envs = [GeoGuesserEnv(base_url="https://<your-space>.hf.space") for _ in range(8)]
+for e in envs:
+    e.reset()
+print("8/8 concurrent sessions OK")
+```
+
+Skipping those six lines cost us a run.
+
+### Then simulate the rollout with no gradient
+
+Everything except the backward pass runs on a laptop against any served model with tool calling. Derive the tool schemas the way TRL does, call `reset` with a dataset row, let the model drive the loop, read the reward, and render the conversation through the real chat template to check that images survive a tool result.
+
+This found three bugs that would each have wasted a run. Every one of them produced a reward of exactly 0.0, which is indistinguishable from a model that cannot learn.
+
+| bug | what it looked like |
+|---|---|
+| two turn budgets disagreeing | 0 of 6 episodes ever reached an answer |
+| `done` read from the observation instead of the step result | every episode unterminated, no score captured |
+| a tool omitting a parameter the environment supports | a `TypeError`, a wasted turn, a capability hidden from the model |
+
+<Note variant="warning">
+The first one deserves expanding, because no traceback tells you about it. The environment counted down its own budget of 24 turns while the trainer stopped the rollout at 12. The model believed the live counter in the tool results, paced itself for 24, and was cut off before it ever committed. Every reward exactly zero, no advantage in any group, and from the loss curve it looks precisely like a model that cannot learn the task. **Show the model exactly one turn budget.**
+</Note>
+
+### And overfit four tasks
+
+This is the check we would push hardest on. Take two to four tasks, run many epochs on just those, and watch the reward.
+
+If it does not climb to near the ceiling on four tasks it has seen a hundred times, then one of three things is true: the model cannot represent the task, the reward is broken, or the plumbing is broken. Learning that for a few dollars beats learning it in hour nine. The rollout simulator takes a `--same-task` flag for this, so the group it builds is a real GRPO group over one task.
+
+A healthy first step on real hardware looks like this:
+
+```text
+reward                  0.1979 -> 0.2123
+reward_std              0.1905 -> 0.2858
+frac_reward_zero_std    0            <- no group with zero advantage
+tools/call_frequency    11
+tools/failure_frequency 0
+step_time               156 s
+```
+
+Watch `frac_reward_zero_std`, not reward. GRPO's advantage is the spread *within* a group, so if that fraction is near 1 then most groups are teaching nothing and no amount of training will fix it. And do not read a reward increase over two steps as learning. At temperature 1.0 that is noise.
+
+<Note>
+This is not only a small-run habit. Mercor and the SkyRL team describe the same sequence for a 397B run in [their RL training guide](https://www.mercor.com/blog/training-frontier-knowledge-work-agents-a-397b-rl-training-guide-with-skyrl/): validate the harness first by running an eval pass over the full training set *at the concurrency RL will use*, drive the non-model error rate as close to zero as you can, then do an overfitting run before the real one. Their phrasing is blunter than ours: if you cannot overfit a handful of tasks, an end-to-end run has no chance. Worth reading before you spend real money, and reassuring that the checks barely change across three orders of magnitude of scale.
+</Note>

@@ -1,0 +1,21 @@
+# The generated blocks in the READMEs come from each project's `project.yaml`.
+# This is the check that stops a new project from landing unregistered, which is
+# how 01, 02 and 03 all managed to arrive without a row in the root table.
+name: index
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - name: Generated README blocks are up to date
+        run: python3 tools/build_index.py --check

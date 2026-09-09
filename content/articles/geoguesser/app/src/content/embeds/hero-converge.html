@@ -1,0 +1,233 @@
+<div class="hc" style="width:100%;">
+  <canvas class="hc__c"
+    aria-label="A field of scattered attempts converging onto their targets, then dispersing again"></canvas>
+  <div class="hc__hud" aria-hidden="true">
+    <span class="hc__state"></span>
+    <span class="hc__meter"><i></i></span>
+  </div>
+</div>
+
+<style>
+  .hc {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 5 / 2;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--surface-bg);
+  }
+  .hc__c { display: block; width: 100%; height: 100%; }
+
+  .hc__hud {
+    position: absolute;
+    left: 0; right: 0; bottom: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 0 18px;
+    pointer-events: none;
+  }
+  .hc__state {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    white-space: nowrap;
+  }
+  /* A bare progress rule: it says "this is a process" without naming a metric. */
+  .hc__meter {
+    flex: 1;
+    max-width: 240px;
+    height: 1px;
+    background: color-mix(in oklab, var(--muted-color) 35%, transparent);
+  }
+  .hc__meter i {
+    display: block;
+    height: 1px;
+    width: 0;
+    background: var(--primary-color);
+  }
+  @media (max-width: 640px) {
+    .hc__hud { padding: 0 12px; }
+    .hc__state { font-size: 9.5px; }
+  }
+</style>
+
+<script>
+  (function () {
+    const MORPH_MS = 3400;
+    const HOLD_MS = 1500;
+
+    // Deterministic, so the field is the same picture on every load.
+    const rng = (seed) => () => {
+      seed = (seed * 1664525 + 1013904223) % 4294967296;
+      return seed / 4294967296;
+    };
+    const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    const mix = (a, b, t) => a + (b - a) * t;
+
+    const theme = (el) => {
+      const cs = getComputedStyle(el);
+      const get = (n, fb) => (cs.getPropertyValue(n) || '').trim() || fb;
+      return {
+        accent: get('--primary-color', '#e08a4a'),
+        text: get('--text-color', '#fff'),
+        muted: get('--muted-color', '#888')
+      };
+    };
+
+    const mount = (root) => {
+      const canvas = root.querySelector('.hc__c');
+      const ctx = canvas.getContext('2d');
+      const stateOut = root.querySelector('.hc__state');
+      const meterOut = root.querySelector('.hc__meter i');
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      let tint = theme(document.documentElement);
+      let W = 0, H = 0, pts = [], raf = 0, t0 = 0, visible = true;
+
+      const build = () => {
+        const rand = rng(20260909);
+        // Targets sit on a jittered lattice, so the settled state reads as
+        // structure rather than as a second random cloud.
+        const cols = Math.max(9, Math.min(20, Math.round(W / 74)));
+        const rows = Math.max(4, Math.round(cols * (H / W) * 1.15));
+        const cw = (W - 60) / cols, ch = (H - 70) / rows;
+        pts = [];
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const tx = 30 + cw * (c + 0.5) + (rand() - 0.5) * cw * 0.22;
+            const ty = 26 + ch * (r + 0.5) + (rand() - 0.5) * ch * 0.22;
+            // Where the attempt starts: a wide, unstructured throw, biased
+            // away from its target so the collapse has somewhere to come from.
+            const ang = rand() * Math.PI * 2;
+            const reach = mix(0.45, 1, rand()) * Math.min(W, H) * 0.42;
+            pts.push({
+              tx, ty,
+              sx: Math.max(12, Math.min(W - 12, tx + Math.cos(ang) * reach)),
+              sy: Math.max(12, Math.min(H - 22, ty + Math.sin(ang) * reach * 0.62)),
+              lag: 0.3 * (tx / W) + rand() * 0.08,
+              drift: rand() * Math.PI * 2,
+              weight: mix(0.6, 1, rand())
+            });
+          }
+        }
+      };
+
+      const resize = () => {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const rect = root.getBoundingClientRect();
+        W = Math.max(320, rect.width);
+        H = Math.max(150, rect.height);
+        canvas.width = Math.round(W * dpr);
+        canvas.height = Math.round(H * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        build();
+        draw(reduced ? 1 : 0, 0);
+      };
+
+      const draw = (p, time) => {
+        ctx.clearRect(0, 0, W, H);
+        let landed = 0;
+
+        for (const q of pts) {
+          const local = Math.max(0, Math.min(1, (p - q.lag) / (1 - q.lag)));
+          const e = ease(local);
+          // Unsettled attempts breathe; settled ones sit still.
+          const wob = (1 - e) * 2 * Math.sin(time / 900 + q.drift);
+          const x = mix(q.sx, q.tx, e) + wob;
+          const y = mix(q.sy, q.ty, e) - wob * 0.6;
+          if (e > 0.92) landed += 1;
+
+          // The gap between attempt and target. It fades out fast with
+          // distance: a wild attempt is just a stray dot, and the line only
+          // resolves as the attempt closes in.
+          const gap = Math.hypot(x - q.tx, y - q.ty);
+          const near = Math.max(0, 1 - gap / (Math.min(W, H) * 0.22));
+          ctx.globalAlpha = 0.34 * near * near;
+          ctx.strokeStyle = tint.accent;
+          ctx.lineWidth = 0.7;
+          ctx.beginPath();
+          ctx.moveTo(q.tx, q.ty);
+          ctx.lineTo(x, y);
+          ctx.stroke();
+
+          // The target: a small ring that firms up as its attempt arrives.
+          ctx.globalAlpha = mix(0.16, 0.46, e);
+          ctx.strokeStyle = tint.text;
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.arc(q.tx, q.ty, mix(3.4, 2.6, e), 0, Math.PI * 2);
+          ctx.stroke();
+
+          // The attempt.
+          ctx.globalAlpha = mix(0.34, 1, e) * q.weight;
+          ctx.fillStyle = tint.accent;
+          ctx.beginPath();
+          ctx.arc(x, y, mix(2.7, 1.8, e), 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.globalAlpha = 1;
+        stateOut.textContent = p < 0.5 ? 'untrained' : 'trained';
+        meterOut.style.width = `${(landed / pts.length) * 100}%`;
+      };
+
+      const CYCLE = 2 * (MORPH_MS + HOLD_MS);
+      const phase = (now) => {
+        const t = (now - t0) % CYCLE;
+        if (t < MORPH_MS) return t / MORPH_MS;
+        if (t < MORPH_MS + HOLD_MS) return 1;
+        if (t < 2 * MORPH_MS + HOLD_MS) return 1 - (t - MORPH_MS - HOLD_MS) / MORPH_MS;
+        return 0;
+      };
+
+      const frame = (now) => {
+        if (!t0) t0 = now;
+        draw(phase(now), now);
+        if (visible) raf = requestAnimationFrame(frame);
+      };
+
+      const reTint = () => { tint = theme(document.documentElement); };
+      new MutationObserver(reTint).observe(document.documentElement, {
+        attributes: true, attributeFilter: ['data-theme', 'class']
+      });
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', reTint);
+
+      let rt;
+      window.addEventListener('resize', () => {
+        clearTimeout(rt);
+        rt = setTimeout(resize, 160);
+      });
+
+      resize();
+      if (reduced) return;
+
+      if ('IntersectionObserver' in window) {
+        new IntersectionObserver((es) => {
+          visible = es[0].isIntersecting;
+          if (visible) { cancelAnimationFrame(raf); raf = requestAnimationFrame(frame); }
+          else cancelAnimationFrame(raf);
+        }, { threshold: 0 }).observe(root);
+      } else {
+        raf = requestAnimationFrame(frame);
+      }
+    };
+
+    const bootstrap = () => {
+      document.querySelectorAll('.hc').forEach((root) => {
+        if (root.getAttribute('data-mounted')) return;
+        root.setAttribute('data-mounted', '1');
+        mount(root);
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap);
+    } else {
+      bootstrap();
+    }
+  })();
+</script>

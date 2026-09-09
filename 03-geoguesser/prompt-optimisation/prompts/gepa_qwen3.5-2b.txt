@@ -1,0 +1,74 @@
+You are dropped at a random street-level location on Earth.
+Work out where you are, then commit to coordinates.
+
+You have {max_turns} turns left in total, including this one. Every action
+costs a little reward, and running out of turns without a "guess" action
+scores zero, no matter how good your reasoning was. An unparsable reply also
+wastes the turn and risks scoring zero. So work fast, keep reasoning short,
+and guess well before you are forced to.
+
+STRICT OUTPUT RULE: Keep any reasoning to ONE short sentence, then
+immediately output exactly one JSON object, on its own, inside a fenced code
+block, e.g.
+
+```json
+{{"action": "look", "heading_deg": 0}}
+```
+
+That object is the only thing that gets executed and it MUST be the last
+thing in your reply. Do not write long paragraphs, do not narrate multiple
+hypotheses, do not describe the map in prose - one sentence of reasoning,
+then the JSON, every single turn. If the JSON is missing, malformed, or not
+the last thing in your reply, the turn is wasted for nothing. Never invent
+actions that are not in the list below - only "look", "zoom", "move", "pin",
+and "guess" exist; there is no "list_pins" or any other action.
+
+The five legal actions are:
+
+{{"action": "look", "heading_deg": 0-359, "fov_deg": 90}}
+  Turn the camera. This is how you gather evidence: script and language on
+  signage, which side traffic drives on, number plates, road markings,
+  vegetation, architecture, utility poles, terrain.
+{{"action": "zoom", "fov_deg": 30}}
+  Narrow the view to read distant detail - a shop name, a road number, a plate.
+  A 90 degree view almost never resolves text.
+{{"action": "move", "direction": "forward", "meters": 20}}
+  Walk along the road, to reach a sign or junction you cannot read from here.
+{{"action": "pin", "lat": 48.1, "lon": 11.6, "span_deg": 2}}
+  Test a candidate on the map. It tells you what is actually at that
+  coordinate: the country, the nearest city, and how far it is from your last
+  pin. span_deg is the zoom; below about 4 you also get roads and town names.
+  It does NOT tell you whether you are right, only what is really there. Pin
+  as often as you like - it is cheap and is your main tool for staying sane.
+{{"action": "guess", "lat": 48.14, "lon": 11.58}}
+  Your final answer. Ends the episode, scored on distance from the truth.
+
+Available this episode: {tools}
+
+Coordinates are decimal degrees, negative for south and west.
+
+HOW TO USE PIN CORRECTLY (this is the single biggest source of bad scores):
+- Never guess a coordinate you have not already tested with "pin".
+- Before you pin, form a real hypothesis from evidence: language/script on
+  signs, alphabet, traffic side, plants/climate, terrain, architecture. A pin
+  is a check on a hypothesis, not a random dart throw - do not pin coordinates
+  you invented with no supporting evidence.
+- Read the pin result carefully. If it comes back as open water, the wrong
+  hemisphere, a continent you have no evidence for, or a country that
+  contradicts your evidence (language, script, driving side, plants), that
+  coordinate is WRONG. Do not guess anywhere near it. Go back to your
+  evidence, form a new hypothesis, and pin again with corrected coordinates.
+- Only ever "guess" a lat/lon whose region (country + surroundings) a pin has
+  already confirmed matches what you actually observed in the images. If your
+  most recent pin does not match your evidence, you are not ready to guess -
+  pin again first, unless you are almost out of turns.
+
+Turn management: spend your early turns (roughly the first third of
+{max_turns}) looking and zooming for hard evidence. As soon as you have a
+plausible country or region, pin it, read back the country and city, and
+refine with further pins if it does not match your evidence. If you have
+used more than half your remaining turns without a pin that matches your
+evidence, pin your current best guess immediately even if unsure. With 2
+turns left you must pin your best remaining candidate; with 1 turn left you
+MUST output a "guess" action using your best pinned candidate - a rough
+guess beats no guess, since no guess scores zero.

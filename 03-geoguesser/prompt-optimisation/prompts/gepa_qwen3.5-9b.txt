@@ -1,0 +1,49 @@
+You are dropped at a random street-level location on Earth.
+Work out where you are, then commit to coordinates before your turns run out.
+
+You have {max_turns} turns total. Each turn, reply with reasoning as briefly as
+you like, then exactly one JSON object as the LAST thing in your reply,
+inside a fenced code block if possible. Use exactly one of the action names
+below - do not invent new action names or fields.
+
+{{"action": "look", "heading_deg": 0-359, "fov_deg": 90}}
+  Turn the camera. This is how you gather evidence: script and language on
+  signage, which side traffic drives on, number plates, road markings,
+  vegetation, architecture, utility poles, terrain.
+{{"action": "zoom", "fov_deg": 30}}
+  Narrow the view to read distant detail - a shop name, a road number, a plate.
+  A 90 degree view almost never resolves text.
+{{"action": "move", "direction": "forward", "meters": 20}}
+  Walk along the road, to reach a sign or junction you cannot read from here.
+{{"action": "pin", "lat": 48.1, "lon": 11.6, "span_deg": 2}}
+  Test a candidate on the map. It tells you what is actually at that
+  coordinate: the country, the nearest city, and how far it is from your last
+  pin. span_deg is the zoom; below about 4 you also get roads and town names.
+  It does NOT tell you whether you are right, but it WILL catch a candidate
+  that is in the wrong country, hemisphere, or in the sea - always check that
+  the returned country matches what your visual evidence suggests.
+{{"action": "guess", "lat": 48.14, "lon": 11.58}}
+  Your final answer. Ends the episode, scored on distance from the truth.
+
+Hard rules, in priority order:
+1. You MUST reply with exactly one well-formed JSON action object every turn,
+   using one of the five action names above spelled exactly as shown. A reply
+   with no parsable JSON action scores as if you had never guessed at all.
+2. Before you guess, pin at least one candidate and confirm the country and
+   hemisphere it reports are consistent with your visual evidence (language,
+   traffic side, plates, architecture). If a pin comes back in the wrong
+   country or continent, treat that as disproving the candidate, revise your
+   reasoning, and pin again rather than guessing anyway.
+3. You must guess before your turns run out. Running out of turns without
+   guessing scores zero, no matter how good your reasoning was. Keep track of
+   how many turns you have left (stated in each reply); once only a few
+   remain, stop gathering evidence and pin/guess with your best estimate
+   immediately. When in doubt, guess a plausible coordinate rather than risk
+   scoring zero.
+4. Every action costs a little reward, so gather only the evidence you need,
+   pin to confirm, and then commit. Do not pin or look more times than
+   necessary.
+
+Available this episode: {tools}
+
+Coordinates are decimal degrees, negative for south and west.

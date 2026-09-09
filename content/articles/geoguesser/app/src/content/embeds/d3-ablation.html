@@ -1,0 +1,245 @@
+<div class="ab" style="width:100%;margin:14px 0;min-height:380px;">
+  <div class="ab__frame">
+    <div class="ab__rows"></div>
+    <div class="ab__axis"></div>
+    <p class="ab__foot">
+      Paired per task against each run's <em>own</em> base arm, measured in the same sweep, so the
+      four numbers are comparable to each other and not to a difference of two means. Whiskers are
+      95% confidence intervals; the bar is the estimate.
+    </p>
+  </div>
+</div>
+
+<style>
+  .ab__frame {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--surface-bg);
+    padding: 16px 16px 14px;
+  }
+  .ab__rows { display: flex; flex-direction: column; gap: 9px; }
+
+  .ab__row {
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr) 92px;
+    align-items: center;
+    gap: 13px;
+  }
+  @media (max-width: 720px) {
+    .ab__row { grid-template-columns: 1fr; gap: 5px; }
+    .ab__track { order: 3; }
+  }
+
+  .ab__who b {
+    display: block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px;
+    color: var(--text-color);
+  }
+  .ab__chips { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
+  .ab__chip {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--muted-color);
+    background: color-mix(in oklab, var(--muted-color) 12%, transparent);
+    white-space: nowrap;
+  }
+  /* The two settings run 3 put back are the whole point of the figure. */
+  .ab__chip--key {
+    color: var(--text-color);
+    background: color-mix(in oklab, var(--primary-color) 20%, transparent);
+  }
+
+  .ab__track {
+    position: relative;
+    height: 30px;
+    border-left: 1px solid var(--border-color);
+  }
+  .ab__grid {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 1px;
+    background: color-mix(in oklab, var(--border-color) 70%, transparent);
+  }
+  .ab__bar {
+    position: absolute;
+    top: 50%;
+    height: 8px;
+    transform: translateY(-50%);
+    border-radius: 0 3px 3px 0;
+    background: color-mix(in oklab, var(--muted-color) 34%, transparent);
+  }
+  .ab__row--hero .ab__bar {
+    background: color-mix(in oklab, var(--primary-color) 42%, transparent);
+  }
+  .ab__ci {
+    position: absolute;
+    top: 50%;
+    height: 1.5px;
+    transform: translateY(-50%);
+    background: var(--muted-color);
+  }
+  .ab__cap {
+    position: absolute;
+    top: 50%;
+    width: 1.5px;
+    height: 11px;
+    transform: translateY(-50%);
+    background: var(--muted-color);
+  }
+  .ab__dot {
+    position: absolute;
+    top: 50%;
+    width: 9px; height: 9px;
+    margin-left: -4.5px;
+    transform: translateY(-50%);
+    border-radius: 50%;
+    background: var(--muted-color);
+    border: 1.5px solid var(--surface-bg);
+  }
+  .ab__row--hero .ab__dot { background: var(--primary-color); }
+
+  .ab__val {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  .ab__row--hero .ab__val { color: var(--primary-color); }
+  .ab__val small {
+    display: block;
+    font-size: 9px;
+    color: var(--muted-color);
+    letter-spacing: 0.03em;
+  }
+
+  .ab__axis {
+    position: relative;
+    height: 38px;
+    margin-left: 213px;
+    margin-right: 105px;
+    border-top: 1px solid var(--border-color);
+  }
+  @media (max-width: 720px) {
+    .ab__axis { margin-left: 0; margin-right: 0; }
+  }
+  .ab__tick {
+    position: absolute;
+    top: 5px;
+    transform: translateX(-50%);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    color: var(--muted-color);
+  }
+  .ab__axis-lbl {
+    position: absolute;
+    left: 0; top: 22px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    color: var(--muted-color);
+  }
+
+  .ab__foot {
+    margin: 10px 2px 0;
+    font-size: 11px;
+    line-height: 1.55;
+    color: var(--muted-color);
+  }
+  .ab__foot em { color: var(--text-color); font-style: normal; }
+</style>
+
+<script>
+  (function () {
+    const PATHS = [
+      '/data/runs-ablation.json',
+      './assets/data/runs-ablation.json',
+      '../assets/data/runs-ablation.json',
+      '../../assets/data/runs-ablation.json'
+    ];
+    const TICKS = [0, 0.05, 0.1, 0.15];
+
+    const fetchFirst = async (paths) => {
+      for (const p of paths) {
+        try { const r = await fetch(p, { cache: 'no-cache' }); if (r.ok) return await r.json(); }
+        catch (_) { /* next */ }
+      }
+      return null;
+    };
+
+    const render = (root, rows) => {
+      const max = Math.max(...rows.map((r) => r.gain + r.ci)) * 1.06;
+      const pct = (v) => `${(v / max) * 100}%`;
+      const hero = Math.max(...rows.map((r) => r.gain));
+
+      // The comparison the figure exists to make, said in words on the row.
+      const note = (r) => {
+        if (r.gain === hero) return 'the run reported';
+        const share = Math.round((r.gain / hero) * 100);
+        return `${share}% of run 1`;
+      };
+
+      root.querySelector('.ab__rows').innerHTML = rows.map((r) => {
+        const isHero = r.gain === hero;
+        const chips = [
+          ['scale_rewards=' + r.scale_rewards, r.scale_rewards === 'group'],
+          ['beta=' + r.beta, r.beta === 0],
+          [r.tasks_per_step + ' task' + (r.tasks_per_step > 1 ? 's' : '') + '/step', false],
+          ['cost x' + r.cost_scale, false],
+          [r.steps + ' steps', false]
+        ].map(([label, key]) =>
+          `<span class="ab__chip${key ? ' ab__chip--key' : ''}">${label}</span>`
+        ).join('');
+
+        const grid = TICKS.map((t) =>
+          `<span class="ab__grid" style="left:${pct(t)}"></span>`
+        ).join('');
+
+        return `<div class="ab__row${isHero ? ' ab__row--hero' : ''}">
+            <div class="ab__who">
+              <b>${r.run} · ${r.model}</b>
+              <div class="ab__chips">${chips}</div>
+            </div>
+            <div class="ab__track">
+              ${grid}
+              <span class="ab__bar" style="left:0;width:${pct(r.gain)}"></span>
+              <span class="ab__ci" style="left:${pct(Math.max(0, r.gain - r.ci))};
+                width:${pct(Math.min(max, r.gain + r.ci) - Math.max(0, r.gain - r.ci))}"></span>
+              <span class="ab__cap" style="left:${pct(Math.max(0, r.gain - r.ci))}"></span>
+              <span class="ab__cap" style="left:${pct(r.gain + r.ci)}"></span>
+              <span class="ab__dot" style="left:${pct(r.gain)}"></span>
+            </div>
+            <div class="ab__val">+${r.gain.toFixed(4)}<small>${note(r)}</small></div>
+          </div>`;
+      }).join('');
+
+      root.querySelector('.ab__axis').innerHTML =
+        TICKS.map((t) => `<span class="ab__tick" style="left:${pct(t)}">${t.toFixed(2)}</span>`).join('')
+        + '<span class="ab__axis-lbl">paired gain in reward</span>';
+    };
+
+    const bootstrap = async () => {
+      const nodes = document.querySelectorAll('.ab');
+      if (!nodes.length) return;
+      const rows = await fetchFirst(PATHS);
+      nodes.forEach((root) => {
+        if (root.getAttribute('data-mounted')) return;
+        root.setAttribute('data-mounted', '1');
+        if (!rows) {
+          root.innerHTML = '<div style="padding:24px;color:var(--muted-color);font-size:13px">' +
+            'runs-ablation.json not found. Expected at /data/runs-ablation.json</div>';
+          return;
+        }
+        render(root, rows);
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap);
+    } else {
+      bootstrap();
+    }
+  })();
+</script>

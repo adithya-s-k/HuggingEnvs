@@ -1,0 +1,200 @@
+<div class="oe-stack" style="width:100%;margin:14px 0;">
+  <div class="oe">
+
+    <div class="oe__col oe__col--trainer">
+      <div class="oe__cap">Training side</div>
+      <div class="oe__box oe__box--mine">
+        <b>TRL GRPOTrainer</b>
+        <span>8 rollouts of one task per group</span>
+      </div>
+      <div class="oe__wire">
+        <span class="oe__wire-label">HTTP, one session per rank</span>
+      </div>
+    </div>
+
+    <div class="oe__col oe__col--env">
+      <div class="oe__cap">The environment</div>
+
+      <div class="oe__box oe__box--oe">
+        <b>reset(split, index)</b>
+        <span>byte-identical for a given task id</span>
+        <em>OpenEnv</em>
+      </div>
+      <div class="oe__box oe__box--oe">
+        <b>session per rollout</b>
+        <span>concurrency, lifecycle, transport</span>
+        <em>OpenEnv</em>
+      </div>
+      <div class="oe__box oe__box--oe">
+        <b>typed action and observation</b>
+        <span>one schema, whatever the backend</span>
+        <em>OpenEnv</em>
+      </div>
+
+      <div class="oe__rule"><span>what we actually wrote</span></div>
+
+      <div class="oe__box oe__box--mine">
+        <b>PanoramaBackend</b>
+        <span>Mapillary frames, reprojection, movement graph</span>
+      </div>
+      <div class="oe__box oe__box--mine">
+        <b>tool bodies and reward</b>
+        <span>eleven tools, the distance curve, the action cost</span>
+      </div>
+      <div class="oe__box oe__box--mine">
+        <b>renderers</b>
+        <span>the view, the minimap</span>
+      </div>
+    </div>
+
+    <div class="oe__col oe__col--agent">
+      <div class="oe__cap">Agent side</div>
+      <div class="oe__wire oe__wire--rev">
+        <span class="oe__wire-label">MCP, tools only</span>
+      </div>
+      <div class="oe__box oe__box--mine">
+        <b>the policy</b>
+        <span>sees look, zoom, move, pin, guess</span>
+      </div>
+      <div class="oe__deny">
+        <b>reset</b> is not reachable from here
+      </div>
+    </div>
+
+  </div>
+  <p class="oe__foot">
+    Two surfaces on one environment. The trainer drives the simulation over HTTP; the agent only
+    ever sees tools over MCP, so it structurally cannot reroll a task it does not like.
+  </p>
+</div>
+
+<style>
+  .oe {
+    display: grid;
+    grid-template-columns: 1fr 1.25fr 1fr;
+    gap: 14px;
+    align-items: start;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--surface-bg);
+    padding: 18px 16px;
+  }
+  @media (max-width: 760px) {
+    .oe { grid-template-columns: 1fr; }
+  }
+
+  .oe__col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+
+  .oe__cap {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted-color);
+    margin-bottom: 2px;
+  }
+
+  .oe__box {
+    position: relative;
+    border: 1px solid var(--border-color);
+    border-radius: 7px;
+    padding: 9px 11px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .oe__box b {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-color);
+  }
+  .oe__box span {
+    font-size: 11.5px;
+    line-height: 1.4;
+    color: var(--muted-color);
+  }
+  .oe__box em {
+    position: absolute;
+    top: 8px;
+    right: 9px;
+    font-style: normal;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--primary-color);
+  }
+
+  /* Provided by the framework, versus written for this task. */
+  .oe__box--oe {
+    background: color-mix(in oklab, var(--primary-color) 9%, transparent);
+    border-color: color-mix(in oklab, var(--primary-color) 35%, var(--border-color));
+    padding-right: 74px;
+  }
+  .oe__box--mine {
+    background: color-mix(in oklab, var(--muted-color) 6%, transparent);
+  }
+
+  .oe__rule {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 4px 0 2px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--muted-color);
+  }
+  .oe__rule::before,
+  .oe__rule::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border-color);
+  }
+
+  .oe__wire {
+    position: relative;
+    height: 30px;
+    display: grid;
+    place-items: center;
+  }
+  .oe__wire::before {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; top: 50%;
+    height: 1px;
+    background: repeating-linear-gradient(to right,
+      var(--border-color) 0 5px, transparent 5px 10px);
+  }
+  .oe__wire-label {
+    position: relative;
+    background: var(--surface-bg);
+    padding: 0 7px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    color: var(--muted-color);
+  }
+
+  .oe__deny {
+    border: 1px dashed color-mix(in oklab, var(--muted-color) 45%, transparent);
+    border-radius: 7px;
+    padding: 8px 11px;
+    font-size: 11.5px;
+    color: var(--muted-color);
+  }
+  .oe__deny b {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px;
+    color: var(--text-color);
+  }
+
+  .oe__foot {
+    margin: 10px 2px 0;
+    font-size: 11.5px;
+    line-height: 1.55;
+    color: var(--muted-color);
+  }
+</style>

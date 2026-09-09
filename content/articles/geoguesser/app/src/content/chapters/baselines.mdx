@@ -1,0 +1,36 @@
+import HtmlEmbed from "../../components/HtmlEmbed.astro";
+import Note from "../../components/Note.astro";
+
+## Sweep the field before you train anything
+
+With an eval split and no trained model, the first useful thing is a baseline sweep. We ran fifteen models across all 200 tasks. Anthropic and OpenAI over their APIs, the larger open models through Hugging Face inference providers, and the small ones self-hosted. For those we spin up a Hugging Face Job serving vLLM, point the harness at it, sweep, and tear it down.
+
+**Run pass@k, not pass@1.** A single attempt per task on 200 tasks is noisy enough to invent rankings that do not exist. We use pass@4. Four independent passes over the same tasks, each recorded with its own attempt index, pooled afterwards. It costs four times as much and it is worth it. In this project a comparison read at pass@1 said our model had tied Sonnet 5; completed to pass@4, Sonnet moved from 0.6798 to 0.6952 and the tie became a real loss. 
+<HtmlEmbed
+  src="sweep-scorecard.html"
+  title="Fifteen models, before any training"
+  desc="Reward, accuracy at two thresholds, turn count, and the two failure modes that the reward column hides."
+  frameless
+/>
+
+<Note>
+This first sweep is scored on the environment's own reward curve, `exp(-distance_km / 1492.7)` minus a per-action cost, which is a **different scale** from the pass@4 numbers everywhere else in this article. The Reward section explains why the two exist and what mixing them cost us.
+</Note>
+
+**Read the tails, not the mean.** Sonnet's 0.638 against second place's 0.446 is a big gap, but the informative number is accuracy. **83 of 200 guesses inside 200 km, against 36 to 48 for everyone else**, and 29 inside 25 km. It does that in the fewest turns of any model, 5.6, with almost no pinning. A mean reward can be dragged around by a handful of catastrophic guesses; the threshold columns cannot.
+
+**Scale is not predictive here.** Ranks 5 through 10 span 9B to 397B-A17B and sit within 0.027 of each other. A 397B mixture-of-experts scores 0.338 against 0.331 for a local 4B. The one large model that separates is 122B-A10B, and its advantage is in the tails again. It has the best median distance of any non-Sonnet model at 654 km, and 21 hits inside 25 km. Whatever this task needs, parameters are not buying much of it, which is exactly the shape of task where RL on a small model has room to work.
+
+**The reward column hides two different failures**, and they need different fixes, so count them separately.
+
+The first is **never guessing**. Qwen3-VL-2B-Instruct ran out of turns without submitting in **24 of 200 episodes** and scored a hard zero on each. That is an instruction-following failure, not a geography one, and it turns out to be the number we ended up tuning against. 
+
+The second is **fabrication**. Some replies wrote the environment's own side of the exchange, inventing tool results for turns that never happened:
+
+```text
+-> Pin 2 placed at 48.75, 16.40 ... 20 actions left
+```
+
+That happened in **32 of 200** episodes for the local Qwen3.5-4B, and in 26 and 29 for the 2B and 0.8B. It is absent from every Anthropic and OpenAI model, and from both Qwen3-VL models. So it is a property of those particular self-hosted checkpoints rather than of the task.
+
+**Which is how you pick the model to train.** Here the sweep was picking a fine-tuning target, and we wanted the smallest model with the latent ability, because that is where RL has the most headroom and the cheapest iteration. Qwen3.5-4B sat mid-field at rank 9, used tools properly at 2.3 pins and 7.9 turns per episode, and fits on one GPU with LoRA. Its fabrication count was the worst of the fifteen, which we read as a formatting problem rather than a capability one, and fixing it accounted for a good part of the eventual gain. When the model is already fixed, the same sweep pays for itself differently. It tells you which slices of your data are hard, and therefore what to harvest more of and what to drop. This is the cheap version of something every large run does, where data mixture decisions are settled by ablations at a small fraction of the final compute rather than learned from the full run.

@@ -1,0 +1,4 @@
+data/panos/
+tests/fixtures/panos/
+__pycache__/
+*.pyc

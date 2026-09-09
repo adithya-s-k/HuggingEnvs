@@ -1,0 +1,397 @@
+<div class="geo-hero-reward" style="width:100%;"></div>
+
+<style>
+  /* The scoring function, drawn twice: as a field around the true location,
+     and as the curve exp(-km / 1492.7) it actually is. Real median errors
+     from the eval board land in it, far to near. */
+  .geo-hero-reward {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 5 / 2;
+    min-height: 200px;
+    border-radius: 10px;
+    overflow: hidden;
+    background:
+      radial-gradient(90% 120% at 33% 50%,
+        color-mix(in oklab, var(--primary-color) 7%, transparent) 0%,
+        transparent 70%),
+      var(--surface-bg);
+  }
+  .geo-hero-reward svg { display: block; width: 100%; height: 100%; }
+
+  .geo-hero-reward .ring {
+    fill: none;
+    stroke: var(--border-color);
+    stroke-width: 1;
+  }
+  .geo-hero-reward .ring.soft { stroke-dasharray: 2 4; }
+  .geo-hero-reward .axis {
+    fill: none;
+    stroke: var(--border-color);
+    stroke-width: 1;
+  }
+  .geo-hero-reward .curve {
+    fill: none;
+    stroke: var(--primary-color);
+    stroke-width: 1.8;
+    opacity: 0.85;
+  }
+  .geo-hero-reward .curve-fill {
+    fill: color-mix(in oklab, var(--primary-color) 10%, transparent);
+    stroke: none;
+  }
+  .geo-hero-reward text {
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+    fill: var(--muted-color);
+    font-size: 12px;
+    letter-spacing: 0.02em;
+  }
+  .geo-hero-reward .lab {
+    paint-order: stroke;
+    stroke: var(--surface-bg);
+    stroke-width: 3.5px;
+    stroke-linejoin: round;
+  }
+  .geo-hero-reward .panel-title {
+    fill: var(--muted-color);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .geo-hero-reward .truth { stroke: var(--primary-color); stroke-width: 1.3; fill: none; }
+  .geo-hero-reward .truth-dot { fill: var(--primary-color); stroke: none; }
+
+  /* One sample = one guess: a measured line, a marker, a drop on the curve. */
+  .geo-hero-reward .sample { opacity: 0; transition: opacity 0.55s ease; }
+  .geo-hero-reward .sample.past { opacity: 0.4; }
+  .geo-hero-reward .sample.live { opacity: 1; }
+  .geo-hero-reward .sample .spoke {
+    stroke: var(--primary-color);
+    stroke-width: 1;
+    fill: none;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    transition: stroke-dashoffset 0.45s ease-out;
+  }
+  .geo-hero-reward .sample.live .spoke,
+  .geo-hero-reward .sample.past .spoke { stroke-dashoffset: 0; }
+  /* Scaled, not resized: the CSS `r` property is not universally supported,
+     but a transform on a circle centred at its own local origin is. */
+  .geo-hero-reward .sample .pin {
+    fill: var(--primary-color);
+    stroke: var(--surface-bg);
+    stroke-width: 1;
+    transform: scale(0);
+    /* transform-box defaults to the view-box, so pin the origin to this
+       circle's own local origin — otherwise it scales about the SVG centre. */
+    transform-origin: 0 0;
+    transition: transform 0.4s cubic-bezier(.2,1.3,.5,1) 0.24s;
+  }
+  .geo-hero-reward .sample.live .pin,
+  .geo-hero-reward .sample.past .pin { transform: scale(1); }
+  .geo-hero-reward .sample .drop {
+    stroke: var(--primary-color);
+    stroke-width: 1;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    transition: stroke-dashoffset 0.4s ease-out 0.2s;
+  }
+  .geo-hero-reward .sample.live .drop,
+  .geo-hero-reward .sample.past .drop { stroke-dashoffset: 0; }
+  .geo-hero-reward .sample .tag { opacity: 0; transition: opacity 0.3s ease 0.3s; }
+  .geo-hero-reward .sample.live .tag { opacity: 1; }
+  .geo-hero-reward .sample .tag .name { fill: var(--text-color); }
+
+  .geo-hero-reward .caption {
+    position: absolute;
+    left: 16px;
+    bottom: 13px;
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--muted-color);
+    letter-spacing: 0.01em;
+    pointer-events: none;
+  }
+  .geo-hero-reward .caption b { color: var(--text-color); font-weight: 600; }
+  @media (max-width: 640px) {
+    .geo-hero-reward .caption { font-size: 10px; left: 11px; bottom: 9px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .geo-hero-reward .sample,
+    .geo-hero-reward .sample * { transition: none !important; }
+  }
+</style>
+
+<script>
+  (function () {
+    const CLASS = 'geo-hero-reward';
+    const SCALE_KM = 1492.7;      // the reward's length scale
+    const DMAX = 6000;            // outer ring, km
+    const RMAX = 168;             // outer ring, user units
+    const reduceMotion = !!(window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+    const BOARD_PATHS = [
+      '/data/board.json',
+      './assets/data/board.json',
+      '../assets/data/board.json',
+      '../../assets/data/board.json'
+    ];
+
+    // If the board cannot be fetched the shape of the story still holds, so
+    // fall back to the same numbers rather than showing an empty box.
+    const FALLBACK = [
+      { name: 'gpt-5.4-nano', median_km: 2541 },
+      { name: 'Qwen3.5-35B-A3B', median_km: 1485 },
+      { name: 'Qwen3.5-397B-A17B', median_km: 1420 },
+      { name: 'Qwen3.5-27B', median_km: 1289 },
+      { name: 'Qwen3.5-4B (untrained)', median_km: 1226 },
+      { name: 'Qwen3.5-9B', median_km: 1203 },
+      { name: 'claude-haiku-4.5', median_km: 939 },
+      { name: 'Qwen3.5-122B-A10B', median_km: 767 },
+      { name: 'gpt-5.4-mini', median_km: 753 },
+      { name: 'run 1 · ckpt1000', median_km: 662 },
+      { name: 'claude-sonnet-5', median_km: 324 }
+    ];
+
+    const fetchFirst = async (paths) => {
+      for (const p of paths) {
+        try {
+          const r = await fetch(p, { cache: 'no-cache' });
+          if (r.ok) return await r.json();
+        } catch (e) { /* try the next path */ }
+      }
+      return null;
+    };
+
+    const NS = 'http://www.w3.org/2000/svg';
+    const el = (name, attrs, parent) => {
+      const n = document.createElementNS(NS, name);
+      if (attrs) for (const k in attrs) n.setAttribute(k, attrs[k]);
+      if (parent) parent.appendChild(n);
+      return n;
+    };
+
+    const reward = (km) => Math.exp(-km / SCALE_KM);
+    // Compressed radial scale: keeps the 200 km ring visible next to 6000 km.
+    const radius = (km) => RMAX * Math.pow(Math.min(1, km / DMAX), 0.62);
+
+    const render = (root, rows) => {
+      root.querySelectorAll('svg, .caption').forEach((n) => n.remove());
+
+      const W = 1000, H = 400;
+      const svg = el('svg', {
+        viewBox: '0 0 ' + W + ' ' + H,
+        preserveAspectRatio: 'xMidYMid meet',
+        role: 'img',
+        'aria-label':
+          'The GeoGuessr reward field around a true location, with real median ' +
+          'errors landing in it, next to the curve exp of minus kilometres over 1492.7'
+      }, root);
+
+      // ── Left: the field ────────────────────────────────────────────────────
+      const TX = 318, TY = 208;
+      const defs = el('defs', null, svg);
+      const gid = 'geoRewardField';
+      const grad = el('radialGradient', { id: gid }, defs);
+      for (let i = 0; i <= 14; i++) {
+        const off = i / 14;
+        const km = DMAX * Math.pow(off, 1 / 0.62);
+        el('stop', {
+          offset: off,
+          style: 'stop-color:var(--primary-color);stop-opacity:' +
+            (reward(km) * 0.34).toFixed(4)
+        }, grad);
+      }
+      el('circle', { cx: TX, cy: TY, r: RMAX, fill: 'url(#' + gid + ')' }, svg);
+
+      el('text', { x: 62, y: 40, class: 'panel-title' }, svg)
+        .textContent = 'reward field · true location';
+
+      const RINGS = [200, 750, 1500, 3000, 6000];
+      RINGS.forEach((km) => {
+        const r = radius(km);
+        el('circle', {
+          cx: TX, cy: TY, r,
+          class: km === 6000 ? 'ring' : 'ring soft'
+        }, svg);
+        const t = el('text', {
+          x: TX,
+          y: TY - r + 13,
+          class: 'lab', 'text-anchor': 'middle', 'font-size': 11,
+          'fill-opacity': 0.8
+        }, svg);
+        t.textContent = km.toLocaleString('en-US') + ' km';
+      });
+
+      // Truth marker.
+      el('path', {
+        class: 'truth',
+        d: 'M' + (TX - 11) + ' ' + TY + 'h7 M' + (TX + 4) + ' ' + TY + 'h7' +
+           ' M' + TX + ' ' + (TY - 11) + 'v7 M' + TX + ' ' + (TY + 4) + 'v7'
+      }, svg);
+      el('circle', { class: 'truth-dot', cx: TX, cy: TY, r: 2.6 }, svg);
+      const truthLab = el('text', {
+        x: TX + 15, y: TY + 4, class: 'lab', 'font-size': 11, 'fill-opacity': 0.85
+      }, svg);
+      truthLab.textContent = 'true location';
+
+      // ── Right: the curve ───────────────────────────────────────────────────
+      const PX0 = 636, PX1 = 944, PY0 = 96, PY1 = 296;
+      const cx = (km) => PX0 + (Math.min(km, DMAX) / DMAX) * (PX1 - PX0);
+      const cy = (v) => PY1 - v * (PY1 - PY0);
+
+      el('text', { x: PX0, y: 40, class: 'panel-title' }, svg)
+        .textContent = 'reward = exp(−km / 1492.7)';
+
+      let d = '';
+      for (let i = 0; i <= 120; i++) {
+        const km = (DMAX * i) / 120;
+        d += (i ? 'L' : 'M') + cx(km).toFixed(2) + ' ' + cy(reward(km)).toFixed(2);
+      }
+      el('path', {
+        class: 'curve-fill',
+        d: d + 'L' + PX1 + ' ' + PY1 + 'L' + PX0 + ' ' + PY1 + 'Z'
+      }, svg);
+      el('path', { class: 'curve', d }, svg);
+      el('path', {
+        class: 'axis',
+        d: 'M' + PX0 + ' ' + PY0 + 'V' + PY1 + 'H' + PX1
+      }, svg);
+
+      [[0, '0'], [1500, '1.5k'], [3000, '3k'], [4500, '4.5k'], [6000, '6k km']]
+        .forEach(([km, label]) => {
+          const x = cx(km);
+          el('path', { class: 'axis', d: 'M' + x + ' ' + PY1 + 'v5' }, svg);
+          const t = el('text', {
+            x, y: PY1 + 19, 'text-anchor': 'middle', 'font-size': 11
+          }, svg);
+          t.textContent = label;
+        });
+      [[0, '0'], [0.5, '0.5'], [1, '1.0']].forEach(([v, label]) => {
+        const y = cy(v);
+        el('path', { class: 'axis', d: 'M' + (PX0 - 5) + ' ' + y + 'h5' }, svg);
+        const t = el('text', {
+          x: PX0 - 10, y: y + 4, 'text-anchor': 'end', 'font-size': 11
+        }, svg);
+        t.textContent = label;
+      });
+
+      // ── Samples: far guesses first, converging inward ──────────────────────
+      const samples = rows
+        .filter((r) => r && typeof r.median_km === 'number')
+        .map((r) => ({ name: r.name, km: r.median_km }))
+        .sort((a, b) => b.km - a.km);
+
+      const nodes = samples.map((s, i) => {
+        // Golden-angle placement, with the straight-up wedge kept clear so the
+        // ring labels always stay readable.
+        let deg = ((i * 137.508 + 24) % 360 + 360) % 360;
+        if (Math.abs(deg - 270) < 27) deg += 54;
+        const ang = (deg * Math.PI) / 180;
+        const r = radius(s.km);
+        const px = TX + Math.cos(ang) * r;
+        const py = TY + Math.sin(ang) * r;
+        const g = el('g', { class: 'sample' }, svg);
+
+        el('path', {
+          class: 'spoke', pathLength: 1,
+          d: 'M' + TX + ' ' + TY + 'L' + px.toFixed(2) + ' ' + py.toFixed(2)
+        }, g);
+        el('circle', { class: 'pin', r: 3.6 },
+          el('g', { transform: 'translate(' + px.toFixed(2) + ',' + py.toFixed(2) + ')' }, g));
+
+        const v = reward(s.km);
+        el('path', {
+          class: 'drop', pathLength: 1,
+          d: 'M' + cx(s.km).toFixed(2) + ' ' + PY1 +
+             'V' + cy(v).toFixed(2)
+        }, g);
+        el('circle', { class: 'pin', r: 3.2 },
+          el('g', {
+            transform: 'translate(' + cx(s.km).toFixed(2) + ',' + cy(v).toFixed(2) + ')'
+          }, g));
+
+        // Read-out, pushed outward so it never sits on the truth marker.
+        const out = 13;
+        const right = Math.cos(ang) >= 0;
+        const tag = el('g', { class: 'tag' }, g);
+        const tx = px + (right ? out : -out);
+        const t1 = el('text', {
+          x: tx.toFixed(2), y: (py - 3).toFixed(2),
+          class: 'lab name', 'font-size': 13,
+          'text-anchor': right ? 'start' : 'end'
+        }, tag);
+        t1.textContent = s.name;
+        const t2 = el('text', {
+          x: tx.toFixed(2), y: (py + 12).toFixed(2),
+          class: 'lab', 'font-size': 11,
+          'text-anchor': right ? 'start' : 'end'
+        }, tag);
+        t2.textContent = s.km.toLocaleString('en-US') + ' km · reward ' + v.toFixed(2);
+        return g;
+      });
+
+      const caption = document.createElement('div');
+      caption.className = 'caption';
+      caption.innerHTML =
+        'median error of <b>' + samples.length + '</b> policies on 200 held-out tasks<br>' +
+        '<b>place_pin</b> probes the map, it never reports this field back';
+      root.appendChild(caption);
+
+      // ── Timeline: land one guess at a time, hold, fade, repeat ─────────────
+      if (!nodes.length) return () => {};
+      if (reduceMotion) {
+        nodes.forEach((n, i) => n.classList.add(i === nodes.length - 1 ? 'live' : 'past'));
+        return () => {};
+      }
+
+      const STEP = 780, HOLD = 2800;
+      let i = 0, timer = null;
+      const tick = () => {
+        if (i >= nodes.length) {
+          nodes.forEach((n) => n.classList.remove('live', 'past'));
+          i = 0;
+          timer = setTimeout(tick, 900);
+          return;
+        }
+        nodes.forEach((n, k) => {
+          if (k < i) { n.classList.remove('live'); n.classList.add('past'); }
+        });
+        nodes[i].classList.add('live');
+        i += 1;
+        timer = setTimeout(tick, i >= nodes.length ? HOLD : STEP);
+      };
+      timer = setTimeout(tick, 350);
+      return () => clearTimeout(timer);
+    };
+
+    const bootstrap = async () => {
+      const roots = document.querySelectorAll('.' + CLASS);
+      if (!roots.length) return;
+      const board = await fetchFirst(BOARD_PATHS);
+      const rows = Array.isArray(board) && board.length ? board : FALLBACK;
+
+      roots.forEach((root) => {
+        if (root.getAttribute('data-mounted')) return;
+        root.setAttribute('data-mounted', '1');
+        let cancel = render(root, rows);
+        let t;
+        window.addEventListener('resize', () => {
+          clearTimeout(t);
+          t = setTimeout(() => {
+            if (typeof cancel === 'function') cancel();
+            cancel = render(root, rows);
+          }, 200);
+        });
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+    } else {
+      bootstrap();
+    }
+  })();
+</script>

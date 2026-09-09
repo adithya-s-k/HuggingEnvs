@@ -1,0 +1,58 @@
+[
+ {
+  "run": "run 1",
+  "model": "Qwen3.5-4B",
+  "scale_rewards": "group",
+  "beta": 0.0,
+  "tasks_per_step": 1,
+  "cost_scale": 1.0,
+  "steps": 1000,
+  "base": 0.4825,
+  "best": 0.6445,
+  "gain": 0.162,
+  "ci": 0.0137,
+  "better_on": 169
+ },
+ {
+  "run": "run 2 \u00b7 4B",
+  "model": "Qwen3.5-4B",
+  "scale_rewards": "none",
+  "beta": 0.02,
+  "tasks_per_step": 2,
+  "cost_scale": 0.2,
+  "steps": 300,
+  "base": 0.4768,
+  "best": 0.5095,
+  "gain": 0.0326,
+  "ci": 0.009,
+  "better_on": 124
+ },
+ {
+  "run": "run 2 \u00b7 2B",
+  "model": "Qwen3.5-2B",
+  "scale_rewards": "none",
+  "beta": 0.02,
+  "tasks_per_step": 2,
+  "cost_scale": 0.2,
+  "steps": 300,
+  "base": 0.4197,
+  "best": 0.486,
+  "gain": 0.0663,
+  "ci": 0.0091,
+  "better_on": 145
+ },
+ {
+  "run": "run 3",
+  "model": "Qwen3.5-4B",
+  "scale_rewards": "group",
+  "beta": 0.0,
+  "tasks_per_step": 2,
+  "cost_scale": 0.2,
+  "steps": 300,
+  "base": 0.4809,
+  "best": 0.5526,
+  "gain": 0.0717,
+  "ci": 0.0105,
+  "better_on": 139
+ }
+]

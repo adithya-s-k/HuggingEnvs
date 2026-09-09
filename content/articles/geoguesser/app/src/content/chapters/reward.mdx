@@ -1,0 +1,47 @@
+import HtmlEmbed from "../../components/HtmlEmbed.astro";
+import Note from "../../components/Note.astro";
+
+## The reward
+
+The reward is where a project like this is won or lost, because it is the only thing the model is actually told. The tools, the imagery and the prompt decide what it *can* do. The reward decides what it ends up doing.
+
+It is also the part you should plan to write more than once. Mine went through two versions and the second one is not obviously better on paper; it is better because we could see what the first one did to 200 real episodes. Reward design is empirical. What worked was to pick the obvious curve, run it over recorded episodes, and look at what it rewards and what it cannot distinguish.
+
+The obvious curve here is the game's own. Distance in, score out:
+
+$$
+\text{game} = \exp\!\left(-\frac{d}{1492.7}\right), \qquad
+\text{reward} = \max\!\big(0,\; \text{game} - \text{cost}\big)
+$$
+
+with a charge per action, `0.01` per look or map, `0.02` per pin, `0.05` per move, so the policy has to decide when it has seen enough. Continuous, unambiguous, no judge to game. As a leaderboard score it is fine.
+
+What the trainer optimises is slightly different, and the difference is the interesting part.
+
+$$
+r = \min\!\Big(1,\; 0.5\,e^{-d/1492.7} + 0.5\,e^{-d/5000}\Big) \times \big(1 - \min(\text{cost},\, 0.2)\big)
+$$
+
+Two changes. A second, much slower decay scale, and a cost that multiplies rather than subtracts. Both look like fussy details and both change what is learnable. It is easier to see than to read, so this is the same arithmetic you can poke at.
+
+<HtmlEmbed
+  src="reward-explorer.html"
+  title="What a guess is worth, and why the two curves disagree"
+  desc="Pick an episode or move the sliders. The dashed line is the game's curve, the solid one is what the trainer optimises, and the shaded band is where the game curve has already flattened to zero."
+  frameless
+/>
+
+
+**The single exponential goes flat where a weak model lives.** `exp(-d/1492.7)` is worth 0.018 across the *entire* range from 6,000 to 20,000 km. About a third of an untrained 4B's guesses land there, so getting dramatically less wrong on the wrong continent earns almost nothing. The 5,000 km scale makes that same span worth 0.150. It is telling the model it is getting warmer at the exact point where it most needs to hear it.
+
+**Subtracting the cost flattens the far misses into each other.** With `max(0, score - cost)` a guess past the cliff clamps to exactly zero, and where that cliff falls depends on what the episode spent: about 4,500 km for a cheap episode, about 3,300 km at the average cost of these models.
+
+<Note variant="warning">
+Replaying 200 episodes through the game curve floored **77 of them at exactly 0.0, with no variance between them**. A 3,324 km miss scored the same as an 18,723 km miss. A GRPO group drawn from those tasks has zero advantage and teaches nothing, and more than a third of the split was in that state. Multiplying by a positive factor cannot collapse an ordering, which is the whole reason for the change.
+</Note>
+
+One property we would keep in any version of this reward is that any guess anywhere on Earth beats no guess. Running out of turns without answering is the worst outcome, because for a small model it is by far the most common failure, and a reward that leaves it ambiguous will not fix it.
+
+<Note>
+There are now **two reward scales** in this project, and on the same guess they differ by more than 10×. The stored episode reward is the environment's curve, while every number we report is recomputed from raw distance through the training curve. Mixing them made run 2's deltas incomparable to run 1's for a while, and a unit test now fails if the two definitions drift apart.
+</Note>

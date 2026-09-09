@@ -1,0 +1,380 @@
+<div class="oes" style="width:100%;margin:14px 0;">
+  <div class="oes__frame">
+
+    <div class="oes__stage">
+      <div class="oes__stage-head">
+        <span class="oes__cap">what we wrote</span>
+        <span class="oes__meta">~5k lines, all of it about GeoGuessr</span>
+      </div>
+      <div class="oes__tiles">
+        <div class="oes__tile">
+          <b>GeoGuesserEnvironment</b>
+          <span><code>reset()</code>, <code>step()</code>, <code>state</code>, eleven MCP tools</span>
+        </div>
+        <div class="oes__tile">
+          <b>PanoramaBackend</b>
+          <span>frames, reprojection, movement graph</span>
+        </div>
+        <div class="oes__tile">
+          <b>reward and renderers</b>
+          <span>distance curve, action cost, view, minimap</span>
+        </div>
+        <div class="oes__tile">
+          <b>openenv.yaml</b>
+          <span>entrypoint, port, Space variables</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="oes__seam">
+      <span class="oes__seam-label"><code>create_app(env, Action, Observation)</code></span>
+    </div>
+
+    <div class="oes__stage oes__stage--gen">
+      <div class="oes__stage-head">
+        <span class="oes__cap">what OpenEnv generates from it</span>
+        <span class="oes__meta">none of this is in our repository</span>
+      </div>
+      <div class="oes__groups">
+
+        <div class="oes__grp">
+          <div class="oes__grp-head">
+            <b>simulation</b>
+            <span>the trainer drives it</span>
+          </div>
+          <ul class="oes__routes">
+            <li><code>POST /reset</code><em>split, index, seed</em></li>
+            <li><code>POST /step</code><em>typed action in, observation out</em></li>
+            <li><code>GET /state</code><em>episode_id, step_count</em></li>
+          </ul>
+          <p class="oes__grp-foot">Registered only in simulation mode.</p>
+        </div>
+
+        <div class="oes__grp">
+          <div class="oes__grp-head">
+            <b>agent</b>
+            <span>the policy sees only this</span>
+          </div>
+          <ul class="oes__routes">
+            <li><code>POST /mcp</code><em>JSON-RPC, tools only</em></li>
+            <li><code>WS /mcp</code><em>one session per connection</em></li>
+          </ul>
+          <div class="oes__grp-head oes__grp-head--sub">
+            <b>the two calls</b>
+            <span>everything the policy can do</span>
+          </div>
+          <ul class="oes__routes">
+            <li><code>tools/list</code><em>the eleven schemas, straight from FastMCP</em></li>
+            <li><code>tools/call</code><em>one action, one observation back</em></li>
+          </ul>
+          <p class="oes__grp-foot">Reserved names: a tool may not be called <code>reset</code>, <code>step</code>, <code>state</code> or <code>close</code>.</p>
+        </div>
+
+        <div class="oes__grp">
+          <div class="oes__grp-head">
+            <b>discovery</b>
+            <span>from the Pydantic models</span>
+          </div>
+          <ul class="oes__routes">
+            <li><code>GET /schema</code><em>action, observation, state</em></li>
+            <li><code>GET /metadata</code></li>
+            <li><code>GET /health</code></li>
+          </ul>
+          <div class="oes__grp-head oes__grp-head--sub">
+            <b>task API</b>
+            <span>under <code>/geoguesser_env</code></span>
+          </div>
+          <div class="oes__taskapi">
+            <span><code>/splits</code></span>
+            <span><code>/num_tasks</code></span>
+            <span><code>/task</code></span>
+            <span><code>/task_range</code></span>
+          </div>
+          <p class="oes__grp-foot">Declared on the class, or the routes return <code>501</code>.</p>
+        </div>
+
+        <div class="oes__grp">
+          <div class="oes__grp-head">
+            <b>runtime</b>
+            <span>lifecycle and concurrency</span>
+          </div>
+          <ul class="oes__facts">
+            <li>a fresh environment per session, up to <code>max_concurrent_envs</code></li>
+            <li>an idle-session reaper</li>
+            <li><code>CAPACITY_REACHED</code> rather than a silent queue</li>
+            <li>sync <code>step()</code> in a thread pool, so one slow rollout blocks nothing</li>
+            <li>a container and a Space manifest, one image for both</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="oes__seam oes__seam--thin">
+      <span class="oes__seam-label">HTTP for the trainer, MCP for the policy</span>
+    </div>
+
+    <div class="oes__stage">
+      <div class="oes__stage-head">
+        <span class="oes__cap">who reaches what</span>
+      </div>
+      <div class="oes__who-row">
+        <div class="oes__who">
+          <b>TRL GRPOTrainer</b>
+          <span>eight sessions, one per rollout in the group</span>
+          <div class="oes__pills">
+            <span class="oes__pill">/reset</span>
+            <span class="oes__pill">/step</span>
+            <span class="oes__pill">/state</span>
+            <span class="oes__pill">task API</span>
+          </div>
+        </div>
+        <div class="oes__who">
+          <b>the policy</b>
+          <span>inside the rollout, over MCP</span>
+          <div class="oes__pills">
+            <span class="oes__pill">eleven tools</span>
+            <span class="oes__pill oes__pill--no">/reset does not exist here</span>
+          </div>
+        </div>
+        <p class="oes__note">
+          The boundary is the server's, not the prompt's. In production mode the simulation routes
+          are never registered, so a policy cannot reroll a task it does not like.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+  .oes__frame {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--surface-bg);
+    padding: 15px 15px 16px;
+  }
+
+  .oes__stage-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .oes__cap {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted-color);
+  }
+  .oes__meta { font-size: 10.5px; color: var(--muted-color); }
+
+  /* Row 1: what we wrote. */
+  .oes__tiles {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .oes__tile {
+    border: 1px solid var(--border-color);
+    border-radius: 7px;
+    padding: 8px 10px 9px;
+    background: color-mix(in oklab, var(--muted-color) 6%, transparent);
+    min-width: 0;
+  }
+  .oes__tile b {
+    display: block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    color: var(--text-color);
+    margin-bottom: 2px;
+    overflow-wrap: anywhere;
+  }
+  .oes__tile span { font-size: 10.5px; line-height: 1.45; color: var(--muted-color); }
+
+  /* The seam between stages, so the figure reads as a pipeline. */
+  .oes__seam {
+    position: relative;
+    display: grid;
+    place-items: center;
+    height: 34px;
+    margin: 4px 0 2px;
+  }
+  .oes__seam::before {
+    content: "";
+    position: absolute;
+    left: 3%; right: 3%; top: 50%;
+    height: 1px;
+    background: linear-gradient(to right,
+      transparent, color-mix(in oklab, var(--primary-color) 55%, transparent), transparent);
+  }
+  .oes__seam--thin::before {
+    background: repeating-linear-gradient(to right,
+      var(--border-color) 0 5px, transparent 5px 10px);
+  }
+  .oes__seam-label {
+    position: relative;
+    background: var(--surface-bg);
+    padding: 0 10px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    color: var(--primary-color);
+  }
+  .oes__seam--thin .oes__seam-label { color: var(--muted-color); }
+  .oes__seam-label code { font-family: inherit; font-size: inherit; }
+
+  /* Row 2: the generated surface, which is the point of the figure. */
+  .oes__stage--gen .oes__cap { color: var(--primary-color); }
+  .oes__groups {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 9px;
+    align-items: stretch;
+  }
+  /* Equal-height cards with their footnote pinned to the bottom edge, so four
+     lists of different lengths still line up. */
+  .oes__grp {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid color-mix(in oklab, var(--primary-color) 30%, var(--border-color));
+    border-radius: 7px;
+    padding: 9px 10px 10px;
+    background: color-mix(in oklab, var(--primary-color) 6%, transparent);
+    min-width: 0;
+  }
+  .oes__grp-head { margin-bottom: 6px; }
+  .oes__grp-head--sub {
+    margin-top: 9px;
+    padding-top: 8px;
+    border-top: 1px solid color-mix(in oklab, var(--primary-color) 22%, transparent);
+  }
+  .oes__grp-head b {
+    display: block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-color);
+  }
+  .oes__grp-head span { font-size: 10px; color: var(--muted-color); }
+  .oes__grp-head code { font-size: 9.5px; }
+
+  .oes__routes, .oes__facts {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .oes__routes li { display: block; min-width: 0; }
+  .oes__routes code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px;
+    color: var(--text-color);
+    overflow-wrap: anywhere;
+  }
+  .oes__routes em {
+    display: block;
+    font-style: normal;
+    font-size: 9.5px;
+    line-height: 1.4;
+    color: var(--muted-color);
+  }
+  .oes__taskapi { display: flex; flex-wrap: wrap; gap: 4px; }
+  .oes__taskapi span {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: color-mix(in oklab, var(--primary-color) 13%, transparent);
+  }
+  .oes__taskapi code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    color: var(--text-color);
+  }
+  .oes__grp-foot {
+    margin: 10px 0 0;
+    padding-top: 8px;
+    border-top: 1px solid color-mix(in oklab, var(--primary-color) 18%, transparent);
+    font-size: 9.5px;
+    line-height: 1.4;
+    color: var(--muted-color);
+    margin-top: auto;
+  }
+  .oes__facts li {
+    position: relative;
+    padding-left: 10px;
+    font-size: 10.5px;
+    line-height: 1.4;
+    color: var(--muted-color);
+  }
+  .oes__facts li::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 6px;
+    width: 3.5px; height: 3.5px;
+    border-radius: 50%;
+    background: color-mix(in oklab, var(--primary-color) 70%, transparent);
+  }
+  .oes__facts code, .oes__note code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    color: var(--text-color);
+    overflow-wrap: anywhere;
+  }
+
+  /* Row 3: consumers. */
+  .oes__who-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr);
+    gap: 9px;
+    align-items: stretch;
+  }
+  .oes__who {
+    border: 1px solid var(--border-color);
+    border-radius: 7px;
+    padding: 8px 10px 9px;
+    min-width: 0;
+  }
+  .oes__who b {
+    display: block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    color: var(--text-color);
+  }
+  .oes__who > span { font-size: 10.5px; line-height: 1.4; color: var(--muted-color); }
+  .oes__pills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .oes__pill {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--text-color);
+    background: color-mix(in oklab, var(--primary-color) 16%, transparent);
+    white-space: nowrap;
+  }
+  .oes__pill--no {
+    color: var(--muted-color);
+    background: transparent;
+    border: 1px dashed color-mix(in oklab, var(--muted-color) 50%, transparent);
+  }
+  .oes__note {
+    margin: 0;
+    align-self: center;
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: var(--muted-color);
+  }
+
+  @media (max-width: 860px) {
+    .oes__tiles,
+    .oes__groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .oes__who-row { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 520px) {
+    .oes__tiles,
+    .oes__groups { grid-template-columns: 1fr; }
+  }
+</style>

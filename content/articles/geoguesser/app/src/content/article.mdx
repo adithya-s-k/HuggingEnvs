@@ -1,0 +1,56 @@
+---
+title: "How to turn a game into an RL environment: the technical intuition"
+description: "Curating the dataset, designing the environment, and shipping it with OpenEnv, then training a 4B with TRL until it outscored gpt-5.4-mini and claude-haiku-4.5 at GeoGuessr."
+authors:
+  - name: "Adithya S Kolavi"
+    url: "https://huggingface.co/AdithyaSK"
+    affiliations: [1]
+affiliations:
+  - name: "Hugging Face"
+    url: "https://huggingface.co"
+published: "September 8, 2026"
+tags:
+  - reinforcement learning
+  - RL environments
+  - OpenEnv
+  - TRL
+  - GRPO
+  - vision language models
+  - visual geolocation
+  - reward design
+  - Qwen3.5
+  - GeoGuessr
+repo: "https://github.com/adithya-s-k/HuggingEnvs"
+template: "article"
+tableOfContentsAutoCollapse: true
+showPdf: true
+---
+
+{/*
+  This import list IS the chapter registry. There is no glob and no ordering config.
+  To add, remove or reorder a section, edit both the imports and the element list below.
+*/}
+
+import Introduction from "./chapters/introduction.mdx";
+import Data from "./chapters/data.mdx";
+import Baselines from "./chapters/baselines.mdx";
+import Environment from "./chapters/environment.mdx";
+import Deploy from "./chapters/deploy.mdx";
+import Reward from "./chapters/reward.mdx";
+import Derisking from "./chapters/derisking.mdx";
+import Training from "./chapters/training.mdx";
+import WhatItLearned from "./chapters/what-it-learned.mdx";
+import Ablations from "./chapters/ablations.mdx";
+import Conclusions from "./chapters/conclusions.mdx";
+
+<Introduction />
+<Data />
+<Baselines />
+<Environment />
+<Deploy />
+<Reward />
+<Derisking />
+<Training />
+<WhatItLearned />
+<Ablations />
+<Conclusions />

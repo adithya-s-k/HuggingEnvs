@@ -5,9 +5,11 @@ Sources live in this repo; artifacts live on the Hub. Uploads go over the HTTP
 endpoint (`hf upload`) rather than `git push` to a Space remote, so no nested git
 repos end up in this tree.
 
-The SDK is read from the item's own README frontmatter — that file is the Space
-card. `sdk: static` builds first and uploads `dist/`; anything else uploads the
-directory as-is.
+The SDK is read from the item's own `space.md`, or its README frontmatter when
+there is no `space.md` — that file is the Space card. `sdk: static` builds first
+and uploads `dist/`; anything else uploads the directory as-is, minus build
+artifacts (`node_modules/`, `dist/`, `.astro/`), since those Spaces build
+themselves.
 
     python3 tools/deploy.py content/slides/rl-environments-101 HuggingEnvs/rl-environments-101-slides
     python3 tools/deploy.py content/articles/rl-environments-guide HuggingEnvs/rl-environments-guide
@@ -23,6 +25,19 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+# Never uploaded: a Space that builds from source does not want these, and
+# node_modules alone is hundreds of megabytes.
+EXCLUDE = [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.astro/**",
+    "**/.git/**",
+    "**/.venv/**",
+    "**/__pycache__/**",
+    "**/.DS_Store",
+    "**/*.log",
+]
 
 
 def card_path(src: Path) -> Path:
@@ -87,7 +102,18 @@ def main() -> None:
         run(["hf", "upload", args.space, str(card), "README.md", "--repo-type", "space"],
             dry_run=args.dry_run)
     else:
-        run(["hf", "upload", args.space, str(src), ".", "--repo-type", "space"], dry_run=args.dry_run)
+        cmd = ["hf", "upload", args.space, str(src), ".", "--repo-type", "space"]
+        for pattern in EXCLUDE:
+            cmd += ["--exclude", pattern]
+        # A Space's card has to be README.md at the root. When the source keeps a
+        # separate `space.md`, the repo README is a repo README: leave it behind
+        # and push the card into its place.
+        if card.name == "space.md":
+            cmd += ["--exclude", "README.md", "--exclude", "space.md"]
+        run(cmd, dry_run=args.dry_run)
+        if card.name == "space.md":
+            run(["hf", "upload", args.space, str(card), "README.md", "--repo-type", "space"],
+                dry_run=args.dry_run)
 
     print(f"✓ https://huggingface.co/spaces/{args.space}")
 

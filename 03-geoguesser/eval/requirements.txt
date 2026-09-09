@@ -1,0 +1,23 @@
+# Dependencies for the eval harness (eval/*.py). The environment itself has its
+# own, pinned in env/pyproject.toml -- install that separately if you are running
+# the environment locally rather than driving the hosted Space.
+
+# Providers. Install only the ones you actually point the harness at; each arm
+# in board_models.json names its provider.
+anthropic>=0.40.0          # claude-* arms
+openai>=1.55.0             # gpt-* arms, and the HF router (OpenAI-compatible)
+
+# The OpenEnv client the harness speaks to the environment through.
+openenv>=0.3.1
+
+# Image handling for the panorama and minimap frames.
+pillow>=10.0.0
+
+# Aggregation. `geoeval.py report` computes the paired confidence intervals.
+numpy>=1.26.0
+
+# Optional -- only for the side tools, not for running an eval:
+#   gepa      prompt optimisation      (prompt-optimisation/optimise_prompt.py)
+#   gradio    local endpoint probing   (`geoeval.py probe`)
+# gepa>=0.0.6
+# gradio>=5.0.0

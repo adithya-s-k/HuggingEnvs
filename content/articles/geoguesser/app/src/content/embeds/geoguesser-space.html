@@ -1,0 +1,85 @@
+<div class="geo-space">
+  <div class="geo-space__frame">
+    <iframe
+      src="https://huggingenvs-geoguesser-env.hf.space/web/"
+      title="GeoGuessr environment, playable"
+      loading="lazy"
+      allow="clipboard-write"
+      referrerpolicy="no-referrer-when-downgrade"></iframe>
+  </div>
+  <p class="geo-space__note">
+    Play a round: look around, walk, drop a pin, commit. Runs on a shared Space, so a cold start
+    takes a minute. <a href="https://huggingface.co/spaces/HuggingEnvs/geoguesser-env"
+    target="_blank" rel="noopener">Open it in a new tab</a> for more room.
+  </p>
+</div>
+
+<style>
+  /* Break out of the reading column. The environment is a game board with its
+     own controls and map, and at text width it is unreadable. This mirrors the
+     template's .wide helper but without its padding and edge mask, both of
+     which would eat into the iframe's own chrome. */
+  .geo-space {
+    position: relative;
+    width: min(80vw, 1600px);
+    margin-left: 50%;
+    transform: translateX(-50%);
+    margin-top: 18px;
+    margin-bottom: 44px;
+  }
+
+  .geo-space__frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    /* The orange accent, not the neutral rule: this is the one thing on the
+       page the reader can touch, so it is worth marking as interactive. */
+    border: 1px solid var(--primary-color);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--surface-bg);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary-color) 10%, transparent);
+  }
+  .geo-space__frame iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
+  /* While the Space wakes up, the frame is empty. A quiet pulse says "loading"
+     without pretending to be a play button. */
+  .geo-space__frame::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: radial-gradient(120% 100% at 50% 0%,
+      color-mix(in oklab, var(--primary-color) 10%, transparent) 0%,
+      transparent 60%);
+    animation: geoSpaceWake 2.4s ease-in-out infinite;
+  }
+  @keyframes geoSpaceWake {
+    0%, 100% { opacity: 0.45; }
+    50%      { opacity: 1; }
+  }
+
+  .geo-space__note {
+    margin: 9px 0 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--muted-color);
+    text-align: center;
+  }
+  .geo-space__note a { color: var(--primary-color); }
+
+  /* Taller than it is wide on a phone, where 16:10 leaves the controls tiny. */
+  @media (max-width: 700px) {
+    .geo-space { width: 100%; margin-left: 0; transform: none; }
+    .geo-space__frame { aspect-ratio: 4 / 5; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .geo-space__frame::before { animation: none; }
+  }
+</style>

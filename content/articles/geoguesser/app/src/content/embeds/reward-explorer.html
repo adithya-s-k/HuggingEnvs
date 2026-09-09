@@ -1,0 +1,478 @@
+<div class="rx" style="width:100%;margin:14px 0;min-height:520px;">
+  <div class="rx__frame">
+
+    <div class="rx__scenarios" role="group" aria-label="example episodes"></div>
+
+    <div class="rx__chart">
+        <svg viewBox="0 0 620 260" role="img"
+             aria-label="Both reward curves against distance, with the current guess marked"></svg>
+      <div class="rx__legend">
+        <span class="rx__key rx__key--train">what the trainer optimises</span>
+        <span class="rx__key rx__key--game">the game's own curve</span>
+        <span class="rx__key rx__key--dead">where the game curve is flat at zero</span>
+        <span class="rx__key rx__key--axis">x: kilometres off, log scale</span>
+      </div>
+    </div>
+
+    <div class="rx__body">
+      <div class="rx__panel">
+        <label class="rx__ctl">
+          <span class="rx__ctl-head">
+            <span>how far off the guess is</span>
+            <b class="rx__dist"></b>
+          </span>
+          <input class="rx__slider" type="range" min="0" max="1000" value="300"
+                 aria-label="distance in kilometres">
+        </label>
+
+        <div class="rx__ctl">
+          <span class="rx__ctl-head">
+            <span>what it did to get there</span>
+            <b class="rx__cost"></b>
+          </span>
+          <div class="rx__actions"></div>
+        </div>
+
+      </div>
+
+      <div class="rx__out">
+          <div class="rx__out-row rx__out-row--train">
+            <div class="rx__out-name">
+              <b>training reward</b>
+              <span class="rx__math rx__math--train"></span>
+            </div>
+            <div class="rx__bar"><i></i></div>
+            <b class="rx__val rx__val--train"></b>
+          </div>
+        <div class="rx__out-row rx__out-row--game">
+          <div class="rx__out-name">
+            <b>game reward</b>
+            <span class="rx__math rx__math--game"></span>
+          </div>
+          <div class="rx__bar"><i></i></div>
+          <b class="rx__val rx__val--game"></b>
+        </div>
+      </div>
+    </div>
+
+    <p class="rx__verdict"></p>
+
+  </div>
+</div>
+
+<style>
+  .rx__frame {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--surface-bg);
+    padding: 14px 15px 15px;
+  }
+
+  .rx__scenarios { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 13px; }
+  .rx__sc {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 5px;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--muted-color);
+    cursor: pointer;
+  }
+  .rx__sc:hover { border-color: var(--primary-color); color: var(--text-color); }
+  .rx__sc.is-on {
+    color: var(--text-color);
+    border-color: color-mix(in oklab, var(--primary-color) 55%, var(--border-color));
+    background: color-mix(in oklab, var(--primary-color) 13%, transparent);
+  }
+
+  .rx__chart { margin-bottom: 13px; }
+  .rx__body {
+    display: grid;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    gap: 18px;
+    align-items: start;
+  }
+  @media (max-width: 820px) {
+    .rx__body { grid-template-columns: 1fr; }
+  }
+
+  .rx__chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .rx .axis, .rx .tick-lbl {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9px;
+    fill: var(--muted-color);
+  }
+  .rx .grid { stroke: var(--border-color); stroke-opacity: 0.55; stroke-width: 0.6; }
+  .rx .dead { fill: color-mix(in oklab, var(--muted-color) 12%, transparent); }
+  .rx .curve-train { fill: none; stroke: var(--primary-color); stroke-width: 1.8; }
+  .rx .curve-game {
+    fill: none;
+    stroke: color-mix(in oklab, var(--muted-color) 78%, transparent);
+    stroke-width: 1.4;
+    stroke-dasharray: 4 3;
+  }
+  .rx .marker { stroke: var(--text-color); stroke-width: 0.9; stroke-dasharray: 2 2; }
+  .rx .dot-train { fill: var(--primary-color); stroke: var(--surface-bg); stroke-width: 1; }
+  .rx .dot-game { fill: var(--muted-color); stroke: var(--surface-bg); stroke-width: 1; }
+
+  .rx__legend { display: flex; flex-wrap: wrap; gap: 11px; margin-top: 7px; }
+  .rx__key {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    color: var(--muted-color);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .rx__key::before {
+    content: "";
+    width: 14px; height: 2px; border-radius: 2px;
+    background: var(--muted-color);
+  }
+  .rx__key--train::before { background: var(--primary-color); height: 3px; }
+  .rx__key--dead::before {
+    height: 9px;
+    background: color-mix(in oklab, var(--muted-color) 28%, transparent);
+  }
+  .rx__key--axis::before { display: none; }
+
+  .rx__panel { display: flex; flex-direction: column; gap: 13px; min-width: 0; }
+  .rx__ctl { display: block; }
+  .rx__ctl-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 5px;
+  }
+  .rx__ctl-head span {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted-color);
+  }
+  .rx__ctl-head b {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
+  }
+  .rx__slider { width: 100%; accent-color: var(--primary-color); }
+
+  .rx__actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .rx__act {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 3px 5px 3px 8px;
+  }
+  .rx__act span {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    color: var(--muted-color);
+  }
+  .rx__act b {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    color: var(--text-color);
+    min-width: 10px;
+    text-align: center;
+  }
+  .rx__step {
+    border: none;
+    background: color-mix(in oklab, var(--muted-color) 14%, transparent);
+    color: var(--text-color);
+    border-radius: 4px;
+    width: 17px; height: 17px;
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .rx__step:hover { background: color-mix(in oklab, var(--primary-color) 30%, transparent); }
+
+  .rx__out { display: flex; flex-direction: column; gap: 8px; }
+  .rx__out-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 76px auto;
+    align-items: center;
+    gap: 9px;
+    border: 1px solid var(--border-color);
+    border-radius: 7px;
+    padding: 8px 10px;
+  }
+  .rx__out-row--train {
+    border-color: color-mix(in oklab, var(--primary-color) 40%, var(--border-color));
+    background: color-mix(in oklab, var(--primary-color) 7%, transparent);
+  }
+  .rx__out-name b {
+    display: block;
+    font-size: 11.5px;
+    color: var(--text-color);
+  }
+  .rx__math {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    line-height: 1.4;
+    color: var(--muted-color);
+  }
+  .rx__bar {
+    height: 6px;
+    border-radius: 3px;
+    background: color-mix(in oklab, var(--muted-color) 18%, transparent);
+    overflow: hidden;
+  }
+  .rx__bar i {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: var(--muted-color);
+    transition: width .16s ease;
+  }
+  .rx__out-row--train .rx__bar i { background: var(--primary-color); }
+  .rx__val {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 14px;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rx__verdict {
+    margin: 12px 0 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-color);
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--muted-color);
+    min-height: 34px;
+  }
+  .rx__verdict b { color: var(--text-color); font-weight: 600; }
+</style>
+
+<script>
+  (function () {
+    // Both curves, exactly as they are written in the two code paths.
+    const DECAY = 1492.7;        // the game's own scale
+    const LONG = 5000;           // the second scale the trainer adds
+    const W_SHORT = 0.5;
+    const CAP = 0.2;             // most of the reward the cost may remove
+    const COST = { look: 0.01, pin: 0.02, move: 0.05 };
+    const MAX_KM = 20000;
+
+    const game = (d, cost) => Math.max(0, Math.exp(-d / DECAY) - cost);
+    const train = (d, cost) => (d === null ? 0 : Math.min(1,
+      W_SHORT * Math.exp(-d / DECAY) + (1 - W_SHORT) * Math.exp(-d / LONG))
+      * (1 - Math.min(Math.max(cost, 0), CAP)));
+
+    // A slider position maps to kilometres on a log scale, so the first
+    // hundred kilometres are as easy to reach as the last ten thousand.
+    const posToKm = (p) => Math.round((Math.exp((p / 1000) * Math.log(MAX_KM + 1)) - 1));
+    const kmToPos = (km) => Math.round(1000 * Math.log(km + 1) / Math.log(MAX_KM + 1));
+
+    const SCENARIOS = [
+      { name: 'pinpoint, 1 km', km: 1, acts: { look: 3, pin: 1, move: 0 } },
+      { name: 'right town, 25 km', km: 25, acts: { look: 4, pin: 2, move: 1 } },
+      { name: 'right country, 300 km', km: 300, acts: { look: 3, pin: 1, move: 0 } },
+      { name: 'right continent, 1,500 km', km: 1500, acts: { look: 2, pin: 1, move: 0 } },
+      { name: 'wrong continent, 8,000 km', km: 8000, acts: { look: 2, pin: 1, move: 0 } },
+      { name: 'guessed blind, one turn', km: 1200, acts: { look: 0, pin: 0, move: 0 } },
+      { name: 'looked hard, still 1,500 km', km: 1500, acts: { look: 12, pin: 4, move: 3 } },
+      { name: 'ran out of turns', km: null, acts: { look: 9, pin: 3, move: 2 } }
+    ];
+
+    const fmtKm = (km) => (km === null ? 'no guess'
+      : km < 10 ? `${km} km` : `${km.toLocaleString()} km`);
+
+    const mount = (root) => {
+      const svg = root.querySelector('.rx__chart svg');
+      const slider = root.querySelector('.rx__slider');
+      const distOut = root.querySelector('.rx__dist');
+      const costOut = root.querySelector('.rx__cost');
+      const actsHost = root.querySelector('.rx__actions');
+      const scHost = root.querySelector('.rx__scenarios');
+      const verdict = root.querySelector('.rx__verdict');
+
+      let km = 300;
+      let acts = { look: 3, pin: 1, move: 0 };
+      let scenario = -1;
+
+      const cost = () => COST.look * acts.look + COST.pin * acts.pin + COST.move * acts.move;
+
+      // ---- the curves, drawn once ----
+      const M = { l: 34, r: 10, t: 12, b: 26 };
+      const CW = 620, CH = 260;
+      const iw = CW - M.l - M.r, ih = CH - M.t - M.b;
+      const X = (d) => M.l + (Math.log(d + 1) / Math.log(MAX_KM + 1)) * iw;
+      const Y = (v) => M.t + (1 - v) * ih;
+
+      const line = (fn) => {
+        let pts = [];
+        for (let p = 0; p <= 1000; p += 6) {
+          const d = posToKm(p);
+          pts.push(`${X(d).toFixed(1)},${Y(fn(d)).toFixed(1)}`);
+        }
+        return 'M' + pts.join('L');
+      };
+
+      const ns = 'http://www.w3.org/2000/svg';
+      const el = (name, attrs, text) => {
+        const n = document.createElementNS(ns, name);
+        Object.entries(attrs).forEach(([k, v]) => n.setAttribute(k, v));
+        if (text !== undefined) n.textContent = text;
+        return n;
+      };
+
+      const draw = () => {
+        svg.innerHTML = '';
+        const c = cost();
+
+        // Where the game curve has already clamped to zero for this cost.
+        const deadFrom = c > 0 ? -DECAY * Math.log(c) : MAX_KM;
+        if (deadFrom < MAX_KM) {
+          svg.appendChild(el('rect', {
+            class: 'dead', x: X(deadFrom), y: M.t,
+            width: Math.max(0, X(MAX_KM) - X(deadFrom)), height: ih
+          }));
+        }
+
+        [0, 0.25, 0.5, 0.75, 1].forEach((v) => {
+          svg.appendChild(el('line', { class: 'grid', x1: M.l, x2: CW - M.r, y1: Y(v), y2: Y(v) }));
+          svg.appendChild(el('text', { class: 'tick-lbl', x: M.l - 6, y: Y(v) + 3, 'text-anchor': 'end' }, v.toFixed(2)));
+        });
+        [1, 25, 200, 1500, 6000, 20000].forEach((d) => {
+          svg.appendChild(el('text', {
+            class: 'tick-lbl', x: X(d), y: CH - 8, 'text-anchor': 'middle'
+          }, d >= 1000 ? `${d / 1000}k` : String(d)));
+        });
+
+        svg.appendChild(el('path', { class: 'curve-game', d: line((d) => game(d, c)) }));
+        svg.appendChild(el('path', { class: 'curve-train', d: line((d) => train(d, c)) }));
+
+        if (km !== null) {
+          svg.appendChild(el('line', { class: 'marker', x1: X(km), x2: X(km), y1: M.t, y2: M.t + ih }));
+          svg.appendChild(el('circle', { class: 'dot-game', cx: X(km), cy: Y(game(km, c)), r: 3.4 }));
+          svg.appendChild(el('circle', { class: 'dot-train', cx: X(km), cy: Y(train(km, c)), r: 4.2 }));
+        }
+      };
+
+      const paint = () => {
+        const c = cost();
+        const g = km === null ? 0 : game(km, c);
+        const t = train(km, c);
+
+        distOut.textContent = fmtKm(km);
+        costOut.textContent = `cost ${c.toFixed(2)}`;
+
+        root.querySelector('.rx__val--train').textContent = t.toFixed(3);
+        root.querySelector('.rx__val--game').textContent = g.toFixed(3);
+        root.querySelector('.rx__out-row--train .rx__bar i').style.width = `${t * 100}%`;
+        root.querySelector('.rx__out-row--game .rx__bar i').style.width = `${g * 100}%`;
+
+        if (km === null) {
+          root.querySelector('.rx__math--train').textContent = 'no guess, so nothing to score';
+          root.querySelector('.rx__math--game').textContent = 'no guess, so nothing to score';
+        } else {
+          const short = Math.exp(-km / DECAY), long = Math.exp(-km / LONG);
+          const mix = Math.min(1, 0.5 * short + 0.5 * long);
+          root.querySelector('.rx__math--train').textContent =
+            `(0.5×${short.toFixed(3)} + 0.5×${long.toFixed(3)}) × (1 − ${Math.min(c, CAP).toFixed(2)}) = ${(mix * (1 - Math.min(c, CAP))).toFixed(3)}`;
+          root.querySelector('.rx__math--game').textContent =
+            `max(0, ${short.toFixed(3)} − ${c.toFixed(2)}) = ${g.toFixed(3)}`;
+        }
+
+        // The line under the numbers is the whole argument of this section.
+        let msg;
+        if (km === null) {
+          msg = 'Both curves agree here, and this is the one thing they should agree about: ' +
+            '<b>running out of turns is the worst outcome</b>. Any guess anywhere on Earth beats it.';
+        } else if (g === 0 && t > 0) {
+          msg = 'The game curve has floored. Every guess out here scores <b>exactly 0.0</b>, ' +
+            'so a 3,300 km miss and a 19,000 km miss are indistinguishable, and a group of them ' +
+            'has no advantage to learn from. The training curve still has a slope.';
+        } else if (c > CAP) {
+          msg = 'The cost has hit its cap. The game curve keeps subtracting and can erase the ' +
+            'episode outright; the training curve scales instead, so <b>looking around is ' +
+            'penalised but never erased</b>.';
+        } else if (km <= 200) {
+          msg = 'Close in, the two curves nearly agree. This is the easy part of reward design, ' +
+            'and it is not where runs go wrong.';
+        } else {
+          msg = 'In the middle the second decay scale is doing the work: it keeps a gradient ' +
+            'alive where a weak model actually lives, which is <b>hundreds to thousands of ' +
+            'kilometres out</b>.';
+        }
+        verdict.innerHTML = msg;
+
+        scHost.querySelectorAll('.rx__sc').forEach((b, i) => {
+          b.classList.toggle('is-on', i === scenario);
+        });
+        draw();
+      };
+
+      // ---- controls ----
+      slider.value = kmToPos(km);
+      slider.addEventListener('input', () => {
+        km = posToKm(Number(slider.value));
+        scenario = -1;
+        paint();
+      });
+
+      Object.keys(COST).forEach((kind) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'rx__act';
+        wrap.innerHTML =
+          `<span>${kind}</span><button class="rx__step" data-d="-1" ` +
+          `aria-label="one fewer ${kind}">&minus;</button>` +
+          `<b data-n="${kind}">${acts[kind]}</b>` +
+          `<button class="rx__step" data-d="1" aria-label="one more ${kind}">+</button>`;
+        wrap.querySelectorAll('.rx__step').forEach((b) => {
+          b.addEventListener('click', () => {
+            acts[kind] = Math.max(0, Math.min(20, acts[kind] + Number(b.dataset.d)));
+            wrap.querySelector('b').textContent = acts[kind];
+            scenario = -1;
+            paint();
+          });
+        });
+        actsHost.appendChild(wrap);
+      });
+
+      SCENARIOS.forEach((s, i) => {
+        const b = document.createElement('button');
+        b.className = 'rx__sc';
+        b.type = 'button';
+        b.textContent = s.name;
+        b.addEventListener('click', () => {
+          km = s.km;
+          acts = { ...s.acts };
+          scenario = i;
+          slider.value = kmToPos(km === null ? MAX_KM : km);
+          slider.disabled = km === null;
+          actsHost.querySelectorAll('b[data-n]').forEach((n) => {
+            n.textContent = acts[n.dataset.n];
+          });
+          paint();
+        });
+        scHost.appendChild(b);
+      });
+
+      paint();
+    };
+
+    const bootstrap = () => {
+      document.querySelectorAll('.rx').forEach((root) => {
+        if (root.getAttribute('data-mounted')) return;
+        root.setAttribute('data-mounted', '1');
+        mount(root);
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap);
+    } else {
+      bootstrap();
+    }
+  })();
+</script>

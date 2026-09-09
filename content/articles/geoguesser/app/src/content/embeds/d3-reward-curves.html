@@ -1,0 +1,50 @@
+<div class="d3-reward-curves" style="width:100%;margin:14px 0;"></div>
+
+<style>
+  .d3-reward-curves {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+    justify-content: center;
+    min-height: 210px;
+    padding: 28px 26px;
+    border: 1px dashed var(--border-color);
+    border-radius: 10px;
+    background: color-mix(in oklab, var(--primary-color) 4%, transparent);
+  }
+  .d3-reward-curves .ph-tag {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--primary-color);
+  }
+  .d3-reward-curves .ph-title { font-size: 17px; font-weight: 650; color: var(--text-color); }
+  .d3-reward-curves .ph-desc { font-size: 14px; line-height: 1.55; color: var(--muted-color); max-width: 64ch; }
+  .d3-reward-curves .ph-file {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px; color: var(--muted-color);
+    padding: 3px 7px; border: 1px solid var(--border-color);
+    border-radius: 5px; background: var(--surface-bg);
+  }
+</style>
+
+<script>
+  (function () {
+    function bootstrap() {
+      var nodes = document.querySelectorAll('.d3-reward-curves');
+      for (var i = 0; i < nodes.length; i++) {
+        var root = nodes[i];
+        if (root.getAttribute('data-mounted')) continue;
+        root.setAttribute('data-mounted', '1');
+        root.innerHTML =
+          '<div class="ph-tag">Visualization to build</div>' +
+          '<div class="ph-title">Two curves, and the cliff between them</div>' +
+          '<div class="ph-desc">Reward against distance, 0 to 20,000 km. The shipped curve exp(-d/1492.7) minus 0.11 mean cost, floored at zero from about 3,300 km. The training mixture 0.5*exp(-d/1492.7)+0.5*exp(-d/5000) staying positive. Shade the dead zone and label it with 77 of 200 episodes.</div>' +
+          '<div class="ph-file">d3-reward-curves.html</div>';
+      }
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap);
+    } else { bootstrap(); }
+  })();
+</script>

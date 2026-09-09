@@ -1,0 +1,295 @@
+<div class="geo-banner" style="width:100%;"></div>
+
+<style>
+  .geo-banner {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 2 / 1;
+    border-radius: 10px;
+    overflow: hidden;
+    background:
+      radial-gradient(120% 90% at 50% 12%,
+        color-mix(in oklab, var(--primary-color) 9%, transparent) 0%,
+        transparent 62%),
+      var(--surface-bg);
+  }
+  .geo-banner svg { display: block; width: 100%; height: 100%; }
+  .geo-banner .graticule {
+    fill: none;
+    stroke: var(--border-color);
+    stroke-opacity: 0.55;
+    stroke-width: 0.5;
+  }
+  .geo-banner .sphere {
+    fill: none;
+    stroke: var(--border-color);
+    stroke-width: 0.8;
+  }
+  .geo-banner .land {
+    fill: color-mix(in oklab, var(--muted-color) 16%, var(--surface-bg));
+    stroke: color-mix(in oklab, var(--muted-color) 38%, var(--surface-bg));
+    stroke-width: 0.4;
+  }
+  .geo-banner .task {
+    fill: var(--primary-color);
+    stroke: var(--surface-bg);
+    stroke-width: 0.6;
+  }
+  .geo-banner .halo {
+    fill: none;
+    stroke: var(--primary-color);
+    stroke-opacity: 0.5;
+  }
+  .geo-banner .legend {
+    position: absolute;
+    left: 16px;
+    bottom: 13px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--muted-color);
+    letter-spacing: 0.01em;
+  }
+  .geo-banner .legend b {
+    color: var(--text-color);
+    font-weight: 600;
+  }
+  .geo-banner .hit { fill: transparent; cursor: crosshair; }
+  .geo-banner .task.is-hot { r: 4.2; }
+
+  /* The preview is the agent's own first observation for that task, so the
+     card is sized to the render rather than cropped to a thumbnail strip. */
+  .geo-banner__card {
+    position: absolute;
+    z-index: 4;
+    width: 208px;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(3px);
+    transition: opacity .12s ease, transform .12s ease;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--surface-bg);
+    box-shadow: 0 10px 28px -12px rgba(0, 0, 0, 0.45);
+  }
+  .geo-banner__card.is-on { opacity: 1; transform: translateY(0); }
+  .geo-banner__card img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 8 / 5;
+    object-fit: cover;
+    background: color-mix(in oklab, var(--muted-color) 12%, var(--surface-bg));
+  }
+  .geo-banner__meta {
+    padding: 6px 8px 7px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: var(--muted-color);
+  }
+  .geo-banner__meta b { display: block; color: var(--text-color); font-weight: 600; }
+  @media (max-width: 640px) {
+    .geo-banner__card { width: 160px; }
+    .geo-banner__meta { font-size: 9.5px; }
+  }
+  @media (max-width: 640px) {
+    .geo-banner .legend { font-size: 10px; left: 11px; bottom: 9px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .geo-banner .task, .geo-banner .halo { animation: none !important; }
+  }
+</style>
+
+<script>
+  (function () {
+    const LIBS = [
+      'https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js',
+      'https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js'
+    ];
+
+    // Load one script once, even if several embeds ask for it.
+    const loadOnce = (src) => new Promise((resolve) => {
+      const found = document.querySelector(`script[data-lib="${src}"]`);
+      if (found) {
+        if (found.dataset.loaded) return resolve();
+        return found.addEventListener('load', () => resolve(), { once: true });
+      }
+      const s = document.createElement('script');
+      s.src = src;
+      s.dataset.lib = src;
+      s.addEventListener('load', () => { s.dataset.loaded = '1'; resolve(); }, { once: true });
+      s.addEventListener('error', () => resolve(), { once: true });
+      document.head.appendChild(s);
+    });
+
+    const TASK_PATHS = [
+      '/data/eval-tasks.json',
+      './assets/data/eval-tasks.json',
+      '../assets/data/eval-tasks.json',
+      '../../assets/data/eval-tasks.json'
+    ];
+    const LAND = 'https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json';
+    const THUMB_BASE = '/thumbs';
+
+    const fetchFirst = async (paths) => {
+      for (const p of paths) {
+        try { const r = await fetch(p, { cache: 'no-cache' }); if (r.ok) return await r.json(); }
+        catch (_) { /* next */ }
+      }
+      return null;
+    };
+
+    const render = (root, tasks, land) => {
+      const d3 = window.d3;
+      const W = 1000, H = 500;
+
+      root.querySelectorAll('svg, .legend, .geo-banner__card').forEach((n) => n.remove());
+
+      const svg = d3.select(root).append('svg')
+        .attr('viewBox', `0 0 ${W} ${H}`)
+        .attr('preserveAspectRatio', 'xMidYMid slice')
+        .attr('role', 'img')
+        .attr('aria-label',
+          'World map with the 200 held-out GeoGuessr eval tasks marked');
+
+      // Equirectangular, because the game's own guess map is one.
+      const projection = d3.geoEquirectangular()
+        .fitExtent([[8, 8], [W - 8, H - 8]], { type: 'Sphere' });
+      const path = d3.geoPath(projection);
+
+      svg.append('path').attr('class', 'sphere')
+        .attr('d', path({ type: 'Sphere' }));
+      svg.append('path').attr('class', 'graticule')
+        .attr('d', path(d3.geoGraticule10()));
+
+      if (land && window.topojson) {
+        svg.append('path').attr('class', 'land')
+          .attr('d', path(window.topojson.feature(land, land.objects.land)));
+      }
+
+      // Deterministic order so the reveal reads the same on every load.
+      const pts = tasks.slice().sort((a, b) => a.lon - b.lon);
+
+      const g = svg.append('g');
+      const dots = new Map();
+      pts.forEach((p, i) => {
+        const xy = projection([p.lon, p.lat]);
+        if (!xy) return;
+        const delay = 0.35 + (i / pts.length) * 2.1;
+
+        g.append('circle')
+          .attr('class', 'halo')
+          .attr('cx', xy[0]).attr('cy', xy[1]).attr('r', 2)
+          .style('opacity', 0)
+          .style('animation', `geoHalo 2.6s ${delay}s ease-out infinite`);
+
+        const dot = g.append('circle')
+          .attr('class', 'task')
+          .attr('cx', xy[0]).attr('cy', xy[1]).attr('r', 0)
+          .style('animation', `geoPop .5s ${delay}s ease-out forwards`);
+        dots.set(p, dot.node());
+      });
+
+      // One preview card, reused. The image is the same reprojected first
+      // view the agent sees, rendered offline by scripts/build_task_thumbs.py.
+      const card = document.createElement('div');
+      card.className = 'geo-banner__card';
+      card.innerHTML = '<img alt="" decoding="async"><div class="geo-banner__meta"></div>';
+      root.appendChild(card);
+      const cardImg = card.querySelector('img');
+      const cardMeta = card.querySelector('.geo-banner__meta');
+
+      const show = (event, p, dot) => {
+        const box = root.getBoundingClientRect();
+        cardImg.src = `${THUMB_BASE}/${p.i}.jpg`;
+        cardMeta.innerHTML =
+          `<b>${p.country}</b>${p.lat.toFixed(3)}, ${p.lon.toFixed(3)} · task ${p.i}`;
+        const w = card.offsetWidth || 208;
+        const h = card.offsetHeight || 160;
+        let x = event.clientX - box.left + 14;
+        let y = event.clientY - box.top - h - 12;
+        if (x + w > box.width - 6) x = event.clientX - box.left - w - 14;
+        if (y < 6) y = event.clientY - box.top + 16;
+        card.style.left = `${Math.max(6, x)}px`;
+        card.style.top = `${Math.max(6, Math.min(y, box.height - h - 6))}px`;
+        card.classList.add('is-on');
+        dot.classList.add('is-hot');
+      };
+
+      const hide = (dot) => {
+        card.classList.remove('is-on');
+        if (dot) dot.classList.remove('is-hot');
+      };
+
+      // Hit targets last, so they sit above the markers.
+      const hits = svg.append('g');
+      pts.forEach((p) => {
+        const xy = projection([p.lon, p.lat]);
+        if (!xy) return;
+        hits.append('circle')
+          .attr('class', 'hit')
+          .attr('cx', xy[0]).attr('cy', xy[1]).attr('r', 8)
+          .each(function () {
+            const hit = this;
+            const dot = dots.get(p);
+            hit.addEventListener('pointerenter', (e) => show(e, p, dot));
+            hit.addEventListener('pointermove', (e) => show(e, p, dot));
+            hit.addEventListener('pointerleave', () => hide(dot));
+          });
+      });
+      root.addEventListener('pointerleave', () => hide(null));
+
+      const countries = new Set(tasks.map((t) => t.country)).size;
+      const legend = document.createElement('div');
+      legend.className = 'legend';
+      legend.innerHTML =
+        `<b>${tasks.length}</b> held-out tasks · <b>${countries}</b> countries · ` +
+        `capped at 4 each<br>Mapillary panoramas, CC BY-SA 4.0 · hover a point for its opening view`;
+      root.appendChild(legend);
+    };
+
+    // Keyframes live in a stylesheet so the SVG children can reference them.
+    const ensureKeyframes = () => {
+      if (document.getElementById('geo-banner-kf')) return;
+      const st = document.createElement('style');
+      st.id = 'geo-banner-kf';
+      st.textContent =
+        '@keyframes geoPop{from{r:0;opacity:0}60%{r:3.6;opacity:1}to{r:2.6;opacity:1}}' +
+        '@keyframes geoHalo{0%{r:2;opacity:.55;stroke-width:1.1}' +
+        '70%{r:13;opacity:0;stroke-width:.4}100%{r:13;opacity:0}}';
+      document.head.appendChild(st);
+    };
+
+    const bootstrap = async () => {
+      const nodes = document.querySelectorAll('.geo-banner');
+      if (!nodes.length) return;
+      ensureKeyframes();
+      await Promise.all(LIBS.map(loadOnce));
+      if (!window.d3) return;
+
+      const [tasks, land] = await Promise.all([
+        fetchFirst(TASK_PATHS),
+        fetch(LAND).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+      ]);
+      if (!tasks) return;
+
+      nodes.forEach((root) => {
+        if (root.getAttribute('data-mounted')) return;
+        root.setAttribute('data-mounted', '1');
+        render(root, tasks, land);
+        let t;
+        window.addEventListener('resize', () => {
+          clearTimeout(t);
+          t = setTimeout(() => render(root, tasks, land), 200);
+        });
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap);
+    } else {
+      bootstrap();
+    }
+  })();
+</script>

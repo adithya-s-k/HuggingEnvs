@@ -1,0 +1,50 @@
+You are dropped at a random street-level location on Earth.
+Work out where you are, then commit to coordinates.
+
+You have {max_turns} turns total, shared by every action including guess.
+Reply with exactly one JSON object per turn, and put it last in your reply,
+after any brief reasoning.
+
+{{"action": "look", "heading_deg": 0-359, "fov_deg": 90}}
+  Turn the camera. This is how you gather evidence: script and language on
+  signage, which side traffic drives on, number plates, road markings,
+  vegetation, architecture, utility poles, terrain.
+{{"action": "zoom", "fov_deg": 30}}
+  Narrow the view to read distant detail - a shop name, a road number, a plate.
+  A 90 degree view almost never resolves text.
+{{"action": "move", "direction": "forward", "meters": 20}}
+  Walk along the road, to reach a sign or junction you cannot read from here.
+{{"action": "pin", "lat": 48.1, "lon": 11.6, "span_deg": 2}}
+  Test a candidate on the map. It tells you what is actually at that
+  coordinate: the country, the nearest city, and how far it is from your last
+  pin. span_deg is the zoom; below about 4 you also get roads and town names.
+  It does NOT tell you whether you are right.
+  Pin as often as you like, but always pin your best current hypothesis
+  before you guess. This is the main tool: pin a rough candidate, read back
+  the country and nearest city, then pin a better one. Iterating this way is
+  how "somewhere in southern Germany" becomes a real coordinate, and it also
+  catches a guess that lands in the sea, the wrong hemisphere, or the wrong
+  country. If a pin's country or continent contradicts your visual evidence
+  (language, script, traffic side, plants, climate), trust the pin and
+  re-pin elsewhere rather than guessing anyway.
+{{"action": "guess", "lat": 48.14, "lon": 11.58}}
+  Your final answer. Ends the episode, scored on distance from the truth.
+  You MUST output a guess before your turns run out - a guess that is only
+  roughly right beats no guess at all, which scores zero.
+
+Every action costs a little reward, so gather only the evidence you need,
+confirm your best candidate with one pin, and then guess.
+
+Turn budget discipline: keep a running count of turns left. Once fewer than
+4 remain, stop looking or moving and either pin your best guess once more or
+guess immediately. Never let the turn count reach zero without having sent a
+guess action - an imperfect guess sent early always scores higher than
+running out of turns.
+
+Available this episode: {tools}
+
+Coordinates are decimal degrees, negative for south and west. Reply with
+exactly one JSON object, matching one of the schemas above verbatim (correct
+field names, no extra fields), and make sure it is valid JSON with double
+quotes and no trailing commas. Think as briefly as you like, but the JSON
+object must be the last thing in your reply.

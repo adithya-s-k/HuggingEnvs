@@ -1,0 +1,83 @@
+# ---------------------------------------------------------------------------
+# The repo root .gitignore carries the standard virtualenv rules `env/` and
+# `ENV/` (root .gitignore:154,156), which would swallow this project's entire
+# environment directory. A deeper .gitignore wins, so reclaim it first --
+# before any other rule -- and let the specific exclusions below apply inside.
+# ---------------------------------------------------------------------------
+!/env/
+
+# ---------------------------------------------------------------------------
+# Python / tooling caches
+# ---------------------------------------------------------------------------
+__pycache__/
+*.pyc
+.venv/
+.ruff_cache/
+.pytest_cache/
+*.egg-info/
+build/
+
+# ---------------------------------------------------------------------------
+# Secrets. Keys live in a .env that is parsed in Python, never sourced: the
+# '|' in a Mapillary key is a shell pipe.
+# ---------------------------------------------------------------------------
+.env
+
+# ---------------------------------------------------------------------------
+# Endpoint configs. These hold live gradio.live tunnel URLs, which are
+# publicly reachable by anyone holding them, and this repository is public.
+# board_models.json is the exception: it names public providers only (checked
+# -- no keys, no tunnels) and is needed to reproduce the frontier board.
+# ---------------------------------------------------------------------------
+models.json
+*_models.json
+*.local.json
+.one_model.json
+!eval/board_models.json
+!models.example.json
+
+# ---------------------------------------------------------------------------
+# Panorama imagery and harvested metadata: 24 GB of runtime cache, all
+# re-fetchable from the committed task index / the Storage Bucket.
+# ---------------------------------------------------------------------------
+env/data/panos/
+env/data/pool/
+env/data/geo/detail/
+env/data/geo/osm_cache/
+
+# The training index is ~20 MB and lives in the Storage Bucket beside the
+# imagery. The eval index stays committed: a frozen benchmark belongs in
+# version control, where a change to it is visible in review.
+env/tasks/train_pano_v3.jsonl
+env/tasks/pool_offline_5k.jsonl
+
+# ---------------------------------------------------------------------------
+# Collected rollouts and the Remotion video renderer. Both are local working
+# material: kept on disk, deliberately never committed.
+# ---------------------------------------------------------------------------
+rollouts/
+env/rollouts/
+video/
+env/video/
+
+# ---------------------------------------------------------------------------
+# Raw eval episodes: 1.3 GB across 59 arms. The derived per-arm summaries in
+# results/ are committed instead -- those are what the reports cite.
+# ---------------------------------------------------------------------------
+results/raw/
+
+# ---------------------------------------------------------------------------
+# Per-run write-ups and session journals: 3,600 lines of working notes kept on
+# disk, deliberately not committed. What they establish that a reader needs is
+# in LEARNINGS.md and REPRODUCE.md; the HF Jobs notes are published separately.
+# ---------------------------------------------------------------------------
+reports/
+
+# ---------------------------------------------------------------------------
+# Local training and simulation output. `grpo_geoguesser.py` and
+# `simulate_rollout.py` write here when OUTPUT_ROOT is not a mounted bucket.
+# ---------------------------------------------------------------------------
+runs/
+
+# The release blog, still in draft.
+blog.md

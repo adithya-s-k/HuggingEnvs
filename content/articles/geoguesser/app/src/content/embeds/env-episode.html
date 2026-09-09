@@ -1,0 +1,409 @@
+<div class="ep" style="width:100%;margin:14px 0;">
+  <div class="ep__grid">
+    <div class="ep__stage">
+      <div class="ep__viewport">
+        <img class="ep__img" alt="" decoding="async">
+      </div>
+      <div class="ep__hud">
+        <span class="ep__hud-l"></span>
+        <span class="ep__hud-r"></span>
+      </div>
+      <div class="ep__bar">
+        <button class="ep__btn" data-act="prev" title="previous tool call" aria-label="previous tool call">&#8592;</button>
+        <button class="ep__btn ep__btn--play" data-act="play" aria-label="play or pause">pause</button>
+        <button class="ep__btn" data-act="next" title="next tool call" aria-label="next tool call">&#8594;</button>
+        <span class="ep__progress"><i></i></span>
+      </div>
+      <div class="ep__return">
+        <span class="ep__return-cap">what the environment returned</span>
+        <p class="ep__feedback"></p>
+      </div>
+      <div class="ep__outcome"></div>
+    </div>
+
+    <div class="ep__side">
+      <div class="ep__head">
+        <span class="ep__cap">one episode, twelve actions allowed</span>
+        <span class="ep__task"></span>
+      </div>
+      <ol class="ep__trace"></ol>
+      <div class="ep__note">
+        <span class="ep__note-cap">the policy's own words on this turn</span>
+        <p></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .ep__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--surface-bg);
+    padding: 16px;
+  }
+  @media (max-width: 760px) {
+    .ep__grid { grid-template-columns: 1fr; }
+  }
+
+  .ep__stage { min-width: 0; }
+  .ep__viewport {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    transition: aspect-ratio .2s ease;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    background: color-mix(in oklab, var(--muted-color) 10%, var(--surface-bg));
+  }
+  .ep__img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: color-mix(in oklab, var(--muted-color) 10%, var(--surface-bg));
+  }
+  .ep__hud {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 6px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px;
+    color: var(--muted-color);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ep__bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 9px;
+  }
+  .ep__btn {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    color: var(--text-color);
+    background: color-mix(in oklab, var(--muted-color) 8%, transparent);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 3px 9px;
+    cursor: pointer;
+  }
+  .ep__btn:hover { border-color: var(--primary-color); }
+  .ep__btn--play { min-width: 58px; }
+  .ep__progress {
+    flex: 1;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--border-color);
+    overflow: hidden;
+  }
+  .ep__progress i {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: var(--primary-color);
+    transition: width .18s linear;
+  }
+
+  .ep__return { margin-top: 11px; }
+  .ep__return-cap,
+  .ep__note-cap,
+  .ep__cap {
+    display: block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--muted-color);
+  }
+  .ep__feedback {
+    margin: 4px 0 0;
+    padding-left: 10px;
+    border-left: 2px solid var(--primary-color);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text-color);
+    min-height: 34px;
+  }
+
+  .ep__side { min-width: 0; display: flex; flex-direction: column; }
+  .ep__head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .ep__task {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px;
+    color: var(--muted-color);
+    text-align: right;
+  }
+
+  .ep__trace {
+    list-style: none;
+    margin: 9px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .ep__row {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 7px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    opacity: 0.42;
+    transition: opacity .15s, background .15s;
+  }
+  .ep__row.is-done { opacity: 0.72; }
+  .ep__row.is-now {
+    opacity: 1;
+    background: color-mix(in oklab, var(--primary-color) 10%, transparent);
+    border-color: color-mix(in oklab, var(--primary-color) 40%, var(--border-color));
+  }
+  .ep__verb {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9px;
+    letter-spacing: 0.07em;
+    text-align: center;
+    padding: 2px 0;
+    border-radius: 4px;
+    color: var(--surface-bg);
+    background: var(--muted-color);
+  }
+  .ep__row.is-now .ep__verb { background: var(--primary-color); }
+  .ep__row[data-kind="guess"] .ep__verb { background: var(--text-color); }
+  .ep__call {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px;
+    color: var(--text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ep__cost {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    color: var(--muted-color);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ep__note { margin-top: 10px; }
+  .ep__note p {
+    margin: 4px 0 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--muted-color);
+    font-style: italic;
+    min-height: 36px;
+  }
+
+  .ep__outcome {
+    margin-top: 11px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    opacity: 0;
+    transition: opacity .3s;
+  }
+  .ep__outcome.is-on { opacity: 1; }
+  .ep__stat {
+    border: 1px solid var(--border-color);
+    border-radius: 7px;
+    padding: 7px 9px;
+    background: color-mix(in oklab, var(--muted-color) 5%, transparent);
+  }
+  .ep__stat b {
+    display: block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 14px;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
+  }
+  .ep__stat span {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted-color);
+  }
+</style>
+
+<script>
+  (function () {
+    // Frame timings. A pan plays quickly, then the pose is held long enough to
+    // read the clue that the tool call was fetching.
+    const FRAME_MS = 90;
+    const HOLD_MS = 1000;
+    const MAP_MS = 2200;
+
+    const BASE = '/episode/haiku-4.5-eval-40/';
+
+    const mount = async (root) => {
+      const base = BASE;
+      let data;
+      try {
+        const r = await fetch(base + 'episode.json', { cache: 'no-cache' });
+        if (!r.ok) throw new Error(String(r.status));
+        data = await r.json();
+      } catch (_) {
+        root.innerHTML = '<div style="padding:24px;color:var(--muted-color);font-size:13px">' +
+          'episode.json not found. Build it with scripts/build_episode_web.py</div>';
+        return;
+      }
+
+      const segs = data.segments;
+      const img = root.querySelector('.ep__img');
+      const hudL = root.querySelector('.ep__hud-l');
+      const hudR = root.querySelector('.ep__hud-r');
+      const feedback = root.querySelector('.ep__feedback');
+      const note = root.querySelector('.ep__note p');
+      const trace = root.querySelector('.ep__trace');
+      const outcome = root.querySelector('.ep__outcome');
+      const playBtn = root.querySelector('.ep__btn--play');
+      const progress = root.querySelector('.ep__progress i');
+
+      root.querySelector('.ep__task').textContent =
+        `${data.episode.model_name} · ${data.episode.task_id} · ${data.episode.country}`;
+
+      // Preload, so a step never shows a blank viewport.
+      segs.forEach((s) => s.frames.forEach((f) => { const i = new Image(); i.src = base + f; }));
+
+      // The trace's action_cost is cumulative, so a row shows what this one
+      // call cost and the HUD carries the running total.
+      const spent = segs.map((s) => Number((s.hud || {}).action_cost || 0));
+      const delta = spent.map((c, i) => (i === 0 ? 0 : c - spent[i - 1]));
+
+      const rows = segs.map((s, i) => {
+        const li = document.createElement('li');
+        li.className = 'ep__row';
+        li.dataset.kind = s.kind;
+        li.innerHTML =
+          `<span class="ep__verb">${s.verb || s.kind}</span>` +
+          `<span class="ep__call">${s.label || s.kind}</span>` +
+          `<span class="ep__cost">${delta[i] > 0.0001
+            ? '\u2212' + delta[i].toFixed(2) : ''}</span>`;
+        li.addEventListener('click', () => { pause(); goto(i, 0); });
+        trace.appendChild(li);
+        return li;
+      });
+
+      const o = data.outcome;
+      outcome.innerHTML =
+        `<div class="ep__stat"><b>${o.distance_km < 10
+          ? o.distance_km.toFixed(1) : Math.round(o.distance_km)} km</b><span>error</span></div>` +
+        `<div class="ep__stat"><b>${o.reward.toFixed(3)}</b><span>reward</span></div>` +
+        `<div class="ep__stat"><b>−${Number(o.action_cost || 0).toFixed(2)}</b><span>action cost</span></div>`;
+
+      let si = 0, fi = 0, timer = 0, playing = false;
+
+      const viewport = root.querySelector('.ep__viewport');
+
+      const paint = () => {
+        const s = segs[si];
+        img.src = base + s.frames[Math.min(fi, s.frames.length - 1)];
+        // The view is square and the guess map is wide, so the frame takes the
+        // shape of what it is showing rather than letterboxing it.
+        viewport.style.aspectRatio = `${Math.min(2.7, s.aspect || 1)} / 1`;
+        const h = s.hud || {};
+        hudL.textContent = s.imageKind === 'map'
+          ? (s.pins.length ? `pins ${s.pins.length}` : 'map')
+          : `heading ${Math.round(h.heading_deg || 0)}° · fov ${Math.round(h.fov_deg || 0)}°`;
+        hudR.textContent = `${h.steps_remaining != null ? h.steps_remaining : 0} left`
+          + (h.total_moved_meters ? ` · ${Math.round(h.total_moved_meters)} m walked` : '')
+          + ` · cost \u2212${spent[si].toFixed(2)}`;
+        feedback.textContent = s.feedback || '';
+        note.textContent = s.note ? `"${s.note}"` : '';
+        rows.forEach((r, i) => {
+          r.classList.toggle('is-now', i === si);
+          r.classList.toggle('is-done', i < si);
+        });
+        outcome.classList.toggle('is-on', si === segs.length - 1);
+        progress.style.width = `${((si + 1) / segs.length) * 100}%`;
+      };
+
+      const goto = (i, f) => {
+        si = (i + segs.length) % segs.length;
+        fi = f || 0;
+        paint();
+      };
+
+      const tick = () => {
+        const s = segs[si];
+        if (fi < s.frames.length - 1) {
+          fi += 1;
+          paint();
+          timer = setTimeout(tick, FRAME_MS);
+          return;
+        }
+        // End of the segment: hold, then move on. The last turn stops, so the
+        // outcome stays on screen rather than looping away from it.
+        timer = setTimeout(() => {
+          if (si === segs.length - 1) { pause(); return; }
+          goto(si + 1, 0);
+          timer = setTimeout(tick, FRAME_MS);
+        }, s.imageKind === 'map' ? MAP_MS : HOLD_MS);
+      };
+
+      const play = () => {
+        if (playing) return;
+        playing = true;
+        playBtn.textContent = 'pause';
+        if (si === segs.length - 1 && fi >= segs[si].frames.length - 1) goto(0, 0);
+        timer = setTimeout(tick, FRAME_MS);
+      };
+
+      const pause = () => {
+        playing = false;
+        playBtn.textContent = 'play';
+        clearTimeout(timer);
+      };
+
+      root.querySelectorAll('.ep__btn').forEach((b) => {
+        b.addEventListener('click', () => {
+          const act = b.dataset.act;
+          if (act === 'play') return playing ? pause() : play();
+          pause();
+          goto(si + (act === 'next' ? 1 : -1), 0);
+        });
+      });
+
+      paint();
+
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduced) { pause(); return; }
+
+      // Play only while on screen, and only start once the reader gets here.
+      let started = false;
+      if ('IntersectionObserver' in window) {
+        new IntersectionObserver((es) => {
+          if (es[0].isIntersecting) { started = true; play(); }
+          else if (started) pause();
+        }, { rootMargin: '-12% 0px -12% 0px', threshold: 0 }).observe(root);
+      } else {
+        play();
+      }
+    };
+
+    const bootstrap = () => {
+      document.querySelectorAll('.ep').forEach((root) => {
+        if (root.getAttribute('data-mounted')) return;
+        root.setAttribute('data-mounted', '1');
+        mount(root);
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap);
+    } else {
+      bootstrap();
+    }
+  })();
+</script>

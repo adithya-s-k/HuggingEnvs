@@ -1,0 +1,184 @@
+<div class="d3-board" style="width:100%;margin:14px 0;min-height:420px;"></div>
+
+<style>
+  .d3-board {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--surface-bg);
+    padding: 18px 16px 10px;
+    position: relative;
+  }
+  .d3-board svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .d3-board .axis text { fill: var(--muted-color); font-size: 11px; }
+  .d3-board .axis line,
+  .d3-board .axis path { stroke: var(--border-color); }
+  .d3-board .grid line { stroke: var(--border-color); stroke-opacity: 0.5; }
+  .d3-board .name { fill: var(--text-color); font-size: 12.5px; }
+  .d3-board .name.ours { font-weight: 650; }
+  .d3-board .val {
+    fill: var(--text-color); font-size: 11.5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .d3-board .bar { rx: 3; }
+  .d3-board .bar.reference { fill: color-mix(in oklab, var(--muted-color) 45%, var(--surface-bg)); }
+  .d3-board .bar.ours     { fill: var(--primary-color); }
+  .d3-board .bar.base     { fill: color-mix(in oklab, var(--muted-color) 22%, var(--surface-bg)); }
+  .d3-board .bar.base     { stroke: var(--border-color); stroke-dasharray: 3 2; }
+  .d3-board .legend text { fill: var(--muted-color); font-size: 11px; }
+  .d3-board .caption {
+    fill: var(--muted-color); font-size: 11px; font-style: italic;
+  }
+  .d3-board .d3-tooltip {
+    position: absolute; pointer-events: none; opacity: 0;
+    transition: opacity .12s; z-index: 5;
+    background: var(--surface-bg); color: var(--text-color);
+    border: 1px solid var(--border-color); border-radius: 6px;
+    padding: 8px 10px; font-size: 12px; line-height: 1.45;
+    box-shadow: 0 6px 20px -8px rgba(0,0,0,.35); min-width: 170px;
+  }
+  .d3-board .d3-tooltip .row { display: flex; justify-content: space-between; gap: 14px; }
+  .d3-board .d3-tooltip .row span:first-child { color: var(--muted-color); }
+  .d3-board .d3-tooltip strong { display: block; margin-bottom: 5px; }
+</style>
+
+<script>
+  (function () {
+    const ensureD3 = (cb) => {
+      if (window.d3 && typeof window.d3.select === 'function') return cb();
+      const existing = document.querySelector('script[data-d3]');
+      if (existing) {
+        existing.addEventListener('load', () => cb(), { once: true });
+        return;
+      }
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js';
+      s.setAttribute('data-d3', '1');
+      s.addEventListener('load', () => cb(), { once: true });
+      document.head.appendChild(s);
+    };
+
+    const PATHS = [
+      '/data/board.json',
+      './assets/data/board.json',
+      '../assets/data/board.json',
+      '../../assets/data/board.json'
+    ];
+
+    const fetchFirst = async (paths) => {
+      for (const p of paths) {
+        try {
+          const r = await fetch(p, { cache: 'no-cache' });
+          if (r.ok) return await r.json();
+        } catch (_) { /* try the next candidate */ }
+      }
+      return null;
+    };
+
+    const render = (root, rows) => {
+      const d3 = window.d3;
+      root.innerHTML = '';
+
+      const tip = document.createElement('div');
+      tip.className = 'd3-tooltip';
+      root.appendChild(tip);
+
+      const M = { top: 26, right: 54, bottom: 34, left: 172 };
+      const W = Math.max(520, root.clientWidth - 32);
+      const rowH = 26;
+      const H = rows.length * rowH;
+
+      const svg = d3.select(root).append('svg')
+        .attr('viewBox', `0 0 ${W} ${H + M.top + M.bottom}`)
+        .attr('role', 'img')
+        .attr('aria-label', 'Model scores on 200 held-out GeoGuessr tasks');
+
+      const g = svg.append('g').attr('transform', `translate(${M.left},${M.top})`);
+      const iw = W - M.left - M.right;
+
+      const x = d3.scaleLinear().domain([0, d3.max(rows, d => d.mean) * 1.08]).range([0, iw]);
+      const y = d3.scaleBand().domain(rows.map(d => d.name)).range([0, H]).padding(0.28);
+
+      // grid behind the bars
+      g.append('g').attr('class', 'grid')
+        .selectAll('line').data(x.ticks(5)).join('line')
+        .attr('x1', d => x(d)).attr('x2', d => x(d))
+        .attr('y1', 0).attr('y2', H);
+
+      const bars = g.selectAll('g.item').data(rows).join('g').attr('class', 'item');
+
+      bars.append('rect')
+        .attr('class', d => `bar ${d.kind}`)
+        .attr('x', 0)
+        .attr('y', d => y(d.name))
+        .attr('height', y.bandwidth())
+        .attr('width', d => x(d.mean));
+
+      bars.append('text')
+        .attr('class', d => `name ${d.kind === 'ours' ? 'ours' : ''}`)
+        .attr('x', -10)
+        .attr('y', d => y(d.name) + y.bandwidth() / 2)
+        .attr('dy', '0.35em')
+        .attr('text-anchor', 'end')
+        .text(d => d.name);
+
+      bars.append('text')
+        .attr('class', 'val')
+        .attr('x', d => x(d.mean) + 7)
+        .attr('y', d => y(d.name) + y.bandwidth() / 2)
+        .attr('dy', '0.35em')
+        .text(d => d.mean.toFixed(4));
+
+      bars.on('mousemove', function (event, d) {
+        const r = root.getBoundingClientRect();
+        tip.innerHTML =
+          `<strong>${d.name}</strong>` +
+          `<div class="row"><span>mean-of-4</span><span>${d.mean.toFixed(4)}</span></div>` +
+          `<div class="row"><span>best-of-4</span><span>${d.best.toFixed(4)}</span></div>` +
+          `<div class="row"><span>median error</span><span>${d.median_km} km</span></div>` +
+          (d.turns !== undefined ? `<div class="row"><span>turns</span><span>${d.turns}</span></div>` : '') +
+          (d.zero_pct !== undefined ? `<div class="row"><span>scored zero</span><span>${d.zero_pct}%</span></div>` : '');
+        tip.style.opacity = 1;
+        tip.style.left = Math.min(event.clientX - r.left + 14, r.width - 190) + 'px';
+        tip.style.top = (event.clientY - r.top + 12) + 'px';
+      }).on('mouseleave', () => { tip.style.opacity = 0; });
+
+      g.append('g').attr('class', 'axis')
+        .attr('transform', `translate(0,${H})`)
+        .call(d3.axisBottom(x).ticks(5).tickSizeOuter(0));
+
+      svg.append('text').attr('class', 'caption')
+        .attr('x', M.left).attr('y', H + M.top + 28)
+        .text('Mean-of-4 reward · 200 held-out tasks · 800 episodes per arm');
+    };
+
+    const bootstrap = () => {
+      const nodes = document.querySelectorAll('.d3-board');
+      if (!nodes.length) return;
+      ensureD3(async () => {
+        const rows = await fetchFirst(PATHS);
+        nodes.forEach((root) => {
+          if (root.getAttribute('data-mounted')) return;
+          root.setAttribute('data-mounted', '1');
+          if (!rows) {
+            root.innerHTML = '<div style="padding:24px;color:var(--muted-color);font-size:13px">' +
+              'board.json not found. Expected at /data/board.json</div>';
+            return;
+          }
+          render(root, rows);
+          let t;
+          window.addEventListener('resize', () => {
+            clearTimeout(t);
+            t = setTimeout(() => render(root, rows), 150);
+          });
+        });
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap);
+    } else {
+      bootstrap();
+    }
+  })();
+</script>

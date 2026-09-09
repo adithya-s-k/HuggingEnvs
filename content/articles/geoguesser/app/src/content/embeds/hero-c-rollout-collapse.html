@@ -1,0 +1,364 @@
+<div class="geo-hero-loop" style="width:100%;"></div>
+
+<style>
+  /* The training loop as a ledger: a batch of rollouts, each one a run of
+     tool calls ending in a guess, scored on the right, feeding an update that
+     comes back around. Stepping through run 1's real checkpoints, the traces
+     shorten until only the guess is left. */
+  .geo-hero-loop {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 5 / 2;
+    min-height: 200px;
+    border-radius: 10px;
+    overflow: hidden;
+    background:
+      linear-gradient(100deg,
+        color-mix(in oklab, var(--primary-color) 6%, transparent) 0%,
+        transparent 55%),
+      var(--surface-bg);
+  }
+  .geo-hero-loop svg { display: block; width: 100%; height: 100%; }
+
+  .geo-hero-loop text {
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+    fill: var(--muted-color);
+    font-size: 12px;
+  }
+  .geo-hero-loop .hdr {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .geo-hero-loop .read { fill: var(--text-color); font-size: 13px; }
+  .geo-hero-loop .read tspan.dim { fill: var(--muted-color); }
+  .geo-hero-loop .rule { stroke: var(--border-color); stroke-width: 1; fill: none; }
+  .geo-hero-loop .rule-done { stroke: var(--primary-color); stroke-width: 1.6; fill: none; }
+  .geo-hero-loop .guide {
+    stroke: var(--border-color);
+    stroke-width: 1;
+    stroke-dasharray: 1 5;
+    opacity: 0.7;
+  }
+  .geo-hero-loop .glyph {
+    stroke: color-mix(in oklab, var(--text-color) 62%, transparent);
+    stroke-width: 1.1;
+    fill: none;
+  }
+  .geo-hero-loop .glyph.sub {
+    fill: var(--primary-color);
+    stroke: none;
+  }
+  .geo-hero-loop .bar { fill: color-mix(in oklab, var(--primary-color) 72%, transparent); }
+  .geo-hero-loop .bar-track { fill: color-mix(in oklab, var(--border-color) 55%, transparent); }
+  .geo-hero-loop .loop { stroke: var(--border-color); stroke-width: 1; fill: none; }
+  .geo-hero-loop .loop-head { fill: var(--muted-color); }
+  .geo-hero-loop .loop-pulse {
+    stroke: var(--primary-color);
+    stroke-width: 1.6;
+    fill: none;
+    stroke-linecap: round;
+    stroke-dasharray: 30 940;
+    opacity: 0.9;
+    animation: geoLoopPulse 2.6s linear infinite;
+  }
+  .geo-hero-loop .loop-label {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    paint-order: stroke;
+    stroke: var(--surface-bg);
+    stroke-width: 4px;
+    stroke-linejoin: round;
+  }
+
+  .geo-hero-loop .row { animation: geoLoopRowIn 0.5s ease-out both; }
+  .geo-hero-loop .grow {
+    animation: geoLoopGrow 0.6s cubic-bezier(.22,.9,.24,1) both;
+    /* Grow from the bar's own left edge, not the SVG centre. */
+    transform-origin: 0 0;
+  }
+
+  @keyframes geoLoopRowIn {
+    from { opacity: 0; transform: translateX(-6px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes geoLoopGrow {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+  }
+  @keyframes geoLoopPulse {
+    from { stroke-dashoffset: 970; }
+    to   { stroke-dashoffset: 0; }
+  }
+
+  .geo-hero-loop .caption {
+    position: absolute;
+    left: 16px;
+    bottom: 13px;
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: 11px;
+    line-height: 1.6;
+    letter-spacing: 0.01em;
+    color: var(--muted-color);
+    pointer-events: none;
+  }
+  .geo-hero-loop .caption b { color: var(--text-color); font-weight: 600; }
+  @media (max-width: 640px) {
+    .geo-hero-loop .caption { font-size: 10px; left: 11px; bottom: 9px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .geo-hero-loop .row,
+    .geo-hero-loop .grow,
+    .geo-hero-loop .loop-pulse { animation: none !important; }
+  }
+</style>
+
+<script>
+  (function () {
+    const CLASS = 'geo-hero-loop';
+    const reduceMotion = !!(window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+    const PROG_PATHS = [
+      '/data/run1-progression.json',
+      './assets/data/run1-progression.json',
+      '../assets/data/run1-progression.json',
+      '../../assets/data/run1-progression.json'
+    ];
+
+    // run 1's real checkpoint stats, in case the fetch fails.
+    const FALLBACK = [
+      { step: 0, turns: 6.7, looks: 2.2, moves: 0.9, pins: 2.1, mean: 0.4825, median_km: 1226 },
+      { step: 50, turns: 4.8, looks: 1.5, moves: 0.4, pins: 1.7, mean: 0.4968, median_km: 1308 },
+      { step: 100, turns: 2.6, looks: 0.6, moves: 0.1, pins: 0.9, mean: 0.56, median_km: 964 },
+      { step: 150, turns: 1.3, looks: 0.0, moves: 0.0, pins: 0.2, mean: 0.6113, median_km: 714 },
+      { step: 200, turns: 1.1, looks: 0.0, moves: 0.0, pins: 0.1, mean: 0.6393, median_km: 675 },
+      { step: 250, turns: 1.1, looks: 0.0, moves: 0.0, pins: 0.1, mean: 0.6297, median_km: 687 },
+      { step: 500, turns: 1.1, looks: 0.0, moves: 0.0, pins: 0.1, mean: 0.635, median_km: 709 },
+      { step: 1000, turns: 1.1, looks: 0.0, moves: 0.0, pins: 0.1, mean: 0.6445, median_km: 662 }
+    ];
+
+    const fetchFirst = async (paths) => {
+      for (const p of paths) {
+        try {
+          const r = await fetch(p, { cache: 'no-cache' });
+          if (r.ok) return await r.json();
+        } catch (e) { /* try the next path */ }
+      }
+      return null;
+    };
+
+    const NS = 'http://www.w3.org/2000/svg';
+    const el = (name, attrs, parent) => {
+      const n = document.createElementNS(NS, name);
+      if (attrs) for (const k in attrs) n.setAttribute(k, attrs[k]);
+      if (parent) parent.appendChild(n);
+      return n;
+    };
+    const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+
+    // Deterministic per-(checkpoint, row) noise: the same batch every reload.
+    const hash = (a, b) => {
+      let h = (a * 374761393 + b * 668265263) >>> 0;
+      h = (h ^ (h >>> 13)) * 1274126177 >>> 0;
+      return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+    };
+
+    const ROWS = 11;
+    const X0 = 42, PITCH = 18, BAR_X = 700, BAR_W = 216;
+    const Y0 = 106, DY = 18;
+
+    // One rollout: a run of tool calls, then the terminal guess.
+    const rollout = (ck, i, ci) => {
+      const draw = (n) => hash(ci * 31 + n, i * 17 + 7);
+      const count = (mean, n) => {
+        if (mean <= 0.02) return draw(n) < mean * 6 ? 1 : 0;
+        return Math.max(0, Math.round(mean + (draw(n) - 0.5) * mean * 1.5));
+      };
+      const looks = count(ck.looks, 1);
+      const moves = count(ck.moves, 2);
+      const pins = count(ck.pins, 3);
+      const items = [];
+      for (let k = 0; k < looks; k++) items.push({ t: k % 3 === 2 ? 'zoom' : 'look', o: draw(10 + k) });
+      for (let k = 0; k < moves; k++) items.push({ t: 'move', o: 0.45 + draw(20 + k) * 0.4 });
+      for (let k = 0; k < pins; k++) items.push({ t: 'pin', o: 0.6 + draw(30 + k) * 0.4 });
+      items.sort((a, b) => a.o - b.o);
+      items.push({ t: 'submit', o: 1 });
+      const score = clamp(ck.mean + (draw(60) - 0.5) * 0.46, 0.03, 0.99);
+      return { items, score };
+    };
+
+    const glyph = (g, kind, x, y) => {
+      if (kind === 'submit') {
+        el('circle', { class: 'glyph sub', cx: x + 4, cy: y, r: 3.4 }, g);
+        return;
+      }
+      if (kind === 'move') {
+        el('path', {
+          class: 'glyph',
+          d: 'M' + (x + 1.5) + ' ' + (y - 3.4) + 'L' + (x + 6) + ' ' + y +
+             'L' + (x + 1.5) + ' ' + (y + 3.4)
+        }, g);
+        return;
+      }
+      if (kind === 'pin') {
+        el('path', {
+          class: 'glyph',
+          d: 'M' + (x + 4) + ' ' + (y - 4) + 'L' + (x + 8) + ' ' + y +
+             'L' + (x + 4) + ' ' + (y + 4) + 'L' + x + ' ' + y + 'Z'
+        }, g);
+        return;
+      }
+      el('rect', {
+        class: 'glyph', x: x + 0.5, y: y - 3.5, width: 7, height: 7, rx: 1
+      }, g);
+      if (kind === 'zoom') {
+        el('circle', { class: 'glyph sub', cx: x + 4, cy: y, r: 1.3 }, g);
+      }
+    };
+
+    const render = (root, prog) => {
+      root.querySelectorAll('svg, .caption').forEach((n) => n.remove());
+      const W = 1000, H = 400;
+      const svg = el('svg', {
+        viewBox: '0 0 ' + W + ' ' + H,
+        preserveAspectRatio: 'xMidYMid meet',
+        role: 'img',
+        'aria-label':
+          'A batch of rollouts shown as rows of tool calls with reward bars, ' +
+          'shortening as training proceeds until each rollout is a single guess'
+      }, root);
+
+      // ── Static frame ───────────────────────────────────────────────────────
+      const readL = el('text', { x: X0, y: 36, class: 'read' }, svg);
+      const readR = el('text', { x: W - 42, y: 36, class: 'read', 'text-anchor': 'end' }, svg);
+
+      el('path', { class: 'rule', d: 'M' + X0 + ' 58H' + (W - 42) }, svg);
+      const ruleDone = el('path', { class: 'rule-done', d: 'M' + X0 + ' 58H' + X0 }, svg);
+
+      el('text', { x: X0, y: 84, class: 'hdr' }, svg).textContent = 'rollout · turns';
+      el('text', { x: BAR_X, y: 84, class: 'hdr' }, svg).textContent = 'reward';
+
+      for (let i = 0; i < ROWS; i++) {
+        const y = Y0 + i * DY;
+        el('path', { class: 'guide', d: 'M' + X0 + ' ' + y + 'H' + (BAR_X - 24) }, svg);
+        el('rect', {
+          class: 'bar-track', x: BAR_X, y: y - 3, width: BAR_W, height: 6, rx: 3
+        }, svg);
+      }
+
+      const batch = el('g', null, svg);
+
+      // The update, coming back around.
+      const LY = Y0 + ROWS * DY + 4;
+      const loopPath = 'M' + (W - 42) + ' ' + LY + 'V' + (LY + 26) +
+        'H' + X0 + 'V' + (LY + 2);
+      el('path', { class: 'loop', d: loopPath }, svg);
+      el('path', { class: 'loop-pulse', d: loopPath }, svg);
+      el('path', {
+        class: 'loop-head',
+        d: 'M' + X0 + ' ' + (LY - 4) + 'l4.5 8h-9Z'
+      }, svg);
+      el('text', {
+        x: W / 2, y: LY + 30, class: 'loop-label', 'text-anchor': 'middle'
+      }, svg).textContent = 'policy update';
+
+      const caption = document.createElement('div');
+      caption.className = 'caption';
+      caption.innerHTML =
+        '<b>□</b> look · <b>⊡</b> zoom · <b>›</b> move · <b>◇</b> place_pin · ' +
+        '<b>●</b> submit_guess<br>' +
+        'one batch per checkpoint of run 1 · 200 held-out tasks, ' +
+        '<b>6.7 → 1.1</b> turns';
+      root.appendChild(caption);
+
+      // ── Per-checkpoint batch ───────────────────────────────────────────────
+      const paint = (ci) => {
+        const ck = prog[ci];
+        while (batch.firstChild) batch.removeChild(batch.firstChild);
+
+        readL.textContent = '';
+        el('tspan', null, readL).textContent = 'run 1';
+        const dim1 = el('tspan', { class: 'dim' }, readL);
+        dim1.textContent = '\u00a0·\u00a0step\u00a0';
+        el('tspan', null, readL).textContent = String(ck.step);
+
+        readR.textContent = '';
+        const dim2 = el('tspan', { class: 'dim' }, readR);
+        dim2.textContent = 'mean turns\u00a0';
+        el('tspan', null, readR).textContent = ck.turns.toFixed(1);
+        const dim3 = el('tspan', { class: 'dim' }, readR);
+        dim3.textContent = '\u00a0\u00a0·\u00a0\u00a0median error\u00a0';
+        el('tspan', null, readR).textContent = ck.median_km + ' km';
+        const dim4 = el('tspan', { class: 'dim' }, readR);
+        dim4.textContent = '\u00a0\u00a0·\u00a0\u00a0score\u00a0';
+        el('tspan', null, readR).textContent = ck.mean.toFixed(3);
+
+        const done = X0 + ((ci + 1) / prog.length) * (W - 42 - X0);
+        ruleDone.setAttribute('d', 'M' + X0 + ' 58H' + done.toFixed(1));
+
+        for (let i = 0; i < ROWS; i++) {
+          const y = Y0 + i * DY;
+          const r = rollout(ck, i, ci);
+          const g = el('g', { class: reduceMotion ? '' : 'row' }, batch);
+          if (!reduceMotion) g.style.animationDelay = (i * 34) + 'ms';
+          r.items.forEach((it, k) => glyph(g, it.t, X0 + k * PITCH, y));
+
+          // Reward bar: scaled from its own left edge, so no transform-box needed.
+          const holder = el('g', { transform: 'translate(' + BAR_X + ',0)' }, g);
+          const bar = el('rect', {
+            class: reduceMotion ? 'bar' : 'bar grow',
+            x: 0, y: y - 3, width: (r.score * BAR_W).toFixed(1), height: 6, rx: 3
+          }, holder);
+          if (!reduceMotion) bar.style.animationDelay = (140 + i * 34) + 'ms';
+        }
+      };
+
+      if (reduceMotion) {
+        paint(prog.length - 1);
+        return () => {};
+      }
+
+      let ci = 0, timer = null;
+      const tick = () => {
+        paint(ci);
+        const last = ci === prog.length - 1;
+        ci = (ci + 1) % prog.length;
+        timer = setTimeout(tick, last ? 3400 : 1900);
+      };
+      tick();
+      return () => clearTimeout(timer);
+    };
+
+    const bootstrap = async () => {
+      const roots = document.querySelectorAll('.' + CLASS);
+      if (!roots.length) return;
+      const raw = await fetchFirst(PROG_PATHS);
+      const prog = (Array.isArray(raw) && raw.length ? raw : FALLBACK)
+        .filter((d) => d && typeof d.turns === 'number')
+        .sort((a, b) => a.step - b.step);
+      if (!prog.length) return;
+
+      roots.forEach((root) => {
+        if (root.getAttribute('data-mounted')) return;
+        root.setAttribute('data-mounted', '1');
+        let cancel = render(root, prog);
+        let t;
+        window.addEventListener('resize', () => {
+          clearTimeout(t);
+          t = setTimeout(() => {
+            if (typeof cancel === 'function') cancel();
+            cancel = render(root, prog);
+          }, 200);
+        });
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+    } else {
+      bootstrap();
+    }
+  })();
+</script>

@@ -1,0 +1,41 @@
+import HtmlEmbed from "../../components/HtmlEmbed.astro";
+import Note from "../../components/Note.astro";
+
+## Takeaways
+
+If you skim one section, make it this one. The sequence to follow is in the introduction. These are the things that actually cost money, and that we would not have guessed up front.
+
+Probe your data source before you trust it. An hour spent on 40 OSV-5M sequences told us none of them were spherical, which killed a week of work we had not yet started. Read the licence on day one instead of on day thirty. Street View has the best coverage in the world and terms that rule this out entirely.
+
+Run pass@4, and put a frozen base arm in every sweep. The same untrained model scored between 0.465 and 0.500 across our sweeps, a drift wider than most of the differences we wanted to claim. At pass@1 we briefly believed we had tied Sonnet 5. Then, once you are training, watch `frac_reward_zero_std` instead of reward. If most groups have no spread inside them, no amount of training will help, and the loss curve will not tell you. And check what your reward *cannot* distinguish before you tune anything else. Mine went flat at somewhere between 3,300 and 4,500 km depending on what an episode spent, which covered nearly a third of the untrained model's episodes, so a third of our data carried no gradient at all. Across the nine models we never touched, score also fell with turns per episode at r = −0.75, which was the first hint that deliberation was hurting rather than helping.
+
+Size `max_completion_length` from a measured p95, because it allocates a logits tensor for the full budget no matter what the model emits. When the dynamics look alarming, evaluate the checkpoint before killing the run. Run 1's entropy collapse and grad-norm spike produced two recommendations to stop it, and it was the best run we did. Suppressing exactly those dynamics in run 2 cost four fifths of the gain.
+
+Distrust a result that arrives without an error. All six of our measurement bugs returned plausible numbers, and exactly one of them ever threw an exception. The 2B adapters served on a 4B base produced a perfectly ordinary looking table of nonsense.
+
+That last one generalises past this project. In RL the feedback loop is long and expensive, so most of the skill is in not fooling yourself between the runs.
+
+## Reproduction
+
+Everything is published, including the raw episode records behind every number above, so nothing here is a screenshot of something you cannot check. The whole set is gathered in **[the GeoGuesser Env collection](https://huggingface.co/collections/HuggingEnvs/geoguesser-env-6a969f8db267fe0e85fa1ab6)**.
+
+**Play it.** [`HuggingEnvs/geoguesser-env`](https://huggingface.co/spaces/HuggingEnvs/geoguesser-env) is the environment as a Space, playable in a browser with the controls exposed. It is the same thing the trainer and the eval talk to.
+
+**The data.** [`HuggingEnvs/geoguesser-tasks`](https://huggingface.co/datasets/HuggingEnvs/geoguesser-tasks) holds both splits: 200 held-out eval tasks across 73 countries, and 3,452 training tasks. It is metadata only, which is what makes it small enough to version. [`HuggingEnvs/geoguesser-panos`](https://huggingface.co/buckets/HuggingEnvs/geoguesser-panos) is the 22 GB of Mapillary imagery, in a Storage Bucket because it is a mutable cache instead of a source; `hf sync` pulls it locally.
+
+**The models.** [`geoguesser-qwen3.5-4b-grpo`](https://huggingface.co/HuggingEnvs/geoguesser-qwen3.5-4b-grpo) is run 1, the adapter behind every number in this article. [`geoguesser-qwen3.5-4b-grpo-v3`](https://huggingface.co/HuggingEnvs/geoguesser-qwen3.5-4b-grpo-v3) is run 3, the ablation that isolated why run 1 worked. Both are LoRA adapters on `Qwen/Qwen3.5-4B`, so they are a few megabytes rather than a few gigabytes.
+
+**The runs.** [`HuggingEnvs/geoguesser-trackio`](https://huggingface.co/spaces/HuggingEnvs/geoguesser-trackio) has every run in one project on a shared axis, and it is embedded below in full, so you can read the curves yourself instead of taking our word for the ones we chose to draw.
+
+<HtmlEmbed
+  src="trackio-space.html"
+  title="The dashboard, in full"
+  desc="All four runs and every metric they logged, live. This is the database behind every training figure in this article."
+  frameless
+/>
+
+**The code.** [`03-geoguesser`](https://github.com/adithya-s-k/HuggingEnvs/tree/main/03-geoguesser) is the environment, the dataset pipeline, the eval harness and the training script, with a README per directory. `REPRODUCE.md` has the exact commands for each configuration, including the traps that cost us a run each, and every one of them works on a single GPU: `NPROC=1` is the default, and four cards were only ever about wall clock. `results/summaries/` holds the aggregated tables this article cites, and every one of them regenerates from the raw episodes with a single command, so a number that no longer matches its data is a bug in one of them.
+
+<Note>
+A reproduction that disagrees with the tables above is a bug report we want.
+</Note>

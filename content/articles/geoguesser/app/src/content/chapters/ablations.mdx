@@ -1,0 +1,64 @@
+import HtmlEmbed from "../../components/HtmlEmbed.astro";
+import Note from "../../components/Note.astro";
+
+### The second and third runs
+
+Run 1 worked, and one working run is a story, not a result. So we ran two more, changing as little as possible each time, to find out *why* it worked.
+
+Run 1's training dynamics looked bad. Entropy fell from 0.73 to 0.41, the spread inside each group went to almost nothing, and grad norm, which sat at 0.18 early on, peaked above 11. Twice during that run the sensible recommendation was to kill it. Both times that would have been wrong, and working out why taught us more than anything else in the project.
+
+<HtmlEmbed
+  src="d3-ablation.html"
+  title="Three runs, one knob at a time"
+  desc="Paired gain against each run's own base, with 95% confidence intervals. Run 2 damped the instability and lost most of the gain."
+  frameless
+/>
+
+**Run 2** was designed to suppress exactly those dynamics. We turned off advantage amplification (`scale_rewards="none"`, i.e. Dr.GRPO), added a KL anchor (`beta=0.02`), and doubled gradient accumulation to two tasks per step. It trained cleanly and gained **+0.0326**, about a fifth of run 1. we also trained a 2B alongside it on the same config, which gained +0.0663, so the recipe does transfer down.
+
+**Run 3** reverted exactly those two knobs, `scale_rewards` back to `group` and `beta` back to 0, keeping everything else from run 2. It gained **+0.0717**, recovering roughly 44%.
+
+| | run 1 | run 2 · 4B | run 2 · 2B | run 3 |
+|---|---:|---:|---:|---:|
+| `scale_rewards` | `group` | `none` | `none` | `group` |
+| `beta` | 0 | 0.02 | 0.02 | 0 |
+| tasks per step | 1 | 2 | 2 | 2 |
+| action cost scale | 1.0 | 0.2 | 0.2 | 0.2 |
+| **paired gain** | **+0.1620** | +0.0326 | +0.0663 | +0.0717 |
+| 95% CI | ±0.0137 | ±0.0090 | ±0.0091 | ±0.0105 |
+
+#### The instability was the mechanism
+
+`scale_rewards="group"` divides each advantage by its own group's standard deviation. As the policy becomes confident on a task, that spread shrinks and the divisor grows, so the same reward difference pushes harder and harder. Whether that runs away depends on gradient accumulation, which is the coupling nobody warns you about.
+
+<HtmlEmbed
+  src="d3-amplification.html"
+  title="Why one task per step matters"
+  desc="At one task per step the group standard deviation is the within-task spread, and that collapses. At two it pools between-task variance, which never does."
+  frameless
+/>
+
+The numbers are stark. Run 1 saw one task per step, so the group's standard deviation *was* the within-task spread, and its median across the run was 0.016, which means a typical step had its advantage multiplied by about 60. At its worst, every rollout in the group scored alike and the multiplier hit its ceiling. Run 2 saw two tasks per step, so the spread also contained the difference *between* the tasks, which never collapses: median 0.19, a multiplier around 5, peak grad norm 0.16, and not one dead group in the whole run.
+
+Run 2 was stable and gained a fifth as much. The amplification was where most of the learning signal came from.
+
+<Note>
+Run 3 still falls well short of run 1, and two differences remain. One task per step instead of two, and a five times larger action cost. Run 1 changed both at once, so this narrows the cause without isolating it. The single experiment the data points at is changing only the action cost on top of run 3's config, and that is the next run.
+</Note>
+
+#### What it cost to trust the numbers
+
+Six measurement bugs, each of which produced *plausible* results rather than errors.
+
+| bug | what it looked like | what it was |
+|---|---|---|
+| Wrong base served | 2B checkpoints scoring 0.469–0.479 | vLLM accepted 2B LoRAs on a 4B base and served anyway. All four scores invalid |
+| Dead tunnel | ckpt75 regressing to 0.4475 | 13% of requests got an HTML 404 recorded as an empty reply, so the episode burned its turns and scored 0 |
+| Two reward scales | run 2 deltas incomparable to run 1's | the stored reward is the environment's, while reports recompute through the pinned curve. The same guess scored 0.0107 and 0.135 |
+| No base arm | deltas read across sweeps | the same frozen base scored 0.465–0.500 between sweeps, wider than most differences being claimed |
+| Comparing across `k` | run 1 tying Sonnet 5 | baselines read at pass@1 gave Sonnet 0.6798, at pass@4 0.6952. Mean-of-k is unbiased in `k`, so that gap was single-pass noise rather than a `k` artefact. Either way, compare arms measured with the same number of passes |
+| Concurrent sweeps | `k = 1.8` with `PASSES=1` | two sweeps writing one directory. Arithmetically impossible, and the only tell |
+
+<Note variant="warning">
+Per-checkpoint gains here are about +0.008, smaller than the ±0.011 noise at 200 tasks. Single checkpoints cannot be ranked, only trends across many. Resolving a 25-step gain needs about 800 tasks per arm, not more checkpoints.
+</Note>
