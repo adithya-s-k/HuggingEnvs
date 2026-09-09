@@ -5,7 +5,7 @@ import Note from "../../components/Note.astro";
 
 Run 1 worked, and one working run is a story, not a result. So I ran two more, changing as little as possible each time, to find out *why* it worked.
 
-Run 1's training dynamics looked bad. Entropy fell from 0.73 to 0.41, the spread inside each group went to almost nothing, and grad norm, which sat at 0.18 early on, peaked above 11. Twice during that run the sensible recommendation was to kill it. Both times that would have been wrong, and the reason turned out to be the most useful thing I learned all project.
+Run 1's training dynamics looked bad. Entropy fell from 0.73 to 0.41, the spread inside each group went to almost nothing, and grad norm, which sat at 0.18 early on, peaked above 11. Twice during that run the sensible recommendation was to kill it. Both times that would have been wrong, and working out why taught me more than anything else in the project.
 
 <HtmlEmbed
   src="d3-ablation.html"
@@ -40,10 +40,10 @@ Run 1's training dynamics looked bad. Entropy fell from 0.73 to 0.41, the spread
 
 The numbers are stark. Run 1 saw one task per step, so the group's standard deviation *was* the within-task spread, and its median across the run was 0.016, which means a typical step had its advantage multiplied by about 60. At its worst, every rollout in the group scored alike and the multiplier hit its ceiling. Run 2 saw two tasks per step, so the spread also contained the difference *between* the tasks, which never collapses: median 0.19, a multiplier around 5, peak grad norm 0.16, and not one dead group in the whole run.
 
-That is the trade in one line. Run 2 was stable and gained a fifth as much. The amplification was not a bug that happened to be survivable, it was where most of the learning signal came from.
+Run 2 was stable and gained a fifth as much. The amplification was where most of the learning signal came from.
 
 <Note>
-Run 3 still falls well short of run 1, and two differences remain: one task per step instead of two, and a five times larger action cost. Run 1 changed both at once, so this narrows the cause without isolating it. The single experiment the data points at is changing only the action cost on top of run 3's config, and that is the next run.
+Run 3 still falls well short of run 1, and two differences remain. One task per step instead of two, and a five times larger action cost. Run 1 changed both at once, so this narrows the cause without isolating it. The single experiment the data points at is changing only the action cost on top of run 3's config, and that is the next run.
 </Note>
 
 #### What it cost to trust the numbers
@@ -54,11 +54,11 @@ Six measurement bugs, each of which produced *plausible* results rather than err
 |---|---|---|
 | Wrong base served | 2B checkpoints scoring 0.469–0.479 | vLLM accepted 2B LoRAs on a 4B base and served anyway. All four scores invalid |
 | Dead tunnel | ckpt75 regressing to 0.4475 | 13% of requests got an HTML 404 recorded as an empty reply, so the episode burned its turns and scored 0 |
-| Two reward scales | run 2 deltas incomparable to run 1's | the stored reward is the environment's; reports recompute through the pinned curve. Same guess: 0.0107 against 0.135 |
+| Two reward scales | run 2 deltas incomparable to run 1's | the stored reward is the environment's, while reports recompute through the pinned curve. The same guess scored 0.0107 and 0.135 |
 | No base arm | deltas read across sweeps | the same frozen base scored 0.465–0.500 between sweeps, wider than most differences being claimed |
 | Comparing across `k` | run 1 tying Sonnet 5 | baselines read at pass@1 gave Sonnet 0.6798, at pass@4 0.6952. Mean-of-k is unbiased in `k`, so that gap was single-pass noise rather than a `k` artefact. Either way, compare arms measured with the same number of passes |
 | Concurrent sweeps | `k = 1.8` with `PASSES=1` | two sweeps writing one directory. Arithmetically impossible, and the only tell |
 
 <Note variant="warning">
-The meta-lesson: per-checkpoint gains here are about +0.008, smaller than the noise used to measure them, ±0.011 at 200 tasks. Single checkpoints cannot be ranked, only trends across many. Resolving a 25-step gain needs about 800 tasks per arm, not more checkpoints.
+Per-checkpoint gains here are about +0.008, smaller than the ±0.011 noise at 200 tasks. Single checkpoints cannot be ranked, only trends across many. Resolving a 25-step gain needs about 800 tasks per arm, not more checkpoints.
 </Note>

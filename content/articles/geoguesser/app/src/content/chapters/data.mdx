@@ -11,11 +11,11 @@ Before writing a line of environment code, the question is where the imagery com
 | **Google Street View** | yes | yes | **no** | ToS-restricted | fine for a live demo, unusable as a training corpus |
 | **Mapillary** | yes | yes | yes | CC BY-SA 4.0 | the one that survives all four |
 
-**OSV-5M** was the obvious first stop: 5.1 million geolocated street-level images, openly licensed, already a research dataset. It even carries a `sequence` column, so in principle its rows are free seeds for movement. I probed 40 of its sequences to check.
+**OSV-5M** was the obvious first stop. 5.1 million geolocated street-level images, openly licensed, already a research dataset. It even carries a `sequence` column, so in principle its rows are free seeds for movement. I probed 40 of its sequences to check.
 
 Zero of them contained a spherical image. OSV-5M sampled *perspective* imagery, which is what most of the underlying source actually is. You cannot look around in a perspective photo, so the whole "turn your head" half of the game is impossible. A clean negative result, and worth the hour it took.
 
-**The Google Street View API** is what the real game uses, and it has far better coverage than anything else. It is also the wrong tool for this. The terms of service do not permit the kind of bulk caching that training needs; you cannot mirror tens of thousands of panoramas to a bucket and read them eight times per step for ten hours. It is usable for a demo or a small held-out eval where you fetch live and discard, and I would treat it that way. It is not usable as a training corpus, and I would rather say that plainly than build something on a licence I would have to quietly hope nobody checked.
+**The Google Street View API** is what the real game uses, and it has far better coverage than anything else. It is also the wrong tool for this. The terms of service do not permit the kind of bulk caching that training needs; you cannot mirror tens of thousands of panoramas to a bucket and read them eight times per step for ten hours. It is usable for a demo or a small held-out eval where you fetch live and discard, and I would treat it that way. It is not usable as a training corpus, and I was not going to build this on a licence I would have to hope nobody checked.
 
 **Mapillary** is the answer. Community-contributed street-level imagery, CC BY-SA 4.0, with a real API, sequence graphs so movement is possible, and, critically, spherical 360° panoramas among the perspective ones. Faces and plates arrive pre-blurred.
 
@@ -28,7 +28,7 @@ It comes with its own surprises, all of which cost time:
 
 ### Harvesting, and the split
 
-The pipeline walks Mapillary's vector coverage tiles, collects candidate sequences, picks tasks with country balancing, and mirrors every frame each task might need. That last part matters: frames in a sequence sit about 3.3 m apart, so walking down a road touches many images, and all of them have to be local or a rollout dies mid-episode on a network call.
+The pipeline walks Mapillary's vector coverage tiles, collects candidate sequences, picks tasks with country balancing, and mirrors every frame each task might need. That last part matters. Frames in a sequence sit about 3.3 m apart, so walking down a road touches many images, and all of them have to be local or a rollout dies mid-episode on a network call.
 
 The output is a pool of 3,673 tasks, from which 3,452 go to training and 200 are held out for eval.
 

@@ -14,7 +14,7 @@ The model stopped exploring.
 />
 
 <Note variant="info">
-**Pro tip: serve every checkpoint from one endpoint.** Training leaves you with a series of LoRA adapters rather than a series of models, and vLLM will hold a base model plus up to eight adapters at the same time behind `--enable-lora`. Each adapter is addressable as its own model name, so a sweep across eight checkpoints costs one GPU-hour instead of eight. Two things to check: the adapters have to have been trained on the base you are serving, since vLLM will happily load a 2B adapter onto a 4B base and answer anyway, and it is worth asking `/v1/models` what is actually loaded before you record a single score.
+**Pro tip: serve every checkpoint from one endpoint.** Training leaves you with a series of LoRA adapters instead of a series of models, and vLLM will hold a base model plus up to eight adapters at the same time behind `--enable-lora`. Each adapter is addressable as its own model name, so a sweep across eight checkpoints costs one GPU-hour instead of eight. Two things to check. The adapters have to have been trained on the base you are serving, since vLLM will happily load a 2B adapter onto a 4B base and answer anyway, and it is worth asking `/v1/models` what is actually loaded before you record a single score.
 </Note>
 
 | checkpoint | eval score | turns | looks | pins | output tokens | scored zero | median error |
@@ -31,7 +31,7 @@ Turns fell from 6.7 to 1.1. Looks went to zero. Output tokens dropped from about
 
 And its accuracy went *up*. Median error nearly halved, 1226 km to 662 km, country identification rose from 21% to 33%, and the share of episodes scoring exactly zero fell from 29.5% to 0.5%.
 
-That last column is worth being precise about, because I got it wrong myself for a while. Those are not episodes where the model ran out of turns without answering; non-submission is essentially absent from this sweep. They are episodes where it *did* answer and landed past the reward's cliff, which on the game curve sits somewhere between 3,300 and 4,500 km depending on how many actions the episode spent. Almost a third of the untrained model's guesses were that wrong. One in two hundred of the trained model's were.
+I had that last column wrong myself for a while. Those are not episodes where the model ran out of turns without answering. Non-submission is essentially absent from this sweep. They are episodes where it *did* answer and landed past the point where the game curve goes flat, which is about 4,500 km for a cheap episode and about 3,300 km at the average cost of these models. That was almost a third of the untrained model's guesses, and one in two hundred of the trained model's.
 
 #### So it is just guessing a random point?
 
@@ -39,9 +39,9 @@ This is the first thing everyone asks, and the collapse in output tokens makes i
 
 A random guess on land averages something like 8,000 km of error. This model's median is 662 km. It names the right country a third of the time, up from a fifth. It puts a fifth of its guesses inside 200 km of the truth. Guesses beyond the cliff, the ones a coin flip would produce, drop from 29.5% of episodes to 0.5%. None of that is what random looks like.
 
-What it is doing is recognising the region from the first frame and committing to a plausible city in it. You can see that in the raw traces: the same coordinates recur across independent rollouts, 41.9028/12.4964 for Italian scenes, 60.1282/24.78 for Scandinavian ones. That is recall of where cities are, applied to a visual prior about what a place looks like. It is one glance and one decision rather than a chain of deductions, but the glance is doing real work.
+What it is doing is recognising the region from the first frame and committing to a plausible city in it. You can see it in the raw traces. The same coordinates recur across independent rollouts, 41.9028/12.4964 for Italian scenes, 60.1282/24.78 for Scandinavian ones. That is recall of where cities are, applied to a visual prior about what a place looks like. It is one glance and one decision rather than a chain of deductions, but the glance is doing real work.
 
-The uncomfortable part is not that it guesses. It is that deliberation was making a 4B model *worse*, and the training found that out before I did.
+The uncomfortable part is that deliberation was making a 4B model *worse*, and the training found that out before I did.
 
 <Note variant="warning">
 One qualification I owe you on the turn count. Training drives the environment through native tool calls and keeps the whole image history in context; the eval harness sends JSON in text and shows only the current image. Every arm on the board is measured the same way, so the comparison is fair, but the **1.1 turns** is measured under a protocol the checkpoint never trained on. The behaviour is real, the exact number is protocol-dependent.
@@ -51,11 +51,11 @@ One qualification I owe you on the turn count. Training drives the environment t
 
 When a policy stops doing the task and scores better, the first assumption should be reward hacking. I spent a day trying to find the exploit. The candidates were the pin loop leaking target information, the task identity being visible in an observation, prompt or metadata leaking the answer, and plain memorisation of the training split.
 
-None of them held up. The pin loop returns only what is at the pinned coordinate. Task identity is hidden. And the memorisation story does not survive arithmetic: a full 1000-step run at one task per step touches 1,000 of 3,452 tasks, one group each, never repeated. The eval split shares no sequence with training and sits at least 1 km away from any training task. On top of that, the gains are measured on 200 held-out tasks it has never seen.
+None of them held up. The pin loop returns only what is at the pinned coordinate. Task identity is hidden. And the memorisation story does not survive arithmetic. A full 1000-step run at one task per step touches 1,000 of 3,452 tasks, one group each, never repeated. The eval split shares no sequence with training and sits at least 1 km away from any training task. On top of that, the gains are measured on 200 held-out tasks it has never seen.
 
-#### The reward has a cliff, not a slope
+#### Where the reward goes flat
 
-What actually happened is simpler and more interesting. Under the game curve, everything past roughly 3,500 km scores exactly zero, and that was happening to nearly a third of untrained episodes. So the largest win available to the policy was not being catastrophically wrong, and the fastest route to that was to stop reasoning itself into a different continent and commit to its first instinct instead. The gain is that plus a genuinely sharper prior about where street scenes look like they are.
+What actually happened is simpler and more interesting. Past that flat point everything scores exactly zero, and that was happening to nearly a third of untrained episodes. So the largest win available to the policy was not being catastrophically wrong, and the fastest route to that was to stop reasoning itself into a different continent and commit to its first instinct instead. The gain is that plus a sharper prior about where street scenes look like they are.
 
 <HtmlEmbed
   src="d3-commit-vs-score.html"
@@ -64,12 +64,12 @@ What actually happened is simpler and more interesting. Under the game curve, ev
   frameless
 />
 
-The effect generalises past my own checkpoints, which is what convinced me it was the reward rather than my training. Across the nine off-the-shelf models I never touched, score correlates with turns per episode at **r = −0.75**: the ones that deliberate longest do worst. It correlates with the zero-scoring share at **r = −0.96**, though that one is partly the same measurement twice, since both are functions of the same distances. The turn count is the finding. Models that commit early win, mine and theirs alike.
+The effect generalises past my own checkpoints, which is what convinced me it was the reward rather than my training. Across the nine off-the-shelf models I never touched, score correlates with turns per episode at **r = −0.75**. The ones that deliberate longest do worst. It also correlates with the zero-scoring share at **r = −0.96**, but that one is partly the same measurement twice, since both are functions of the same distances. Models that commit early score higher, whether I trained them or not.
 
 <Note variant="warning">
-I want to be straight about what that means. I set out to build a model that reads road signs and I trained one that recalls a plausible city and commits. It is genuinely more accurate, and it is not cheating, but it is not the visual agent I was aiming for. That is a finding about reward design.
+I set out to build a model that reads road signs and I trained one that recalls a plausible city and commits. It is more accurate and it is not cheating. It is also not the visual agent I was aiming for, and the reason is the reward.
 
-The direction it points is counter-intuitive: run 1 carried the *largest* action cost of my three runs and collapsed hardest. A higher cost buys a faster commit, not more careful looking. Making evidence-gathering worthwhile needs a *lower* action cost, plus a curve with no cliff at all, so that a careful episode landing 4,000 km out still scores better than a careless one landing 12,000 km out. Under the game curve those two are identical, and a policy cannot learn from a distinction the reward does not make.
+The direction is counter-intuitive. Run 1 carried the *largest* action cost of the three configurations and collapsed hardest. A higher cost buys a faster commit, not more careful looking. Making evidence-gathering worthwhile needs a *lower* action cost, plus a curve with no cliff at all, so that a careful episode landing 4,000 km out still scores better than a careless one landing 12,000 km out. Under the game curve those two are identical, and a policy cannot learn from a distinction the reward does not make.
 </Note>
 
 #### Where it landed
@@ -102,5 +102,5 @@ Second of eleven. It beats `gpt-5.4-mini`, `haiku-4.5`, and every Qwen3.5 up to 
 The improvement over its own base is **+0.1620**, paired per task, 95% CI ±0.0137, better on 169 of 200 tasks. Ten hours and about $100.
 
 <Note>
-One caveat arrives from the same table: the run plateaued by **step 200**. Step 200 scores 0.6393 against step 1000's 0.6445, which is inside the noise. The remaining 800 steps span a 0.013 band across nineteen checkpoints and bought nothing but about $70 of A100. If you reproduce this, stop at 250.
+The same table carries one caveat. The run plateaued by **step 200**. Step 200 scores 0.6393 against step 1000's 0.6445, which is inside the noise. The remaining 800 steps span a 0.013 band across nineteen checkpoints and bought nothing but about $70 of A100. If you reproduce this, stop at 250.
 </Note>

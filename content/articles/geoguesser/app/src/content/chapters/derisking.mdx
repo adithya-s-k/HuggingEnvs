@@ -4,7 +4,7 @@ import Note from "../../components/Note.astro";
 
 Three cheap checks before you rent a GPU. Each one has saved me a full run's cost, and none of them needs a GPU.
 
-Being systematic about this pays off because RL failures do not announce themselves. A broken reward, a wrong turn budget and a model that simply cannot do the task all produce the same picture: a flat line at zero. You cannot tell them apart from the loss curve, so you have to rule them out beforehand.
+Being systematic about this pays off because RL failures do not announce themselves. A broken reward, a wrong turn budget and a model that simply cannot do the task all produce the same flat line at zero. You cannot tell them apart from the loss curve, so you have to rule them out beforehand.
 
 ### First, prove the environment can take the load
 
@@ -20,7 +20,7 @@ for e in envs:
 print("8/8 concurrent sessions OK")
 ```
 
-Six lines, and skipping them cost me a run.
+Skipping those six lines cost me a run.
 
 ### Then simulate the rollout with no gradient
 
@@ -40,7 +40,7 @@ The first one deserves expanding, because no traceback tells you about it. The e
 
 ### And overfit four tasks
 
-This is the one I would push hardest on. Take two to four tasks, run many epochs on just those, and watch the reward.
+This is the check I would push hardest on. Take two to four tasks, run many epochs on just those, and watch the reward.
 
 If it does not climb to near the ceiling on four tasks it has seen a hundred times, then one of three things is true: the model cannot represent the task, the reward is broken, or the plumbing is broken. Learning that for a few dollars beats learning it in hour nine. The rollout simulator takes a `--same-task` flag for this, so the group it builds is a real GRPO group over one task.
 
@@ -58,5 +58,5 @@ step_time               156 s
 Watch `frac_reward_zero_std`, not reward. GRPO's advantage is the spread *within* a group, so if that fraction is near 1 then most groups are teaching nothing and no amount of training will fix it. And do not read a reward increase over two steps as learning. At temperature 1.0 that is noise.
 
 <Note>
-None of this is specific to small runs. Mercor and the SkyRL team describe the same sequence for a 397B run in [their RL training guide](https://www.mercor.com/blog/training-frontier-knowledge-work-agents-a-397b-rl-training-guide-with-skyrl/): validate the harness first by running an eval pass over the full training set *at the concurrency RL will use*, drive the non-model error rate as close to zero as you can, then do an overfitting run before the real one. Their phrasing is blunter than mine: if you cannot overfit a handful of tasks, an end-to-end run has no chance. Worth reading before you spend real money, and reassuring that the checks barely change across three orders of magnitude of scale.
+This is not only a small-run habit. Mercor and the SkyRL team describe the same sequence for a 397B run in [their RL training guide](https://www.mercor.com/blog/training-frontier-knowledge-work-agents-a-397b-rl-training-guide-with-skyrl/): validate the harness first by running an eval pass over the full training set *at the concurrency RL will use*, drive the non-model error rate as close to zero as you can, then do an overfitting run before the real one. Their phrasing is blunter than mine: if you cannot overfit a handful of tasks, an end-to-end run has no chance. Worth reading before you spend real money, and reassuring that the checks barely change across three orders of magnitude of scale.
 </Note>
