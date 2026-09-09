@@ -3,10 +3,18 @@ interface Props {
   title: string;
   description?: string;
   authors?: string[];
+  /** Human-readable date, as written in the frontmatter. */
   published?: string;
+  /** ISO 8601, for `article:published_time` and schema.org. */
+  publishedIso?: string;
   modified?: string;
+  modifiedIso?: string;
   tags?: string[];
   image?: string; // Preferred absolute URL
+  /** Publication name for `og:site_name`. */
+  siteName?: string;
+  /** Canonical URL override, for a page served under a different origin. */
+  canonical?: string;
 }
 
 const {
@@ -14,14 +22,21 @@ const {
   description = "",
   authors = [],
   published,
+  publishedIso,
   modified,
+  modifiedIso,
   tags = [],
   image,
+  siteName,
+  canonical,
 } = Astro.props as Props;
 
-const url = Astro.url?.toString?.() ?? "";
+// Canonical must be the deployed origin, not the build host: `Astro.url` is
+// `http://localhost:4321/` during a static build, which is how this page
+// shipped with a canonical pointing at a dev server.
 const site = (Astro.site ? String(Astro.site) : "") as string;
-
+const path = Astro.url?.pathname ?? "/";
+const url = canonical || (site ? new URL(path, site).toString() : (Astro.url?.toString?.() ?? ""));
 // Build base URL: prefer Astro.site, fallback to origin from Astro.url
 const baseUrl = site || (Astro.url ? `${Astro.url.protocol}//${Astro.url.host}` : "");
 
@@ -39,8 +54,8 @@ const jsonLd = {
   "@type": "Article",
   headline: title,
   description: description || undefined,
-  datePublished: published || undefined,
-  dateModified: modified || published || undefined,
+  datePublished: publishedIso || published || undefined,
+  dateModified: modifiedIso || modified || publishedIso || published || undefined,
   author: authors.map((name) => ({ "@type": "Person", name })),
   publisher: {
     "@type": "Organization",
@@ -62,11 +77,22 @@ const jsonLd = {
 {description && <meta property="og:description" content={description} />}
 <meta property="og:url" content={url} />
 <meta property="og:locale" content="en_US" />
-{baseUrl && <meta property="og:site_name" content={title} />}
+{siteName && <meta property="og:site_name" content={siteName} />}
 {ogImage && <meta property="og:image" content={ogImage} />}
 {ogImage && <meta property="og:image:alt" content={title} />}
-{published && <meta property="article:published_time" content={published} />}
-{modified && <meta property="article:modified_time" content={modified} />}
+{ogImage && <meta property="og:image:width" content="1200" />}
+{ogImage && <meta property="og:image:height" content="630" />}
+{ogImage && ogImage.endsWith(".jpg") && (
+  <meta property="og:image:type" content="image/jpeg" />
+)}
+{(publishedIso || published) && (
+  <meta property="article:published_time" content={publishedIso || published} />
+)}
+{(modifiedIso || modified) && (
+  <meta property="article:modified_time" content={modifiedIso || modified} />
+)}
+{tags.map((tagName) => <meta property="article:tag" content={tagName} />)}
+{tags.length > 0 && <meta name="keywords" content={tags.join(", ")} />}
 {authors.map((a) => <meta property="article:author" content={a} />)}
 
 <meta

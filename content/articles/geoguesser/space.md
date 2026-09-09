@@ -9,6 +9,8 @@ app_port: 8080
 header: mini
 pinned: false
 license: mit
+thumbnail: >-
+  https://huggingenvs-geoguesser-article.hf.space/thumb.auto.jpg
 tags:
   - research-article-template
   - rl-environments
@@ -17,6 +19,9 @@ tags:
   - grpo
   - reinforcement-learning
   - vision-language-model
+  - visual-geolocation
+  - reward-design
+  - qwen3.5
 ---
 
 # How to turn a game into an RL environment

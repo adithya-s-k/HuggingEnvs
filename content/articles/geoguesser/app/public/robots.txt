@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
 
-Sitemap: /sitemap-index.xml
-LLMs-Txt: /llms.txt
+# Absolute, per the robots.txt spec: a relative Sitemap line is ignored.
+Sitemap: https://huggingenvs-geoguesser-article.hf.space/sitemap.xml
+LLMs-Txt: https://huggingenvs-geoguesser-article.hf.space/llms.txt

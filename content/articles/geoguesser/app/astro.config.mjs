@@ -1,7 +1,6 @@
 import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import svelte from '@astrojs/svelte';
-import sitemap from '@astrojs/sitemap';
 import mermaid from 'astro-mermaid';
 import compressor from 'astro-compressor';
 import generateLlmsTxt from './plugins/astro/generate-llms-txt.mjs';
@@ -24,20 +23,30 @@ import rehypeWrapOutput from './plugins/rehype/wrap-outputs.mjs';
 
 // Plugins moved to app/plugins/*
 
-// Auto-detect HF Space URL for SEO (og:image needs absolute URLs)
-const spaceId = process.env.SPACE_ID; // e.g. "tfrere/research-article-template"
-const siteUrl = spaceId
-  ? `https://${spaceId.replace('/', '-').toLowerCase()}.hf.space`
-  : undefined;
+// The absolute origin every canonical, og:url, og:image and sitemap entry is
+// built from. It has to resolve at *build* time, and a Space's Docker build does
+// not always carry SPACE_ID, which is how this article shipped with
+// `<link rel="canonical" href="http://localhost:4321/">` on the live page: a
+// canonical pointing at localhost, and social cards whose image cannot load.
+//
+// So: an explicit PUBLIC_SITE_URL wins, SPACE_ID is the convenience, and the
+// deployed URL is the fallback rather than `undefined`.
+const spaceId = process.env.SPACE_ID; // e.g. "HuggingEnvs/geoguesser-article"
+const siteUrl =
+  process.env.PUBLIC_SITE_URL ||
+  (spaceId ? `https://${spaceId.replace('/', '-').toLowerCase()}.hf.space` : null) ||
+  'https://huggingenvs-geoguesser-article.hf.space';
 
 export default defineConfig({
-  ...(siteUrl ? { site: siteUrl } : {}),
+  site: siteUrl,
+  // No `sitemap()` integration: the version resolved here reads a routes shape
+  // Astro 4.16 does not pass and throws in `astro:build:done` the moment `site`
+  // is set. `src/pages/sitemap.xml.ts` emits the same file from the same origin.
   output: 'static',
   integrations: [
     mermaid({ theme: 'neutral', autoTheme: true }),
     mdx(),
     svelte(),
-    sitemap(),
     generateLlmsTxt(),
     // Precompress output with Gzip only (Brotli disabled due to server module mismatch)
     compressor({ brotli: false, gzip: true })

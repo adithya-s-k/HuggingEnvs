@@ -117,6 +117,19 @@ const authorNames: string[] = normalizedAuthors.map((a) => a.name);
 const published = articleFM?.published ?? undefined;
 const template: string = (articleFM as any)?.template ?? "article";
 const tags = articleFM?.tags ?? [];
+// schema.org and `article:published_time` want ISO 8601; the frontmatter is
+// written for humans ("September 8, 2026"), so derive rather than duplicate.
+const publishedIso = (() => {
+  const raw = articleFM?.published;
+  if (!raw) return undefined;
+  const parsed = new Date(String(raw));
+  if (Number.isNaN(parsed.getTime())) return undefined;
+  // Date only, built from the local parts. Going through `toISOString()` turned
+  // "September 8, 2026" into 2026-09-07T18:30Z on a machine east of UTC, which
+  // is the wrong day in the metadata.
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}`;
+})();
 // Prefer seoThumbImage from frontmatter if provided
 const fmOg = articleFM?.seoThumbImage as string | undefined;
 const imageAbs: string =
@@ -194,8 +207,10 @@ const links: Array<{ label: string; url: string; icon?: string }> =
       description={description}
       authors={authorNames}
       published={published}
+      publishedIso={publishedIso}
       tags={tags}
       image={imageAbs}
+      siteName="HuggingEnvs"
     />
     <script is:inline>
       (() => {
