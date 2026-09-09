@@ -3,7 +3,7 @@ import Note from "../../components/Note.astro";
 
 ## Data and evals come first
 
-Before writing a line of environment code, the question is where the imagery comes from. Get this wrong and everything downstream is wasted work. I looked at three options.
+Before writing a line of environment code, the question is where the imagery comes from. Get this wrong and everything downstream is wasted work. We looked at three options.
 
 | | look around | walk | bulk cache | licence | verdict |
 |---|---|---|---|---|---|
@@ -11,11 +11,11 @@ Before writing a line of environment code, the question is where the imagery com
 | **Google Street View** | yes | yes | **no** | ToS-restricted | fine for a live demo, unusable as a training corpus |
 | **Mapillary** | yes | yes | yes | CC BY-SA 4.0 | the one that survives all four |
 
-**OSV-5M** was the obvious first stop. 5.1 million geolocated street-level images, openly licensed, already a research dataset. It even carries a `sequence` column, so in principle its rows are free seeds for movement. I probed 40 of its sequences to check.
+**OSV-5M** was the obvious first stop. 5.1 million geolocated street-level images, openly licensed, already a research dataset. It even carries a `sequence` column, so in principle its rows are free seeds for movement. we probed 40 of its sequences to check.
 
 Zero of them contained a spherical image. OSV-5M sampled *perspective* imagery, which is what most of the underlying source actually is. You cannot look around in a perspective photo, so the whole "turn your head" half of the game is impossible. A clean negative result, and worth the hour it took.
 
-**The Google Street View API** is what the real game uses, and it has far better coverage than anything else. It is also the wrong tool for this. The terms of service do not permit the kind of bulk caching that training needs; you cannot mirror tens of thousands of panoramas to a bucket and read them eight times per step for ten hours. It is usable for a demo or a small held-out eval where you fetch live and discard, and I would treat it that way. It is not usable as a training corpus, and I was not going to build this on a licence I would have to hope nobody checked.
+**The Google Street View API** is what the real game uses, and it has far better coverage than anything else. It is also the wrong tool for this. The terms of service do not permit the kind of bulk caching that training needs; you cannot mirror tens of thousands of panoramas to a bucket and read them eight times per step for ten hours. It is usable for a demo or a small held-out eval where you fetch live and discard, and we would treat it that way. It is not usable as a training corpus, and we were not going to build this on a licence we would have to hope nobody checked.
 
 **Mapillary** is the answer. Community-contributed street-level imagery, CC BY-SA 4.0, with a real API, sequence graphs so movement is possible, and, critically, spherical 360° panoramas among the perspective ones. Faces and plates arrive pre-blurred.
 
@@ -38,7 +38,7 @@ The contamination rules are enforced **once, before the split**, which is the on
 - no training task sits within 1 km of an eval task
 
 <Note>
-That second rule I took from the OSV-5M paper, and it is the one people get wrong. At 3.3 m frame spacing, holding out one image while keeping its neighbour holds out nothing. The unit of contamination is the sequence and the neighbourhood, not the image.
+That second rule we took from the OSV-5M paper, and it is the one people get wrong. At 3.3 m frame spacing, holding out one image while keeping its neighbour holds out nothing. The unit of contamination is the sequence and the neighbourhood, not the image.
 </Note>
 
 These are the 200 locations that ended up in the eval split. Every number in this article is scored on them.

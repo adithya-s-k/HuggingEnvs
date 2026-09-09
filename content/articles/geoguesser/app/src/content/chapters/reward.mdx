@@ -5,7 +5,7 @@ import Note from "../../components/Note.astro";
 
 The reward is where a project like this is won or lost, because it is the only thing the model is actually told. The tools, the imagery and the prompt decide what it *can* do. The reward decides what it ends up doing.
 
-It is also the part you should plan to write more than once. Mine went through two versions and the second one is not obviously better on paper; it is better because I could see what the first one did to 200 real episodes. Reward design is empirical. What worked was to pick the obvious curve, run it over recorded episodes, and look at what it rewards and what it cannot distinguish.
+It is also the part you should plan to write more than once. Mine went through two versions and the second one is not obviously better on paper; it is better because we could see what the first one did to 200 real episodes. Reward design is empirical. What worked was to pick the obvious curve, run it over recorded episodes, and look at what it rewards and what it cannot distinguish.
 
 The obvious curve here is the game's own. Distance in, score out:
 
@@ -40,8 +40,8 @@ Two changes. A second, much slower decay scale, and a cost that multiplies rathe
 Replaying 200 episodes through the game curve floored **77 of them at exactly 0.0, with no variance between them**. A 3,324 km miss scored the same as an 18,723 km miss. A GRPO group drawn from those tasks has zero advantage and teaches nothing, and more than a third of the split was in that state. Multiplying by a positive factor cannot collapse an ordering, which is the whole reason for the change.
 </Note>
 
-One property I would keep in any version of this reward is that any guess anywhere on Earth beats no guess. Running out of turns without answering is the worst outcome, because for a small model it is by far the most common failure, and a reward that leaves it ambiguous will not fix it.
+One property we would keep in any version of this reward is that any guess anywhere on Earth beats no guess. Running out of turns without answering is the worst outcome, because for a small model it is by far the most common failure, and a reward that leaves it ambiguous will not fix it.
 
 <Note>
-There are now **two reward scales** in this project, and on the same guess they differ by more than 10×. The stored episode reward is the environment's curve, while every number I report is recomputed from raw distance through the training curve. Mixing them made run 2's deltas incomparable to run 1's for a while, and a unit test now fails if the two definitions drift apart.
+There are now **two reward scales** in this project, and on the same guess they differ by more than 10×. The stored episode reward is the environment's curve, while every number we report is recomputed from raw distance through the training curve. Mixing them made run 2's deltas incomparable to run 1's for a while, and a unit test now fails if the two definitions drift apart.
 </Note>

@@ -6,8 +6,8 @@
       <p class="cv__note">
         Every point is one model on the same 200 held-out tasks, scored mean-of-4. Marker size is
         the share of its episodes that scored exactly zero, which on the game curve means a guess
-        beyond about 3,300 km. The two arms I trained are marked; the line is fitted to the nine
-        models I did not.
+        beyond about 3,300 km. The two arms we trained are marked, and the line is fitted to the nine
+        models we did not.
       </p>
     </div>
   </div>
@@ -144,7 +144,7 @@
         class: 'axis-lbl', x: M.l - 7, y: M.t - 5, 'text-anchor': 'end'
       }, 'score'));
 
-      // Fit on the models I did not train, so the line is not shaped by my own
+      // Fit on the models we did not train, so the line is not shaped by our own
       // checkpoints sitting at one turn.
       const refs = rows.filter((r) => r.kind === 'reference');
       const rx = refs.map((r) => r.turns), ry = refs.map((r) => r.mean);
@@ -194,7 +194,7 @@
           }, r.name.replace(' (untrained)', '')));
         });
 
-      // The move my training made, drawn as the arrow it actually is.
+      // The move training made, drawn as the arrow it actually is.
       const base = rows.find((r) => r.kind === 'base');
       const ours = rows.find((r) => r.kind === 'ours');
       if (base && ours) {
@@ -210,7 +210,7 @@
 
       const r = pearson(rx, ry);
       root.querySelector('.cv__stat').innerHTML =
-        `across the ${n} models I did not train, score against turns per episode: ` +
+        `across the ${n} models we did not train, score against turns per episode: ` +
         `<b>r = ${r.toFixed(2)}</b>`;
     };
 

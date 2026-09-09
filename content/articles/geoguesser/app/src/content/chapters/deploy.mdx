@@ -3,7 +3,7 @@ import Note from "../../components/Note.astro";
 
 ## Deploying and sharing it
 
-An environment nobody else can run is a private result. A number someone else can regenerate can be checked; a number nobody else can reach cannot. The Hugging Face Hub is the best place I know to fix that, because the environment, the data, the trained adapters and the training curves can all sit next to each other and all be pulled by a stranger holding one URL.
+An environment nobody else can run is a private result. A number someone else can regenerate can be checked; a number nobody else can reach cannot. The Hugging Face Hub is the best place we know to fix that, because the environment, the data, the trained adapters and the training curves can all sit next to each other and all be pulled by a stranger holding one URL.
 
 Shipping it also removes a way to fool yourself. If the trainer and the eval harness both talk to one hosted environment over HTTP, neither can be measuring against a subtly different thing than the other.
 
@@ -18,14 +18,14 @@ Hub infrastructure has a repo type per kind of artifact, and they compose. A buc
   frameless
 />
 
-How I used each of them, and why:
+How we used each of them, and why:
 
 | what | where it lives | why there |
 |---|---|---|
 | 22 GB of panoramas | Storage Bucket | Space disk is ephemeral and capped well below 22 GB. A bucket is mutable object storage, which suits something a harvest tops up over time, and it mounts read-only into the Space at `/data`. The cache can keep growing without a single commit. |
 | the task indexes | dataset repo | 8 MB of metadata, and the part that has to be *frozen*. A bucket is not versioned, so a benchmark living in one can change under you silently; in a dataset repo a change to a split appears in history where a reviewer can see it. |
 | the environment | Space | One image serves the browser game, the MCP tools and the HTTP simulation routes. Locally the indexes and imagery come from the checkout, on the Space they arrive through the mount, and nothing but environment variables differs. |
-| the adapters | model repos | Both are LoRA adapters instead of merged weights, so they are tens of megabytes. Anyone can pull one, point it at the same Space, and check my numbers. |
+| the adapters | model repos | Both are LoRA adapters instead of merged weights, so they are tens of megabytes. Anyone can pull one, point it at the same Space, and check our numbers. |
 | the GPUs | Jobs | Rented per run instead of keeping them: ten hours on four A100s, about $100. The same CLI stands up a vLLM endpoint for an eval sweep and tears it down afterwards. |
 | the curves | Trackio Space | Every run in one dashboard, which is what makes them readable against each other instead of one at a time. |
 

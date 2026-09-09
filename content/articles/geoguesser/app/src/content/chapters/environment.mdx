@@ -24,7 +24,7 @@ The other six, `pan`, `view_map`, `list_pins`, `clear_pins`, `measure` and `reve
   frameless
 />
 
-This is `claude-haiku-4.5` instead of the model I trained, because it uses every tool in one episode: zoom in, turn, pin a candidate, zoom further, walk down the road, turn again, commit. Two details show the environment doing its job. It asked to move 15 m and moved 2, because movement is bounded by where frames actually exist. And the pin at turn 3 came back with the country and the nearest city and nothing about whether that guess was any good. My own trained model's episodes look nothing like this by the end of training, which is what “What it actually learned” is about.
+This is `claude-haiku-4.5` instead of the model we trained, because it uses every tool in one episode: zoom in, turn, pin a candidate, zoom further, walk down the road, turn again, commit. Two details show the environment doing its job. It asked to move 15 m and moved 2, because movement is bounded by where frames actually exist. And the pin at turn 3 came back with the country and the nearest city and nothing about whether that guess was any good. My own trained model's episodes look nothing like this by the end of training, which is what “What it actually learned” is about.
 
 ### The trap in the pin loop
 
@@ -38,9 +38,9 @@ Movement is bounded by what was actually captured, so there are dead ends, and f
 
 ### Why OpenEnv
 
-I built this on [OpenEnv](https://github.com/huggingface/OpenEnv). "We used a framework" is usually a throwaway line, so here is what it actually bought.
+We built this on [OpenEnv](https://github.com/huggingface/OpenEnv). "We used a framework" is usually a throwaway line, so here is what it actually bought.
 
-What I wrote is a Python class with three methods and a set of tools. `reset()` returns the first observation for a `(split, index)`, `step()` applies one typed action, `state` reports where the episode is. The tools are registered on a `FastMCP` server inside the class, the action and observation are Pydantic models, and there is a twelve-line `openenv.yaml` naming the entrypoint and the Space variables. That is the contract.
+What we wrote is a Python class with three methods and a set of tools. `reset()` returns the first observation for a `(split, index)`, `step()` applies one typed action, `state` reports where the episode is. The tools are registered on a `FastMCP` server inside the class, the action and observation are Pydantic models, and there is a twelve-line `openenv.yaml` naming the entrypoint and the Space variables. That is the contract.
 
 Everything a trainer actually connects to is generated from it.
 
@@ -53,16 +53,16 @@ Everything a trainer actually connects to is generated from it.
 
 Every item on that list is something you would otherwise write yourself and get subtly wrong.
 
-**The schemas are the API.** `Action` and `Observation` are Pydantic models, so `GET /schema` hands a caller the JSON schema for actions, observations and state. My harness derives the tool definitions it gives the model from that endpoint rather than from a copy pasted list, which is how a tool I added mid-project reached the policy with no change to the harness.
+**The schemas are the API.** `Action` and `Observation` are Pydantic models, so `GET /schema` hands a caller the JSON schema for actions, observations and state. My harness derives the tool definitions it gives the model from that endpoint rather than from a copy pasted list, which is how a tool we added mid-project reached the policy with no change to the harness.
 
-**Per-session isolation.** The server holds an environment *factory*, not an instance, and builds a fresh one per connected session up to `max_concurrent_envs`, each with its own thread pool so a slow synchronous `step()` cannot stall the others. An environment opts in with one class attribute, `SUPPORTS_CONCURRENT_SESSIONS = True`, and the server refuses a cap above one if you have not. Eight rollouts of a GRPO group are eight sessions against one process, and that is a configuration line rather than code I had to write.
+**Per-session isolation.** The server holds an environment *factory*, not an instance, and builds a fresh one per connected session up to `max_concurrent_envs`, each with its own thread pool so a slow synchronous `step()` cannot stall the others. An environment opts in with one class attribute, `SUPPORTS_CONCURRENT_SESSIONS = True`, and the server refuses a cap above one if you have not. Eight rollouts of a GRPO group are eight sessions against one process, and that is a configuration line rather than code we had to write.
 
-**Task selection as routes.** Declare `list_splits`, `num_tasks`, `get_task` and `get_task_range` on the class and the server exposes them as routes under `/geoguesser_env/…`; leave them out and those routes return `501`. So a trainer can ask a URL how many tasks it has and build a dataset from the answer, without importing anything of mine. That is what makes `--split eval --index 7` mean the same thing to my eval harness, to TRL, and to a stranger with `curl`.
+**Task selection as routes.** Declare `list_splits`, `num_tasks`, `get_task` and `get_task_range` on the class and the server exposes them as routes under `/geoguesser_env/…`; leave them out and those routes return `501`. So a trainer can ask a URL how many tasks it has and build a dataset from the answer, without importing anything of ours. That is what makes `--split eval --index 7` mean the same thing to our eval harness, to TRL, and to a stranger with `curl`.
 
-**The server enforces the two surfaces.** `/reset`, `/step` and `/state` are registered only when the server runs in simulation mode. The agent's surface is `/mcp`, which carries tools and nothing else. So the invariant I care about most, that a policy cannot reroll a task it dislikes, is structural. In production mode the route does not exist. I did not have to trust a prompt for it.
+**The server enforces the two surfaces.** `/reset`, `/step` and `/state` are registered only when the server runs in simulation mode. The agent's surface is `/mcp`, which carries tools and nothing else. So the invariant we care about most, that a policy cannot reroll a task it dislikes, is structural. In production mode the route does not exist. we did not have to trust a prompt for it.
 
 **One environment, several backends.** The task, reward, parser, map renderer and pin loop do not care where imagery comes from. Changing the source changes *which tools exist*, so a capability gap shows up as an unregistered tool instead of as a different observation schema. A tool that would always fail is simply not offered, because registering an erroring tool just teaches a policy to burn its step budget.
 
 **A determinism contract.** `reset(split="eval", index=7)` returns a byte-identical observation every time, from any process. A GRPO group is N rollouts of the *same task*, so if the starting observation drifts between them the advantage is measuring noise. Three things make it hold: panorama bytes come from local disk instead of an expiring URL, reprojection is pure numpy with integer sampling, and the initial heading is pinned to the panorama's own `compass_angle` so `look(0)` is true north in every task.
 
-The last one is mine to guarantee. OpenEnv makes `reset(split, index)` addressable; making it return the same bytes every time is on me.
+The last one is ours to guarantee. OpenEnv makes `reset(split, index)` addressable; making it return the same bytes every time is on us.

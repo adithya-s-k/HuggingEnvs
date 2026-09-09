@@ -5,15 +5,15 @@ import Note from "../../components/Note.astro";
 
 There are plenty of RL environments on the internet. Repositories, gyms, benchmark suites, papers with an appendix describing the observation space. Very few of them explain how one got *made*. How you go from a vague idea to a working environment, and then keep iterating on it until a model can be trained to do well at it.
 
-That gap matters, because a finished environment hides almost everything interesting about building it. Presented as a clean API it looks inevitable. What the agent may do, what the reward pays for, what a tool is allowed to reveal. Every one of those is a judgement call, and most of mine were wrong the first time. Building one takes a lot of intuition and considerably more iteration than the finished thing admits to.
+That gap matters, because a finished environment hides almost everything interesting about building it. Presented as a clean API it looks inevitable. What the agent may do, what the reward pays for, what a tool is allowed to reveal. Every one of those is a judgement call, and most of ours were wrong the first time. Building one takes a lot of intuition and considerably more iteration than the finished thing admits to.
 
-So this is the path for one idea, in the order I actually walked it, with the dead ends left in.
+So this is the path for one idea, in the order we actually walked it, with the dead ends left in.
 
-The idea was to **make a vision-language model play GeoGuessr.** Everything else follows from that. Curating a dataset that makes the task learnable, building the environment, deploying it so other people can use it, running evals I could trust, and finally training a model that performs well on it. Built with [OpenEnv](https://github.com/huggingface/OpenEnv), trained with [TRL](https://github.com/huggingface/trl).
+The idea was to **make a vision-language model play GeoGuessr.** Everything else follows from that. Curating a dataset that makes the task learnable, building the environment, deploying it so other people can use it, running evals we could trust, and finally training a model that performs well on it. Built with [OpenEnv](https://github.com/huggingface/OpenEnv), trained with [TRL](https://github.com/huggingface/trl).
 
 It worked well enough to write down. A Qwen3.5-4B with a LoRA adapter finished ahead of `gpt-5.4-mini` and `claude-haiku-4.5` on the held-out split, ahead of every Qwen3.5 up to 397B, and behind only `claude-sonnet-5`. Ten hours on four A100s, around $100, and it runs on a single GPU if you want to try it more cheaply. None of that came from a clever algorithm. It came from the decisions in the sections below, which is why those are the subject rather than the number.
 
-It also ended up somewhere I did not expect. The trained model does not look around more carefully; it looks *less* and answers in one turn, and it is more accurate that way. It is not a random guess, and it is not the reward being gamed. Working out which of those it was took me longer than the training did, and the evidence is in “What it actually learned”.
+It also ended up somewhere we did not expect. The trained model does not look around more carefully; it looks *less* and answers in one turn, and it is more accurate that way. It is not a random guess, and it is not the reward being gamed. Working out which of those it was took us longer than the training did, and the evidence is in “What it actually learned”.
 
 ### What GeoGuessr is
 
@@ -33,7 +33,7 @@ Easier to try than to read about. This is the environment itself, which is the s
   frameless
 />
 
-Models are bad at this, and bad in a way I found interesting. There is no obvious training set, nobody has optimised against it, and the skill it needs is properly visual and properly sequential. You cannot solve it by thinking harder about one image; you have to go and look at the right thing.
+Models are bad at this, and bad in a way we found interesting. There is no obvious training set, nobody has optimised against it, and the skill it needs is properly visual and properly sequential. You cannot solve it by thinking harder about one image; you have to go and look at the right thing.
 
 ### Why this idea and not another
 
@@ -41,26 +41,26 @@ Four things make a task suit an environment. Check them against whatever idea yo
 
 - **The reward is continuous and verifiable.** Distance in kilometres from a known coordinate. No rubric, no LLM judge, nothing to argue with. Every guess gets a gradient rather than a pass or a fail, which matters more than it sounds like it should.
 - **It is multi-turn.** Looking, walking and testing a candidate on the map are separate actions with separate costs. A single-shot version of this is a different and much less interesting problem.
-- **It is not saturated.** The best model I measured still misses by a median of 324 km, so there is real headroom to move.
+- **It is not saturated.** The best model we measured still misses by a median of 324 km, so there is real headroom to move.
 - **It is cheap to simulate.** The whole environment runs on CPU from a local cache, so a rollout can be debugged for pennies before a GPU is involved.
 
 This one happened to be cheap. Most RL environments are not, and are heavily resource dependent.
 
 ### How this goes
 
-Here is the order I worked in, and the order I would suggest:
+Here is the order we worked in, and the order we would suggest:
 
-1. **Curate the data.** Where the imagery comes from and what its licence lets you do. I looked at three sources and two of them fall apart the moment you try to train on them.
+1. **Curate the data.** Where the imagery comes from and what its licence lets you do. We looked at three sources and two of them fall apart the moment you try to train on them.
 2. **Build the eval before the training.** A small frozen split and a sweep of models that already exist. That tells you the ceiling, how noisy your measurements are, and which model to train.
-3. **Design the environment.** What tools exist, what they cost, and, the part I nearly got wrong, what they must never reveal.
+3. **Design the environment.** What tools exist, what they cost, and, the part that nearly went wrong here, what they must never reveal.
 4. **Deploy it.** Running it in one place is what lets the trainer and the eval talk to exactly the same thing. OpenEnv also makes it shareable. Push it to the Hub and anyone can try the environment themselves, in a browser, with nothing installed.
-5. **Design the reward, then fix it.** Mine was wrong the first time in a way I only caught by replaying 200 episodes through it.
+5. **Design the reward, then fix it.** Mine was wrong the first time in a way we only caught by replaying 200 episodes through it.
 6. **De-risk before you spend.** Simulate the rollout with no gradient, then overfit four tasks. Both are cheap, and both catch bugs that look identical to a model that cannot learn.
-7. **Train, then read the behaviour.** Not just the reward curve. The reward went up for a reason I had not intended.
+7. **Train, then read the behaviour.** Not just the reward curve. The reward went up for a reason we had not intended.
 
-That sequence is not specific to GeoGuessr. The order, and the checks at each stage, are what I would apply to any environment, and only the details change.
+That sequence is not specific to GeoGuessr. The order, and the checks at each stage, are what we would apply to any environment, and only the details change.
 
-What is specific is how much iteration it took. Three configurations, four runs counting the 2B I trained alongside run 2, and they came out very differently on the same environment, the same data and the same base model. Which settings caused that, and why they mattered as much as they did, comes later.
+What is specific is how much iteration it took. Three configurations, four runs counting the 2B we trained alongside run 2, and they came out very differently on the same environment, the same data and the same base model. Which settings caused that, and why they mattered as much as they did, comes later.
 
 <Note variant="info">
 **Everything here is reproducible.** The environment is a [playable Space](https://huggingface.co/spaces/HuggingEnvs/geoguesser-env), the [task splits](https://huggingface.co/datasets/HuggingEnvs/geoguesser-tasks) and [22 GB of imagery](https://huggingface.co/buckets/HuggingEnvs/geoguesser-panos) are published, [both trained adapters](https://huggingface.co/collections/HuggingEnvs/geoguesser-env-6a969f8db267fe0e85fa1ab6) are on the Hub, [every training run](https://huggingface.co/spaces/HuggingEnvs/geoguesser-trackio) sits in one dashboard, and the [code](https://github.com/adithya-s-k/HuggingEnvs/tree/main/03-geoguesser) ships with the exact commands. The raw episode records behind every number are published too, so any table in this article can be regenerated rather than taken on trust.

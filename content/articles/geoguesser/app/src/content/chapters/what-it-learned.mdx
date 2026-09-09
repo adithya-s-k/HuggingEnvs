@@ -31,7 +31,7 @@ Turns fell from 6.7 to 1.1. Looks went to zero. Output tokens dropped from about
 
 And its accuracy went *up*. Median error nearly halved, 1226 km to 662 km, country identification rose from 21% to 33%, and the share of episodes scoring exactly zero fell from 29.5% to 0.5%.
 
-I had that last column wrong myself for a while. Those are not episodes where the model ran out of turns without answering. Non-submission is essentially absent from this sweep. They are episodes where it *did* answer and landed past the point where the game curve goes flat, which is about 4,500 km for a cheap episode and about 3,300 km at the average cost of these models. That was almost a third of the untrained model's guesses, and one in two hundred of the trained model's.
+That last column was wrong in our own write-up for a while. Those are not episodes where the model ran out of turns without answering. Non-submission is essentially absent from this sweep. They are episodes where it *did* answer and landed past the point where the game curve goes flat, which is about 4,500 km for a cheap episode and about 3,300 km at the average cost of these models. That was almost a third of the untrained model's guesses, and one in two hundred of the trained model's.
 
 #### So it is just guessing a random point?
 
@@ -41,15 +41,15 @@ A random guess on land averages something like 8,000 km of error. This model's m
 
 What it is doing is recognising the region from the first frame and committing to a plausible city in it. You can see it in the raw traces. The same coordinates recur across independent rollouts, 41.9028/12.4964 for Italian scenes, 60.1282/24.78 for Scandinavian ones. That is recall of where cities are, applied to a visual prior about what a place looks like. It is one glance and one decision rather than a chain of deductions, but the glance is doing real work.
 
-The uncomfortable part is that deliberation was making a 4B model *worse*, and the training found that out before I did.
+The uncomfortable part is that deliberation was making a 4B model *worse*, and the training found that out before we did.
 
 <Note variant="warning">
-One qualification I owe you on the turn count. Training drives the environment through native tool calls and keeps the whole image history in context; the eval harness sends JSON in text and shows only the current image. Every arm on the board is measured the same way, so the comparison is fair, but the **1.1 turns** is measured under a protocol the checkpoint never trained on. The behaviour is real, the exact number is protocol-dependent.
+One qualification we owe you on the turn count. Training drives the environment through native tool calls and keeps the whole image history in context; the eval harness sends JSON in text and shows only the current image. Every arm on the board is measured the same way, so the comparison is fair, but the **1.1 turns** is measured under a protocol the checkpoint never trained on. The behaviour is real, the exact number is protocol-dependent.
 </Note>
 
 #### Was it reward hacking?
 
-When a policy stops doing the task and scores better, the first assumption should be reward hacking. I spent a day trying to find the exploit. The candidates were the pin loop leaking target information, the task identity being visible in an observation, prompt or metadata leaking the answer, and plain memorisation of the training split.
+When a policy stops doing the task and scores better, the first assumption should be reward hacking. We spent a day trying to find the exploit. The candidates were the pin loop leaking target information, the task identity being visible in an observation, prompt or metadata leaking the answer, and plain memorisation of the training split.
 
 None of them held up. The pin loop returns only what is at the pinned coordinate. Task identity is hidden. And the memorisation story does not survive arithmetic. A full 1000-step run at one task per step touches 1,000 of 3,452 tasks, one group each, never repeated. The eval split shares no sequence with training and sits at least 1 km away from any training task. On top of that, the gains are measured on 200 held-out tasks it has never seen.
 
@@ -60,14 +60,14 @@ What actually happened is simpler and more interesting. Past that flat point eve
 <HtmlEmbed
   src="d3-commit-vs-score.html"
   title="Turns against score, every model on the board"
-  desc="Across the nine models I did not train, more turns go with a lower score, r = −0.75. Marker size is the share of episodes that scored zero."
+  desc="Across the nine models we did not train, more turns go with a lower score, r = −0.75. Marker size is the share of episodes that scored zero."
   frameless
 />
 
-The effect generalises past my own checkpoints, which is what convinced me it was the reward rather than my training. Across the nine off-the-shelf models I never touched, score correlates with turns per episode at **r = −0.75**. The ones that deliberate longest do worst. It also correlates with the zero-scoring share at **r = −0.96**, but that one is partly the same measurement twice, since both are functions of the same distances. Models that commit early score higher, whether I trained them or not.
+The effect generalises past our own checkpoints, which is what points at the reward rather than the training. Across the nine off-the-shelf models we never touched, score correlates with turns per episode at **r = −0.75**. The ones that deliberate longest do worst. It also correlates with the zero-scoring share at **r = −0.96**, but that one is partly the same measurement twice, since both are functions of the same distances. Models that commit early score higher, whether we trained them or not.
 
 <Note variant="warning">
-I set out to build a model that reads road signs and I trained one that recalls a plausible city and commits. It is more accurate and it is not cheating. It is also not the visual agent I was aiming for, and the reason is the reward.
+We set out to build a model that reads road signs and we trained one that recalls a plausible city and commits. It is more accurate and it is not cheating. It is also not the visual agent we were aiming for, and the reason is the reward.
 
 The direction is counter-intuitive. Run 1 carried the *largest* action cost of the three configurations and collapsed hardest. A higher cost buys a faster commit, not more careful looking. Making evidence-gathering worthwhile needs a *lower* action cost, plus a curve with no cliff at all, so that a careful episode landing 4,000 km out still scores better than a careless one landing 12,000 km out. Under the game curve those two are identical, and a policy cannot learn from a distinction the reward does not make.
 </Note>

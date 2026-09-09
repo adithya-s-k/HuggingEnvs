@@ -3,9 +3,9 @@ import Note from "../../components/Note.astro";
 
 ### The second and third runs
 
-Run 1 worked, and one working run is a story, not a result. So I ran two more, changing as little as possible each time, to find out *why* it worked.
+Run 1 worked, and one working run is a story, not a result. So we ran two more, changing as little as possible each time, to find out *why* it worked.
 
-Run 1's training dynamics looked bad. Entropy fell from 0.73 to 0.41, the spread inside each group went to almost nothing, and grad norm, which sat at 0.18 early on, peaked above 11. Twice during that run the sensible recommendation was to kill it. Both times that would have been wrong, and working out why taught me more than anything else in the project.
+Run 1's training dynamics looked bad. Entropy fell from 0.73 to 0.41, the spread inside each group went to almost nothing, and grad norm, which sat at 0.18 early on, peaked above 11. Twice during that run the sensible recommendation was to kill it. Both times that would have been wrong, and working out why taught us more than anything else in the project.
 
 <HtmlEmbed
   src="d3-ablation.html"
@@ -14,7 +14,7 @@ Run 1's training dynamics looked bad. Entropy fell from 0.73 to 0.41, the spread
   frameless
 />
 
-**Run 2** was designed to suppress exactly those dynamics. I turned off advantage amplification (`scale_rewards="none"`, i.e. Dr.GRPO), added a KL anchor (`beta=0.02`), and doubled gradient accumulation to two tasks per step. It trained cleanly and gained **+0.0326**, about a fifth of run 1. I also trained a 2B alongside it on the same config, which gained +0.0663, so the recipe does transfer down.
+**Run 2** was designed to suppress exactly those dynamics. We turned off advantage amplification (`scale_rewards="none"`, i.e. Dr.GRPO), added a KL anchor (`beta=0.02`), and doubled gradient accumulation to two tasks per step. It trained cleanly and gained **+0.0326**, about a fifth of run 1. we also trained a 2B alongside it on the same config, which gained +0.0663, so the recipe does transfer down.
 
 **Run 3** reverted exactly those two knobs, `scale_rewards` back to `group` and `beta` back to 0, keeping everything else from run 2. It gained **+0.0717**, recovering roughly 44%.
 

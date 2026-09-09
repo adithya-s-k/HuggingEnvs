@@ -14,7 +14,7 @@ The trainer is TRL's `GRPOTrainer`, and the piece you have to write is the link 
   frameless
 />
 
-A few things about that interface I had to read off the source rather than the docs.
+A few things about that interface we had to read off the source rather than the docs.
 
 - **Every public method of your environment class becomes a tool.** Underscore-prefix anything that is not one, and `get_reward` has to be a method rather than a property.
 - **Tool schemas come from your docstrings** via `transformers.utils.get_json_schema`, which wants plain Google style and a type hint on every argument.
@@ -22,9 +22,9 @@ A few things about that interface I had to read off the source rather than the d
 - **Tool results can be multimodal.** Returning an image block works and the processor picks it up, which is what makes a visual environment possible at all.
 - **`max_completion_length` bounds the entire rollout**, images and tool results included, not one turn. Set it too small and TRL quietly drops an oversized tool result and leaves the loop, which looks like episodes that end early with no answer and reward 0.
 
-I pointed the trainer at the environment hosted on a Space rather than running it in-process, because that is the same thing the eval talks to. Whatever else is wrong, I am not training against one environment and measuring against another. The capacity check from the previous section is what makes that safe.
+We pointed the trainer at the environment hosted on a Space rather than running it in-process, because that is the same thing the eval talks to. Whatever else is wrong, we are not training against one environment and measuring against another. The capacity check from the previous section is what makes that safe.
 
-Before you start, send every run to **one** dashboard. I use [Trackio](https://huggingface.co/spaces/HuggingEnvs/geoguesser-trackio), which is a Space plus a bucket, so the runs outlive the Jobs that produced them and sit on a shared axis where they can actually be compared. Reading three runs in three tabs is how you end up believing things that are not true. The whole dashboard is embedded at the end of this article, and every training figure below is built from its database.
+Before you start, send every run to **one** dashboard. We use [Trackio](https://huggingface.co/spaces/HuggingEnvs/geoguesser-trackio), which is a Space plus a bucket, so the runs outlive the Jobs that produced them and sit on a shared axis where they can actually be compared. Reading three runs in three tabs is how you end up believing things that are not true. The whole dashboard is embedded at the end of this article, and every training figure below is built from its database.
 
 ### The first run
 
@@ -37,7 +37,7 @@ Before you start, send every run to **one** dashboard. I use [Trackio](https://h
 
 The two series measure different things. The noisy one is the training reward, one task per optimizer step at temperature 1.0, which is why it swings between 0.01 and 0.99 and why only the moving average tells you anything. Smoothed, it goes from **0.20 to 0.64**. The other is the eval score, mean-of-4 over the 200 held-out tasks, run separately for eight checkpoints.
 
-The eval line is what I trust, and it says **0.4825 to 0.6445, a gain of +0.162**. It also says something less flattering. By step 200 it is at 0.6393, and the remaining 800 steps move it by 0.005. I kept the run going anyway, to watch the behaviour rather than the score, and that turned out to be the right call for reasons that have nothing to do with the number.
+The eval line is what we trust, and it says **0.4825 to 0.6445, a gain of +0.162**. It also says something less flattering. By step 200 it is at 0.6393, and the remaining 800 steps move it by 0.005. We kept the run going anyway, to watch the behaviour rather than the score, and that turned out to be the right call for reasons that have nothing to do with the number.
 
 Watch the readout while it plays. Turns per episode fall from 6.7 to 1.1, output tokens from 1,062 to 66, and entropy from 0.73 to 0.41. The model is getting *faster* rather than more careful, and the score goes up anyway.
 
@@ -73,5 +73,5 @@ Stop at step 250 if you are reproducing this, by the way. The original went to 1
 LoRA is doing a lot of work in making that fit. At r=16 on four projections there are very few trainable parameters, which is why a 4B model and a colocated vLLM share one card without trouble.
 
 <Note variant="warning">
-One memory trap, because it killed a later run at step 29. `max_completion_length` sizes a logits tensor at `length × 248,064 vocab × 4 bytes`, and it allocates that **whatever the model actually emits**. At 12,288 that reserves 11.4 GiB every step while my longest output was 2,114 tokens. Use 6,144. Qwen3.5's vocabulary is what makes a "small" model expensive here, not its parameter count.
+One memory trap, because it killed a later run at step 29. `max_completion_length` sizes a logits tensor at `length × 248,064 vocab × 4 bytes`, and it allocates that **whatever the model actually emits**. At 12,288 that reserves 11.4 GiB every step while our longest output was 2,114 tokens. Use 6,144. Qwen3.5's vocabulary is what makes a "small" model expensive here, not its parameter count.
 </Note>
