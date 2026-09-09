@@ -6,7 +6,7 @@ The task splits already exist and are published. You only need this directory if
 |---|---:|---:|---|
 | `eval` | 200 | 73, capped at 4 each | `../env/tasks/eval_pano_v3.jsonl`, committed |
 | `train` | 3,452 | 132 | [`HuggingEnvs/geoguesser-tasks`](https://huggingface.co/datasets/HuggingEnvs/geoguesser-tasks) |
-| imagery | 86,366 panoramas | — | [`HuggingEnvs/geoguesser-panos`](https://huggingface.co/buckets/HuggingEnvs/geoguesser-panos), 22 GB |
+| imagery | 86,366 panoramas | n/a | [`HuggingEnvs/geoguesser-panos`](https://huggingface.co/buckets/HuggingEnvs/geoguesser-panos), 22 GB |
 
 ## The pipeline
 

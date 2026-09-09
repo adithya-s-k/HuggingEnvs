@@ -37,7 +37,7 @@ One adapter pair covers everything. `--provider anthropic` uses the Messages API
 
 | provider | `base_url` |
 |---|---|
-| Anthropic | — |
+| Anthropic | n/a |
 | OpenAI | `https://api.openai.com/v1` |
 | HF router | `https://router.huggingface.co/v1` |
 | local vLLM | `http://127.0.0.1:8000/v1` |
